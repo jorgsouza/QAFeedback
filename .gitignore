@@ -1,0 +1,28 @@
+# Ambiente / segredos
+.env
+.env.*
+!.env.example
+
+# SO e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Pacotes Chrome (não versionar chave privada)
+*.pem
+*.crx
+
+# Dependências e artefactos (extensão)
+extension/node_modules/
+extension/dist/
+
+# Raiz do monorepo (se adicionar mais pacotes)
+node_modules/
+dist/
