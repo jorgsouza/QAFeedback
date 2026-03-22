@@ -29,6 +29,10 @@ Carregue **`extension/dist`** em **chrome://extensions** (modo desenvolvedor →
 - Especificação e imagens: pasta **[PRD](./PRD/)** (ficheiro principal do PRD em Markdown).
 - Ícone / mascote: **`PRD/capiQA.png`** (gerado no build via `npm run icons` dentro de `extension/`).
 
+## Skills do projeto (Cursor)
+
+Workflows em **[`.cursor/skills/`](./.cursor/skills/)** (cada skill é `SKILL.md` numa subpasta: TDD, PRD→plano, mocks, testes, etc.). Ver [`.cursor/skills/README.md`](./.cursor/skills/README.md).
+
 ## Git
 
 Na raiz existe um **`.gitignore`** com entradas comuns (`.env`, `node_modules`, `extension/dist`, etc.). Não commite ficheiros com tokens ou segredos.
