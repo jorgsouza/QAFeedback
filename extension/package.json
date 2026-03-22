@@ -8,7 +8,9 @@
     "icons": "node scripts/roundify-capiqa.mjs",
     "dev": "npm run icons && vite build && BUILD_TARGET=content vite build && npm run build:bridge && node scripts/copy-manifest.mjs",
     "build": "npm run icons && vite build && BUILD_TARGET=content vite build && npm run build:bridge && node scripts/copy-manifest.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -22,6 +24,7 @@
     "esbuild": "^0.24.2",
     "sharp": "^0.34.5",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^4.1.0"
   }
 }

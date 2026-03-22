@@ -128,6 +128,8 @@ O ficheiro é um **bundle** (JavaScript + string grande de CSS). O número de li
 | `npm run icons` | Regenera PNGs a partir de `PRD/capiQA.png` |
 | `npm run build` | Ícones + Vite (shell + content) + page-bridge + `manifest.json` |
 | `npm run check` | `tsc --noEmit` |
+| `npm test` | Vitest — testes em `src/**/*.test.ts` (lógica partilhada) |
+| `npm run test:watch` | Vitest em watch |
 | `npm run dev` | Igual ao `build` (nome legado) |
 
 Para mais detalhes de primeiro uso e tabela PRD resumida, veja também **[README.md](./README.md)**.

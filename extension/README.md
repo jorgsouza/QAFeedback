@@ -82,5 +82,7 @@ Aparece se recarregar a extensão em `chrome://extensions` **sem** atualizar o s
 - `npm run build` — ícones + produção (`dist/`).
 - `npm run dev` — igual ao `build` (atalho).
 - `npm run check` — `tsc --noEmit`.
+- `npm test` — testes unitários (Vitest) sobre módulos partilhados (`*.test.ts`).
+- `npm run test:watch` — Vitest em modo watch.
 
 Não há hot reload dedicado; durante o desenvolvimento, altere o código, rode `npm run build` e clique em **Recarregar** na página da extensão.
