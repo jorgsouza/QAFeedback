@@ -6,6 +6,8 @@ import {
   JIRA_FEEDBACK_MAX_IMAGES,
   safeImageFileNameForJira,
 } from "../shared/feedback-image-utils";
+import { pickSpeechRecognitionLang } from "../shared/chrome-speech-dictation";
+import { detectDictationPlatform, getDictationMicTooltip } from "../shared/native-dictation-hint";
 import { buildIssueBody } from "../shared/issue-builder";
 import {
   buildTechnicalContext,
@@ -22,6 +24,7 @@ import {
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
 import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
+import { useChromeSpeechDictation } from "./useChromeSpeechDictation";
 
 type Tab = "form" | "preview";
 
@@ -30,6 +33,24 @@ type RepoOption = { owner: string; repo: string; label: string };
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+
+function MicIcon() {
+  return (
+    <svg
+      className="qaf-dictation-mic-svg"
+      viewBox="0 0 24 24"
+      width={20}
+      height={20}
+      aria-hidden
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M12 14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2s-2 .9-2 2v5c0 1.1.9 2 2 2zm5-2c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+      />
+    </svg>
+  );
+}
 
 /** Ícone do FAB: `public/qa.png` (`npm run icons` — máscara circular sobre `PRD/capiQA.png`). */
 function FeedbackFabIcon() {
@@ -86,10 +107,29 @@ export function FeedbackApp() {
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const dictationPlatform = useMemo(() => detectDictationPlatform(), []);
+  const speechRecognitionLang = useMemo(() => pickSpeechRecognitionLang(), []);
+
+  const getFormSnapshot = useCallback(() => form, [form]);
+  const {
+    listeningField,
+    speechSupported,
+    secureContext,
+    toggleField,
+    speechError,
+    clearSpeechError,
+  } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open });
 
   useEffect(() => {
     ensurePageBridgeInjected();
   }, []);
+
+  useEffect(() => {
+    if (open) clearSpeechError();
+  }, [open, clearSpeechError]);
 
   const addImageFiles = useCallback((files: FileList | File[]) => {
     const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -550,6 +590,17 @@ export function FeedbackApp() {
               ) : (
                 <>
                   {error && <div className="qaf-error">{error}</div>}
+                  {speechError ? (
+                    <div className="qaf-speech-notice qaf-speech-notice--error" role="alert">
+                      {speechError}
+                    </div>
+                  ) : null}
+                  {listeningField ? (
+                    <div className="qaf-speech-live" role="status" aria-live="polite">
+                      A escutar no {listeningField === "title" ? "título" : "campo «O que aconteceu»"}… clique no
+                      microfone outra vez para parar.
+                    </div>
+                  ) : null}
 
                   {tab === "form" ? (
                     <>
@@ -640,50 +691,118 @@ export function FeedbackApp() {
                           <label className="qaf-label" htmlFor="qaf-title">
                             Título <span className="qaf-required">*</span>
                           </label>
-                          <input
-                            id="qaf-title"
-                            className="qaf-input"
-                            value={form.title}
-                            onChange={onField("title")}
-                            placeholder="Resumo curto (título no GitHub / resumo no Jira)"
-                          />
+                          <div className="qaf-input-with-mic">
+                            <input
+                              ref={titleInputRef}
+                              id="qaf-title"
+                              className="qaf-input qaf-input-flex"
+                              value={form.title}
+                              onChange={onField("title")}
+                              placeholder="Resumo curto (título no GitHub / resumo no Jira)"
+                              title={
+                                speechSupported && secureContext
+                                  ? "Voz do Chrome: clique no microfone para falar ou parar. Também pode usar ditado do SO (ex.: Win+H)."
+                                  : "Microfone: ditado do sistema (ex.: Win+H no Windows) após focar o campo"
+                              }
+                            />
+                            <button
+                              type="button"
+                              className={`qaf-dictation-mic-btn qaf-dictation-mic-btn--inline ${
+                                listeningField === "title" ? "qaf-dictation-mic-btn--listening" : ""
+                              }`}
+                              aria-label={
+                                listeningField === "title"
+                                  ? "Parar reconhecimento de voz no título"
+                                  : speechSupported && secureContext
+                                    ? "Falar no título (reconhecimento de voz do Chrome)"
+                                    : "Focar título para ditado do sistema"
+                              }
+                              aria-pressed={listeningField === "title"}
+                              title={
+                                speechSupported && secureContext
+                                  ? `Voz do Chrome (idioma: ${speechRecognitionLang}). Clique para falar ou parar; o áudio é processado pelo serviço do Google.`
+                                  : getDictationMicTooltip("title", dictationPlatform)
+                              }
+                              onClick={() => {
+                                toggleField("title");
+                                titleInputRef.current?.focus();
+                                titleInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                              }}
+                            >
+                              <MicIcon />
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">
                           O que aconteceu <span className="qaf-required">*</span>
                         </label>
-                        <textarea
-                          id="qaf-what"
-                          className="qaf-textarea"
-                          value={form.whatHappened}
-                          onChange={onField("whatHappened")}
-                          onPaste={(e) => {
-                            if (!jiraTokenConfigured || !form.sendToJira) return;
-                            const items = e.clipboardData?.items;
-                            if (!items?.length) return;
-                            const files: File[] = [];
-                            for (let i = 0; i < items.length; i++) {
-                              const it = items[i];
-                              if (it?.kind === "file" && it.type.startsWith("image/")) {
-                                const f = it.getAsFile();
-                                if (f) files.push(f);
+                        <div className="qaf-textarea-with-mic">
+                          <textarea
+                            ref={whatTextareaRef}
+                            id="qaf-what"
+                            className="qaf-textarea qaf-textarea-flex"
+                            value={form.whatHappened}
+                            onChange={onField("whatHappened")}
+                            onPaste={(e) => {
+                              if (!jiraTokenConfigured || !form.sendToJira) return;
+                              const items = e.clipboardData?.items;
+                              if (!items?.length) return;
+                              const files: File[] = [];
+                              for (let i = 0; i < items.length; i++) {
+                                const it = items[i];
+                                if (it?.kind === "file" && it.type.startsWith("image/")) {
+                                  const f = it.getAsFile();
+                                  if (f) files.push(f);
+                                }
                               }
+                              if (!files.length) return;
+                              e.preventDefault();
+                              const bad = files.find((f) => f.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES);
+                              if (bad) {
+                                setError(
+                                  `Imagem colada demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB).`,
+                                );
+                                return;
+                              }
+                              setError(null);
+                              addImageFiles(files);
+                            }}
+                            placeholder="Descreva o comportamento observado (pode colar prints com Ctrl+V se enviar ao Jira)"
+                            title={
+                              speechSupported && secureContext
+                                ? "Voz do Chrome no microfone ao lado; pode colar imagens com Ctrl+V (Jira)."
+                                : "Ditado do SO pelo microfone ou atalho; pode colar imagens com Ctrl+V (Jira)"
                             }
-                            if (!files.length) return;
-                            e.preventDefault();
-                            const bad = files.find((f) => f.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES);
-                            if (bad) {
-                              setError(
-                                `Imagem colada demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB).`,
-                              );
-                              return;
+                          />
+                          <button
+                            type="button"
+                            className={`qaf-dictation-mic-btn qaf-dictation-mic-btn--inline qaf-dictation-mic-btn--textarea ${
+                              listeningField === "whatHappened" ? "qaf-dictation-mic-btn--listening" : ""
+                            }`}
+                            aria-label={
+                              listeningField === "whatHappened"
+                                ? "Parar reconhecimento de voz na descrição"
+                                : speechSupported && secureContext
+                                  ? "Falar na descrição (reconhecimento de voz do Chrome)"
+                                  : "Focar descrição para ditado do sistema"
                             }
-                            setError(null);
-                            addImageFiles(files);
-                          }}
-                          placeholder="Descreva o comportamento observado (pode colar prints com Ctrl+V se enviar ao Jira)"
-                        />
+                            aria-pressed={listeningField === "whatHappened"}
+                            title={
+                              speechSupported && secureContext
+                                ? `Voz do Chrome (idioma: ${speechRecognitionLang}). Clique para falar ou parar.`
+                                : getDictationMicTooltip("what", dictationPlatform)
+                            }
+                            onClick={() => {
+                              toggleField("whatHappened");
+                              whatTextareaRef.current?.focus();
+                              whatTextareaRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                            }}
+                          >
+                            <MicIcon />
+                          </button>
+                        </div>
                       </div>
                       {jiraTokenConfigured && form.sendToJira ? (
                         <div className="qaf-img-field">

@@ -305,6 +305,106 @@ export const shadowCss = `
 
 .qaf-textarea { min-height: 88px; resize: vertical; }
 
+.qaf-input-with-mic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qaf-input-flex {
+  flex: 1;
+  min-width: 0;
+}
+
+.qaf-textarea-with-mic {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.qaf-textarea-flex {
+  flex: 1;
+  min-width: 0;
+}
+
+.qaf-dictation-mic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--qaf-m-border);
+  background: var(--qaf-m-input);
+  color: var(--qaf-m-text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.qaf-dictation-mic-btn--inline {
+  width: 40px;
+  height: 40px;
+}
+
+.qaf-dictation-mic-btn--textarea {
+  margin-top: 6px;
+}
+
+.qaf-dictation-mic-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.qaf-dictation-mic-btn:focus-visible {
+  outline: 2px solid var(--qaf-m-accent, #6ea8ff);
+  outline-offset: 2px;
+}
+
+.qaf-dictation-mic-btn--listening {
+  border-color: #c2410c;
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+  box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.45);
+}
+
+.qaf-dictation-mic-btn--listening:hover {
+  background: rgba(234, 88, 12, 0.28);
+  border-color: #ea580c;
+  color: #ffedd5;
+}
+
+.qaf-dictation-mic-svg {
+  display: block;
+}
+
+.qaf-speech-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.qaf-speech-notice--error {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+}
+
+.qaf-speech-live {
+  margin: -4px 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--qaf-m-text);
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
 .qaf-img-field {
   margin-bottom: 16px;
 }
