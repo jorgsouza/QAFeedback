@@ -1,20 +1,28 @@
-# QA Feedback → GitHub (Chrome MV3)
+# QA Feedback — GitHub e Jira (Chrome MV3)
 
-Extensão alinhada ao PRD: botão flutuante em páginas permitidas, modal com abas **Formulário** / **Preview**, criação de issue via API do GitHub, token em `chrome.storage.local`, contexto técnico opcional e UI no **Shadow DOM**.
+Extensão: **FAB** em páginas permitidas, modal (**Formulário** / **Preview**), envio para **GitHub** e/ou **Jira Cloud**, token(s) só no **service worker**, contexto técnico opcional, **prints no Jira**, **voz no Chrome** (Web Speech API, `pt-BR` por defeito), UI em **Shadow DOM**.
 
-**Documentação detalhada (configuração, permissões, erros, arquitetura):** [DOCUMENTATION.md](./DOCUMENTATION.md)
+**Documentação completa:** [DOCUMENTATION.md](./DOCUMENTATION.md)
 
 ## Requisitos
 
 - Node 18+
-- Conta GitHub com permissão para criar issues no repositório
+- Chrome (Manifest V3)
+- Conta **GitHub** e/ou **Jira Cloud** conforme o que for configurar
 
-## Token GitHub
+## Tokens
 
-- **PAT classic**: escopo `repo` (ou pelo menos acesso ao repo alvo).
-- **Fine-grained**: permissão **Issues** (read/write) no repositório.
+### GitHub
 
-O token fica só no storage local da extensão; a criação da issue ocorre no **service worker**, não no content script.
+- **PAT classic**: escopo adequado ao repo (ex. `repo`) ou fine-grained com **Issues** read/write.
+- O token fica em `chrome.storage.local`; a criação da issue é no **background**.
+
+### Jira Cloud
+
+- **Email** Atlassian (o mesmo do Jira).
+- **API token** ([Atlassian — API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)).
+- Com email **@empresa**, o site `https://empresa.atlassian.net` costuma **inferir-se** automaticamente (não serve para Gmail “pessoal” como único identificador — use **Site** em Avançado se precisar).
+- **Quadro**: após email + token, a **lista de quadros** enche sozinha; **escolher o quadro** confirma projeto/filtro e **grava** — não há botão “testar ligação”.
 
 ## Build
 
@@ -24,65 +32,56 @@ npm install
 npm run build
 ```
 
-O `build` executa **`npm run icons`** primeiro (lê `../PRD/capiQA.png`, aplica máscara circular e gera `public/qa.png` + `public/icons/`).
+O `build` corre **`npm run icons`** primeiro (`../PRD/capiQA.png` → `public/qa.png` + `public/icons/`).
 
-Saída em `extension/dist/`. Carregue a pasta `dist` em **chrome://extensions** → **Modo do desenvolvedor** → **Carregar sem compactação**.
+Saída: **`dist/`**. Carregar **`extension/dist`** em **chrome://extensions** (modo desenvolvedor).
 
 ## Erro “Extension context invalidated”
 
-Aparece se recarregar a extensão em `chrome://extensions` **sem** atualizar o separador do site. **Recarregue a página (F5).** O content script trata este caso para não rebentar com exceções não capturadas; mesmo assim o separador antigo fica desligado do novo service worker até dar refresh. Detalhes em [DOCUMENTATION.md](./DOCUMENTATION.md#extension-context-invalidated--erro-no-content-script).
+Recarregar a extensão sem **F5** no separador do site. Ver [DOCUMENTATION.md](./DOCUMENTATION.md#extension-context-invalidated).
 
 ## Primeiro uso
 
-1. Abra **Opções da extensão** (ícone → Configurações, ou pelo link no modal).
-2. Preencha token e **repositórios destino** (um por linha: `owner/repo`, URL do GitHub ou `owner/repo|Nome no menu`). No modal de feedback o QA **escolhe** em qual repo abrir a issue. Domínios permitidos: um por linha. Padrão: `localhost` e `127.0.0.1`.
-3. Clique em **Salvar** (o Chrome pode pedir permissão para hosts novos).
-4. **Testar conexão e listar repos** valida o token e preenche automaticamente a lista com os repositórios que a API GitHub devolve para esse token (PAT com escopo `repo` ou fine-grained com repositórios escolhidos). Depois clique em **Salvar** para guardar.
-5. Abra um site cujo host está na lista (e com permissão concedida); o botão **Feedback QA** deve aparecer.
+1. **Opções** da extensão.
+2. **GitHub** (opcional): token → **Testar conexão e listar repos** → ajustar lista → **Salvar**.
+3. **Jira** (opcional): email + API token → aguardar o menu **Quadro Software** encher → escolher quadro → **Salvar** (também para hosts / repos GitHub).
+4. **Domínios permitidos**: um por linha; ao Salvar o Chrome pode pedir permissão para sites novos.
+5. Abrir um site permitido; usar o **FAB** (ou ícone da extensão se estiver “ao clicar”).
 
 ### Botão não aparece?
 
-1. **Permissão de leitura do site (muito comum)**  
-   Clique com o **botão direito** no ícone da extensão → **“Esta extensão pode ler e alterar dados do site”** / *This can read and change site data*.  
-   - Se estiver **“Ao clicar na extensão”** / *When you click the extension*, o botão **não** é injetado ao carregar a página.  
-   - Escolha **“Em jorgesouza.dev.br”** / *On [site]* (ou **“Em todos os sites”** se fizer sentido para você).  
-   - **Alternativa:** mantendo “ao clicar”, **clique uma vez no ícone da extensão** na aba do site — com a permissão `activeTab`, o botão é injetado na hora.
+1. Ícone da extensão → **“Esta extensão pode ler e alterar dados do site”** — não deixe só “ao clicar” sem clicar no ícone na aba, ou escolha o site / todos os sites.
+2. Domínio correto nas opções + permissão aceite ao Salvar.
+3. Não usar `chrome://`, Web Store, etc. para o feedback embutido.
 
-2. Recarregue a extensão em `chrome://extensions` depois do `npm run build`.
-
-3. Em **Salvar** nas opções, aceite o prompt de permissão do Chrome para os hosts listados (sites que não sejam localhost).
-
-4. Use o **nome do site** nas linhas de domínio (ex. `jorgesouza.dev.br`); também entram padrões `*.seu-dominio` para cobrir `www`.
-
-5. Abra **Inspecionar** no *service worker* da extensão e veja mensagens `[QA Feedback]` no console.
+Detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 
 ## Permissões
 
-- `storage`, `scripting`: configuração e registro do content script.
-- `https://api.github.com/*`: chamadas à API.
-- `localhost` / `127.0.0.1`: injeção local sem passo extra.
-- `optional_host_permissions` `http(s)://*/*`: permite solicitar **somente** os hosts que você adicionar ao salvar (não é `<all_urls>` fixo no content script).
+- `storage`, `scripting`, `activeTab`
+- Fixas: `https://api.github.com/*`, **`https://*.atlassian.net/*`**, localhost / 127.0.0.1
+- `optional_host_permissions` para os hosts que adicionar nas opções (ao Salvar)
 
-## Estrutura (PRD)
+## Estrutura (ficheiros principais)
 
 | Área | Caminho |
 |------|---------|
 | Content + UI | `src/content/`, `src/ui/` |
-| Opções | `src/options/`, `options.html` |
+| Opções | `src/options/` |
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
-| Corpo da issue | `src/shared/issue-builder.ts` |
-| Contexto (página, elemento, console, fetch falho) | `src/shared/context-collector.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts` |
+| Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts` |
+| page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
+| Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |
 | Storage | `src/shared/storage.ts` |
-| Sanitização | `src/shared/sanitizer.ts` |
 
 ## Scripts
 
-- `npm run icons` — regenera ícones a partir de `PRD/capiQA.png`.
-- `npm run build` — ícones + produção (`dist/`).
-- `npm run dev` — igual ao `build` (atalho).
-- `npm run check` — `tsc --noEmit`.
-- `npm test` — testes unitários (Vitest) sobre módulos partilhados (`*.test.ts`).
-- `npm run test:watch` — Vitest em modo watch.
+- `npm run icons` — ícones a partir do PRD
+- `npm run build` — produção → `dist/`
+- `npm run dev` — igual ao `build`
+- `npm run check` — TypeScript
+- `npm test` / `npm run test:watch` — Vitest
 
-Não há hot reload dedicado; durante o desenvolvimento, altere o código, rode `npm run build` e clique em **Recarregar** na página da extensão.
+Alterou código → `npm run build` → **Recarregar** a extensão.

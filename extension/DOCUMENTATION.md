@@ -1,6 +1,6 @@
-# Documentação — QA Feedback → GitHub
+# Documentação — QA Feedback → GitHub e Jira
 
-Extensão **Chrome Manifest V3** que permite abrir **issues no GitHub** a partir da página em teste: botão flutuante (FAB), formulário em modal (Shadow DOM), preview em Markdown e contexto técnico opcional (URL, viewport, elemento clicado, erros de consola, pedidos falhados). O **token** e as chamadas à API GitHub ficam no **service worker**; o content script não recebe o PAT.
+Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM** com **Formulário** / **Preview**, envio para **GitHub** e/ou **Jira Cloud**. Tokens e chamadas às APIs correm no **service worker**; o content script não recebe PAT nem API token do Jira.
 
 ---
 
@@ -8,11 +8,15 @@ Extensão **Chrome Manifest V3** que permite abrir **issues no GitHub** a partir
 
 1. [Instalação para desenvolvimento](#instalação-para-desenvolvimento)
 2. [Configuração (opções)](#configuração-opções)
-3. [Uso no dia a dia](#uso-no-dia-a-dia)
-4. [Permissões](#permissões)
-5. [Resolução de problemas](#resolução-de-problemas)
-6. [Arquitetura e ficheiros](#arquitetura-e-ficheiros)
-7. [Ícones (arte circular)](#ícones-arte-circular)
+3. [Uso no dia a dia (modal)](#uso-no-dia-a-dia-modal)
+4. [Voz (Chrome) e ditado do SO](#voz-chrome-e-ditado-do-so)
+5. [Permissões](#permissões)
+6. [Resolução de problemas](#resolução-de-problemas)
+7. [Arquitetura e ficheiros](#arquitetura-e-ficheiros)
+8. [Mensagens do service worker](#mensagens-do-service-worker)
+9. [page-bridge e “erros” da extensão](#page-bridge-e-erros-da-extensão)
+10. [Ícones (arte circular)](#ícones-arte-circular)
+11. [Referência rápida de scripts](#referência-rápida-de-scripts)
 
 ---
 
@@ -26,72 +30,96 @@ npm install
 npm run build
 ```
 
-- A saída fica em **`extension/dist/`**.
-- Em **chrome://extensions**, ative **Modo do desenvolvedor** → **Carregar sem compactação** → escolha a pasta **`extension/dist`**.
-- Após alterar código: `npm run build` de novo e use **Recarregar** na extensão.
+- Saída: **`extension/dist/`**.
+- **chrome://extensions** → Modo do desenvolvedor → **Carregar sem compactação** → **`extension/dist`**.
+- Após alterações: `npm run build` e **Recarregar** na extensão.
 
-O alvo `build` executa automaticamente **`npm run icons`**, que lê **`../PRD/capiQA.png`**, aplica máscara circular e gera `public/qa.png` e `public/icons/icon*.png`.
+O `build` corre **`npm run icons`** (lê **`../PRD/capiQA.png`**, máscara circular → `public/qa.png` e `public/icons/icon*.png`).
 
 ---
 
 ## Configuração (opções)
 
-Abra a página de opções pelo menu da extensão, pelo atalho em **chrome://extensions**, ou pelo link **Configurações** no modal de feedback.
+Abra as opções pelo menu da extensão, **chrome://extensions**, ou **Configurações** no modal.
+
+### GitHub
 
 | Campo | Descrição |
 |--------|-----------|
-| **GitHub token** | PAT classic (ex.: escopo `repo`) ou **fine-grained** só com **Issues** (read/write) nos repositórios desejados. Na página há instruções passo a passo com link para [Fine-grained tokens](https://github.com/settings/personal-access-tokens). |
-| **Testar conexão e listar repos** | Valida o token e preenche a caixa de repositórios com o que a API devolve. Depois confira e clique em **Salvar**. |
-| **Repositórios destino** | Uma linha por repo: `owner/repo`, URL do GitHub ou `owner/repo|Nome no menu`. No modal, o QA escolhe o destino. |
-| **Domínios permitidos** | Hostnames (ex.: `localhost`, `jorgesouza.dev.br`). Ao **Salvar**, o Chrome pode pedir permissão para hosts novos. |
+| **GitHub token** | PAT classic ou **fine-grained** com **Issues** (read/write) nos repositórios desejados. |
+| **Testar conexão e listar repos** | Valida o token e preenche a lista de repositórios. Depois **Salvar** para persistir hosts/repos. |
+| **Repositórios destino** | Uma linha por repo: `owner/repo`, URL ou `owner/repo\|Nome no menu`. |
+| **Domínios permitidos** | Hostnames (ex. `localhost`). Ao **Salvar**, o Chrome pode pedir permissão para hosts novos. |
 
-O token é guardado em **`chrome.storage.local`** e só é usado no **background** ao criar issues.
+### Jira Cloud (Atlassian)
+
+| Campo | Descrição |
+|--------|-----------|
+| **Email Atlassian** | Mesmo email da conta Jira. Com domínio **@empresa** (não Gmail genérico), o site costuma inferir-se como `https://empresa.atlassian.net`. |
+| **API token Jira** | Criado em [id.atlassian.com/.../api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens). |
+| **Quadro Software — backlog destino** | **Menu (`<select>`)**. Depois de email + token válidos (e site resolvível), a **lista de quadros carrega automaticamente** (debounce ~550 ms), sem botão de teste. |
+| **Ao escolher um quadro** | A extensão confirma ligação, lê **chave do projeto** e **filtro do quadro** (campos como Squad quando aplicável), **grava** em `chrome.storage.local` — equivalente ao antigo “testar e listar”. |
+
+**Avançado** (opcional): URL manual do site, chave de projeto, overrides de campo select do filtro — só quando a inferência não chega.
+
+### Armazenamento
+
+Definições e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). Uso exclusivo no **background** para criar issues e listar repos/quadros.
 
 ---
 
-## Uso no dia a dia
+## Uso no dia a dia (modal)
 
-1. Visite um site cujo host está na lista e com permissão concedida.
-2. Se a extensão estiver em **“Ao clicar na extensão”**, clique no **ícone da extensão** na barra para injetar o UI nesse separador (`activeTab` + `scripting`).
-3. Use o **botão circular** (capi QA) para abrir o modal.
-4. Preencha **título** e **o que aconteceu**, escolha o repositório (se houver vários), opcionalmente inclua **contexto técnico**.
-5. **Preview** mostra o Markdown do corpo da issue; **Criar issue** envia via API.
+1. Site com host permitido e permissão concedida (ou **clique no ícone** da extensão se estiver “ao clicar”).
+2. **FAB** → modal.
+3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
+4. **Jira**: preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites de tamanho/número).
+5. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (ver secção seguinte).
+6. **Preview** → **Enviar**.
+
+---
+
+## Voz (Chrome) e ditado do SO
+
+- **Web Speech API** (`webkitSpeechRecognition`): idioma **`pt-BR` por defeito** (mesmo com Chrome em inglês); respeita entradas `pt-*` em `navigator.languages` se existirem.
+- Requer **HTTPS** (`isSecureContext`). O áudio é processado pelo **serviço do Chrome/Google**, não pela extensão.
+- Nas dicas dos campos, referência ao **ditado nativo** (ex. Win+H) como alternativa.
 
 ---
 
 ## Permissões
 
-- **`storage`** — definições e token.
-- **`scripting`**, **`activeTab`** — injeção do content script quando necessário.
-- **`host_permissions`** — `api.github.com` e localhost fixos; outros sites entram como **`optional_host_permissions`** quando grava nas opções.
+- **`storage`**, **`scripting`**, **`activeTab`** — definições, registo/injeção do content script quando necessário.
+- **`host_permissions` fixas:** `api.github.com`, **`*.atlassian.net`**, localhost / 127.0.0.1.
+- **`optional_host_permissions`** `http(s)://*/*` — pedido ao **Salvar** conforme os domínios listados nas opções.
 
 ---
 
 ## Resolução de problemas
 
-### `Extension context invalidated` / erro no content script
+### Extension context invalidated
 
-Ocorre quando a extensão foi **recarregada** ou **atualizada** em `chrome://extensions`, mas o **separador do site não foi atualizado**. O script antigo perde a ligação ao service worker.
+Recarregou a extensão sem dar **F5** no separador do site. Atualize a página. Ver também `extension-runtime.ts`.
 
-**Solução:** recarregue a página do site (**F5** ou Cmd+R). O código da extensão também evita lançar erros não tratados nesse cenário (por exemplo ao resolver URLs de recursos); mesmo assim, **F5** restabelece tudo.
+### Botão não aparece
 
-### O botão de feedback não aparece
+Igual ao fluxo GitHub: permissão “ler dados do site”, domínio nas opções, não usar `chrome://` / Web Store para o FAB.
 
-1. Ícone da extensão → **“Esta extensão pode ler e alterar dados do site”** → escolha o site em questão (ou **em todos os sites**, se fizer sentido). Se estiver só **“Ao clicar”**, é preciso **clicar no ícone** para injetar o botão nessa aba.
-2. Confirme que o **domínio** (sem `https://`) está nas opções e que aceitou a permissão ao **Salvar**.
-3. Páginas `chrome://`, Web Store, PDF interno, etc. **não** permitem injeção.
+### Jira: 401 / lista de quadros vazia
 
-### “Nenhum repositório configurado”
+Token revogado, email errado, ou conta sem acesso **Jira Software** / API Agile. Confirme site (email `@empresa` ou URL em Avançado).
 
-Configure linhas em **Repositórios destino** e clique em **Salvar**. Use **Testar conexão** para pré-preencher a lista.
+### Voz sempre em inglês (resolvido no código)
 
-### 401 / 403 na API GitHub
+O reconhecedor usa `lang` **pt-BR** por defeito; recarregue a extensão após atualizar.
 
-Token em falta, expirado, ou sem permissão **Issues** no repositório (fine-grained) ou escopo insuficiente (classic).
+### Página “Errors” da extensão com `page-bridge.js`
 
-### Linha no `content.js` aponta para CSS (ex.: `color: #6ee7b7`)
+Muitas entradas são **avisos da própria página** (ex. scripts de analytics) que passam por `console.warn` **interceptado** pelo bridge — não são falhas da extensão. Ver [page-bridge e “erros”](#page-bridge-e-erros-da-extensão).
 
-O ficheiro é um **bundle** (JavaScript + string grande de CSS). O número de linha **não** indica que o erro é de CSS; costuma ser **contexto invalidado** ou outra exceção nesse bundle. Use a mensagem de erro e a secção acima.
+### 401 / 403 GitHub
+
+Token ou escopos Issues (fine-grained) incorretos.
 
 ---
 
@@ -101,23 +129,51 @@ O ficheiro é um **bundle** (JavaScript + string grande de CSS). O número de li
 |------|---------|
 | Entrada content | `src/content/content.tsx` |
 | UI modal + FAB | `src/ui/FeedbackApp.tsx`, `src/ui/shadow-styles.ts` |
+| Voz (hook) | `src/ui/useChromeSpeechDictation.ts`, `src/shared/chrome-speech-dictation.ts` |
 | Opções | `src/options/OptionsApp.tsx`, `options.html` |
 | Service worker | `src/background/service-worker.ts` |
-| Cliente GitHub | `src/shared/github-client.ts` |
+| GitHub | `src/shared/github-client.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-motivo.ts` |
+| Imagens Jira | `src/shared/feedback-image-utils.ts` |
 | Corpo da issue | `src/shared/issue-builder.ts` |
-| Contexto / bridge | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
-| Storage | `src/shared/storage.ts` |
-| Mensagens / contexto invalidado | `src/shared/extension-runtime.ts` |
+| Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
+| Ditado SO (textos) | `src/shared/native-dictation-hint.ts` |
+| Storage / tipos | `src/shared/storage.ts`, `types.ts` |
+| Runtime extensão | `src/shared/extension-runtime.ts` |
 
-**Mensagens** (`chrome.runtime.sendMessage`): `LIST_REPO_TARGETS`, `OPEN_OPTIONS`, `CREATE_ISSUE`, `TEST_GITHUB` (opções → background).
+---
+
+## Mensagens do service worker
+
+`chrome.runtime.sendMessage` / listener no `service-worker.ts`:
+
+| Tipo | Uso |
+|------|-----|
+| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira. |
+| `OPEN_OPTIONS` | Abre a página de opções. |
+| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme payload. |
+| `TEST_GITHUB` | Valida PAT e lista repos (opções podem enviar o token no corpo da mensagem). |
+| `TEST_JIRA` | Teste simples de ligação (legado / uso interno). |
+| `JIRA_TEST_AND_LIST_BOARDS` | Teste + lista de quadros; campos opcionais **`jiraEmail`**, **`jiraApiToken`**, **`jiraSiteUrl`**, **`jiraSoftwareBoardId`** substituem temporariamente o storage (opções antes de Salvar). Sem ID de quadro, lista **todos** os quadros Agile acessíveis. |
+
+---
+
+## page-bridge e “erros” da extensão
+
+`page-bridge.js` corre no **MAIN world** da página (script injetado) para:
+
+- Intercetar **`console.error` / `warn` / `log`** e enviar um resumo via `CustomEvent` para o contexto da extensão (contexto técnico).
+- Intercetar **`fetch`** e registar respostas **não OK**.
+
+Quando um script do **site** (ex. DataLive, analytics) faz `console.warn`, a stack pode incluir `page-bridge.js`; o Chrome pode mostrar isso na página **Errors** da extensão **sem** ser um bug do QAFeedback.
 
 ---
 
 ## Ícones (arte circular)
 
-- Fonte: **`PRD/capiQA.png`** (repositório pai da pasta `extension`).
-- Comando: **`npm run icons`** (também no início de `npm run build`).
-- Gera **`public/qa.png`** (FAB) e **`public/icons/icon{16,32,48,128}.png`** com máscara circular para cantos transparentes.
+- Fonte: **`PRD/capiQA.png`**.
+- **`npm run icons`** (incluído no `build`).
+- Gera **`public/qa.png`** e **`public/icons/icon{16,32,48,128}.png`**.
 
 ---
 
@@ -125,11 +181,11 @@ O ficheiro é um **bundle** (JavaScript + string grande de CSS). O número de li
 
 | Comando | Efeito |
 |---------|--------|
-| `npm run icons` | Regenera PNGs a partir de `PRD/capiQA.png` |
-| `npm run build` | Ícones + Vite (shell + content) + page-bridge + `manifest.json` |
+| `npm run icons` | PNGs a partir de `PRD/capiQA.png` |
+| `npm run build` | Ícones + Vite + page-bridge + `manifest.json` → `dist/` |
 | `npm run check` | `tsc --noEmit` |
-| `npm test` | Vitest — testes em `src/**/*.test.ts` (lógica partilhada) |
-| `npm run test:watch` | Vitest em watch |
-| `npm run dev` | Igual ao `build` (nome legado) |
+| `npm test` | Vitest — `src/**/*.test.ts` |
+| `npm run test:watch` | Vitest watch |
+| `npm run dev` | Igual ao `build` (legado) |
 
-Para mais detalhes de primeiro uso e tabela PRD resumida, veja também **[README.md](./README.md)**.
+Mais detalhes de primeiro uso: **[README.md](./README.md)**.

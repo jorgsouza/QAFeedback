@@ -1,6 +1,6 @@
 # QAFeedback — feedback de QA para GitHub e/ou Jira
 
-**QAFeedback** é uma extensão para **Google Chrome** (Manifest V3) pensada para equipas de QA, desenvolvimento e produto: quem testa **abre um formulário na própria página**, descreve o problema e pode **enviar para o GitHub**, para o **Jira Cloud (Atlassian)** ou **para os dois** — com título (GitHub), **Motivo da abertura** (lista alinhada ao vosso Jira), corpo em Markdown e **contexto técnico** opcional (URL, viewport, elemento, consola, pedidos falhados).
+**QAFeedback** é uma extensão para **Google Chrome** (Manifest V3) para equipas de QA, desenvolvimento e produto: quem testa **abre um formulário na própria página**, descreve o problema e pode **enviar para o GitHub**, para o **Jira Cloud (Atlassian)** ou **para os dois** — com título (GitHub), **Motivo da abertura** (Jira, valores alinhados ao vosso quadro), corpo em Markdown, **prints anexados ao Jira** (opcional), **reconhecimento de voz no Chrome** (opcional) e **contexto técnico** opcional (URL, viewport, elemento, consola, pedidos falhados).
 
 O objetivo é **encurtar o caminho entre “vi um bug neste ecrã” e “existe um ticket rastreável”**, com texto padronizado e menos fricção.
 
@@ -8,26 +8,24 @@ O objetivo é **encurtar o caminho entre “vi um bug neste ecrã” e “existe
 
 ## O que a extensão faz, na prática
 
-1. **Botão flutuante** (ícone do capivara QA) aparece nos sites que a equipa autorizar (por exemplo staging, localhost ou o vosso domínio de homologação).
-2. Ao clicar, abre-se um **modal escuro** com:
-   - destinos **GitHub** e/ou **Jira** (checkboxes);
-   - no Jira: **Motivo da abertura do Bug/Sub-Bug** (valores fixos alinhados ao vosso quadro);
-   - **repositório GitHub** quando GitHub está ativo;
-   - **Formulário** com título (GitHub) e descrição do que aconteceu;
-   - separador **Preview** com o **Markdown** do corpo;
-   - opção de **incluir contexto técnico**.
-3. **Enviar** chama a **API do GitHub** e/ou a **REST API do Jira** no **service worker**; em sucesso mostra link(s) e permite copiar URLs.
-4. **Tokens** (PAT GitHub, API token Atlassian + email) ficam nas **opções** e só são usados no background.
-
-Ou seja: **ponte entre o browser onde o QA trabalha e GitHub/Jira**, sem abrir os sites à mão para cada achado.
+1. **Botão flutuante** (ícone QA) aparece nos sites que a equipa autorizar (staging, localhost, domínio de homologação, etc.).
+2. Ao clicar, abre-se um **modal** com separadores **Formulário** / **Preview**:
+   - **Destinos** só aparecem se existir token configurado: **GitHub**, **Jira** ou **Ambos** (controlo tipo segmento).
+   - **Jira**: campo obrigatório **Motivo da abertura do Bug/Sub-Bug** (lista fixa no código, alinhada ao vosso projeto).
+   - **Repositório GitHub** quando o envio inclui GitHub e há vários repos nas opções.
+   - **Título** e **O que aconteceu**; ao lado, **microfone** para **voz do Chrome** (`pt-BR` por defeito) ou, nas dicas, ditado nativo do SO.
+   - **Prints para o Jira**: ficheiros e/ou **colar imagem** (Ctrl+V) na descrição quando o destino inclui Jira.
+   - **Preview** em Markdown; opção **incluir contexto técnico**.
+3. **Enviar** corre no **service worker** (GitHub API e/ou Jira REST); em sucesso mostra link(s) e permite copiar URLs.
+4. **Tokens** (PAT GitHub, email Atlassian + API token Jira) ficam nas **opções**; o content script não recebe segredos.
 
 ---
 
 ## Para quem é
 
-- **QA / testadores** que reportam defeitos e melhorias e usam **GitHub Issues** e/ou **Jira**.
-- **Equipas** que querem issues com **estrutura parecida** (título + secção “O que aconteceu” + bloco opcional de contexto).
-- **Quem mantém vários repositórios** (por exemplo um por produto ou por cliente) e quer **escolher o destino** no momento do envio.
+- **QA** que reportam em **GitHub Issues** e/ou **Jira Cloud**.
+- **Equipas** que querem issues com estrutura parecida e **anexos** no Jira.
+- **Quem usa vários repositórios** ou **quadros Jira** e escolhe o destino no envio.
 
 ---
 
@@ -35,14 +33,11 @@ Ou seja: **ponte entre o browser onde o QA trabalha e GitHub/Jira**, sem abrir o
 
 | Área | Descrição |
 |------|-----------|
-| **Vários repositórios** | Lista configurável; no modal o utilizador escolhe onde abrir a issue. |
-| **Preview em Markdown** | Vê o corpo da issue antes de enviar; pode copiar o markdown. |
-| **Contexto técnico opcional** | URL, título da página, viewport, último elemento relevante, consola e falhas de rede (conforme configurado). |
-| **Opções da extensão** | Token GitHub, repos, **Jira** (URL `*.atlassian.net`, email, API token, projeto, tipo de issue, ID opcional do custom field “Motivo”), **domínios permitidos**. |
-| **UI isolada** | Interface do feedback corre dentro de **Shadow DOM**, para não misturar CSS com o site. |
-| **Ícone redondo** | Arte `capiQA` processada no build para ícone da barra e botão flutuante. |
-
-Instruções para **token fine-grained**, **primeiro uso** e **“o botão não aparece”** estão na documentação da pasta da extensão (links abaixo).
+| **GitHub** | Vários repositórios nas opções; escolha no modal; preview Markdown; contexto técnico opcional. |
+| **Jira Cloud** | Criação de issue tipo Bug, motivo de abertura, inferência de site pelo email `@empresa`, quadro via **menu** (lista automática), anexos de imagem. |
+| **Opções Jira** | Email + token → lista de **quadros** carrega sozinha; ao **escolher o quadro**, confirma-se projeto e filtro (ex. Squad) e grava-se — sem botão “testar”. |
+| **Voz** | **Web Speech API** no Chrome (`pt-BR` por defeito); microfone ao lado dos campos de texto. |
+| **UI** | **Shadow DOM** para isolar CSS; ícone redondo a partir de `PRD/capiQA.png`. |
 
 ---
 
@@ -52,17 +47,17 @@ Toda a implementação vive em **`extension/`**.
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [extension/README.md](extension/README.md) | Instalação em modo desenvolvedor, token, build, primeiros passos, permissões. |
-| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia mais longo: fluxos, resolução de problemas, arquitetura, scripts (`test`, `build`, ícones). |
+| [extension/README.md](extension/README.md) | Instalação, tokens GitHub/Jira, build, primeiro uso, permissões. |
+| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia longo: opções, fluxos, Jira, voz, permissões, problemas, arquitetura, scripts. |
 
-**Especificação de produto** e imagens de referência: pasta **[PRD](PRD/)** (inclui o documento principal em Markdown e `capiQA.png` usado nos ícones).
+**Especificação de produto** e imagens: pasta **[PRD](PRD/)**.
 
 ---
 
 ## Requisitos e arranque rápido
 
-- **Node.js** 18 ou superior  
-- **Chrome** (ou Chromium) com suporte a extensões MV3  
+- **Node.js** 18+
+- **Chrome** (MV3)
 
 ```bash
 cd extension
@@ -70,10 +65,10 @@ npm install
 npm run build
 ```
 
-Depois, em **chrome://extensions**, ative o modo de programador e **carregue a pasta `extension/dist`** como extensão descompactada. Pormenores e testes (`npm test`) estão no [README da extensão](extension/README.md).
+Em **chrome://extensions**, modo de programador → **Carregar sem compactação** → pasta **`extension/dist`**. Pormenores em [extension/README.md](extension/README.md).
 
 ---
 
 ## Skills do projeto (Cursor)
 
-Em **[`.cursor/skills/`](.cursor/skills/)** há ficheiros `SKILL.md` com fluxos de trabalho (TDD, PRD → plano, testes, mocks, etc.), descritos em [`.cursor/skills/README.md`](.cursor/skills/README.md). Servem sobretudo para quem desenvolve ou evolui o projeto com o Cursor.
+Em **[`.cursor/skills/`](.cursor/skills/)** há `SKILL.md` (TDD, PRD → plano, testes, etc.), descritos em [`.cursor/skills/README.md`](.cursor/skills/README.md).
