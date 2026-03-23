@@ -1,4 +1,4 @@
-import type { CreateIssuePayload } from "./types";
+import type { CreateIssuePayload, JiraImageAttachmentPayload } from "./types";
 import { buildIssueBody, buildIssueTitle } from "./issue-builder";
 import { resolveJiraBoardFieldsForIssueCreate } from "./jira-board-filter-resolve";
 
@@ -603,6 +603,55 @@ async function associateIssueWithBoardBacklog(params: {
     ok: false,
     message: `${boardBl.message} (sem âncora no backlog do quadro para ordenar)`,
   };
+}
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** POST /rest/api/3/issue/{key}/attachments (multipart, campo `file`). */
+export async function uploadJiraIssueAttachments(params: {
+  baseUrl: string;
+  email: string;
+  apiToken: string;
+  issueKey: string;
+  attachments: JiraImageAttachmentPayload[];
+}): Promise<{ ok: true } | JiraError> {
+  const { baseUrl, email, apiToken, issueKey, attachments } = params;
+  if (attachments.length === 0) return { ok: true };
+
+  const fd = new FormData();
+  for (const a of attachments) {
+    let bytes: Uint8Array;
+    try {
+      bytes = base64ToUint8Array(a.base64);
+    } catch {
+      return { ok: false, message: "Anexo: dados base64 inválidos." };
+    }
+    const mime = a.mimeType?.trim() || "application/octet-stream";
+    const blob = new Blob([bytes], { type: mime });
+    const name = a.fileName?.trim() || "image.png";
+    fd.append("file", blob, name);
+  }
+
+  const url = `${baseUrl}/rest/api/3/issue/${encodeURIComponent(issueKey)}/attachments`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: basicAuthHeader(email, apiToken),
+      Accept: "application/json",
+      "X-Atlassian-Token": "no-check",
+    },
+    body: fd,
+  });
+
+  if (!res.ok) {
+    return { ok: false, message: await jiraErrorMessage(res), status: res.status };
+  }
+  return { ok: true };
 }
 
 export async function createJiraIssue(params: {

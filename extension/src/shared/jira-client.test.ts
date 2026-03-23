@@ -10,6 +10,7 @@ import {
   plainTextToAdf,
   resolveJiraCloudBaseUrl,
   resolveJiraSoftwareBoardId,
+  uploadJiraIssueAttachments,
 } from "./jira-client";
 
 describe("inferJiraCloudSiteUrlFromEmail", () => {
@@ -205,6 +206,46 @@ describe("listJiraBoards", () => {
     const called = fetchMock.mock.calls[0]![0] as string;
     expect(called).toContain("/rest/agile/1.0/board");
     expect(called).not.toContain("projectKeyOrId");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("uploadJiraIssueAttachments", () => {
+  it("POSTs multipart to issue attachments endpoint", async () => {
+    const tinyPng =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await uploadJiraIssueAttachments({
+      baseUrl: "https://test.atlassian.net",
+      email: "a@b.com",
+      apiToken: "tok",
+      issueKey: "REC-1",
+      attachments: [{ fileName: "a.png", mimeType: "image/png", base64: tinyPng }],
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://test.atlassian.net/rest/api/3/issue/REC-1/attachments");
+    expect(init.method).toBe("POST");
+    const h = init.headers as Record<string, string>;
+    expect(h["X-Atlassian-Token"]).toBe("no-check");
+    expect(init.body).toBeInstanceOf(FormData);
+    vi.unstubAllGlobals();
+  });
+
+  it("returns ok without calling fetch when empty", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await uploadJiraIssueAttachments({
+      baseUrl: "https://test.atlassian.net",
+      email: "a@b.com",
+      apiToken: "tok",
+      issueKey: "REC-1",
+      attachments: [],
+    });
+    expect(r.ok).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 });

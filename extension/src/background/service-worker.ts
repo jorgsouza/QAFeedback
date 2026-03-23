@@ -7,6 +7,7 @@ import {
   listJiraBoards,
   resolveJiraCloudBaseUrl,
   testJiraConnection,
+  uploadJiraIssueAttachments,
 } from "../shared/jira-client";
 import { isJiraMotivoAbertura } from "../shared/jira-motivo";
 import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
@@ -180,10 +181,19 @@ chrome.runtime.onMessage.addListener(
       void (async () => {
         try {
           const s = await loadSettings();
-          sendResponse({ repos: repoTargetsForUi(s) });
+          sendResponse({
+            repos: repoTargetsForUi(s),
+            githubTokenConfigured: Boolean(s.githubToken?.trim()),
+            jiraTokenConfigured: Boolean(s.jiraApiToken?.trim()),
+          });
         } catch (err) {
           console.error("[QA Feedback] LIST_REPO_TARGETS:", err);
-          sendResponse({ repos: [], loadFailed: true });
+          sendResponse({
+            repos: [],
+            githubTokenConfigured: false,
+            jiraTokenConfigured: false,
+            loadFailed: true,
+          });
         }
       })();
       return true;
@@ -387,6 +397,18 @@ chrome.runtime.onMessage.addListener(
             jiraBoardFilterSelectValue: s.jiraBoardFilterSelectValue,
           });
           if (jr.ok) {
+            const attach = p.jiraImageAttachments;
+            if (attach && attach.length > 0) {
+              const up = await uploadJiraIssueAttachments({
+                baseUrl: jiraBase,
+                email: s.jiraEmail ?? "",
+                apiToken: s.jiraApiToken ?? "",
+                issueKey: jr.key,
+                attachments: attach,
+              });
+              if (!up.ok) warnings.push(`Jira anexos: ${up.message}`);
+            }
+
             const browse = jr.htmlUrl;
             const issueProjectKey =
               (s.jiraProjectKey ?? "").trim() ||

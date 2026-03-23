@@ -265,108 +265,175 @@ export function OptionsApp() {
         color: "#0f172a",
       }}
     >
+      <style>{`
+        details.qaf-opt-acc {
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          margin-top: 16px;
+          overflow: hidden;
+          background: #fff;
+        }
+        details.qaf-opt-acc > summary {
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 16px;
+          padding: 14px 16px;
+          list-style: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          color: #0f172a;
+          background: #f8fafc;
+          user-select: none;
+        }
+        details.qaf-opt-acc[open] > summary {
+          border-bottom: 1px solid #e2e8f0;
+        }
+        details.qaf-opt-acc > summary::-webkit-details-marker {
+          display: none;
+        }
+        .qaf-opt-acc-body {
+          padding: 16px;
+        }
+        .qaf-opt-acc-chev {
+          color: #64748b;
+          font-size: 14px;
+          line-height: 1;
+          transition: transform 0.2s ease;
+          flex-shrink: 0;
+        }
+        details.qaf-opt-acc[open] .qaf-opt-acc-chev {
+          transform: rotate(90deg);
+        }
+      `}</style>
+
       <h1 style={{ fontSize: 22 }}>QA Feedback — GitHub e Jira</h1>
-      <p style={{ color: "#475569", fontSize: 14 }}>
-        GitHub: PAT com permissão de Issues. Jira Cloud: API token Atlassian + email (ver{" "}
+      <p style={{ color: "#475569", fontSize: 14, marginBottom: 0 }}>
+        Expanda cada secção para configurar. GitHub: PAT com <strong>Issues</strong>. Jira:{" "}
         <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">
-          API tokens
-        </a>
-        ).
+          API token
+        </a>{" "}
+        + email Atlassian.
       </p>
 
-      <aside
-        style={{
-          marginTop: 20,
-          padding: 16,
-          borderRadius: 10,
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          fontSize: 14,
-          color: "#334155",
-        }}
-      >
-        <h2 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-          Como criar o token (fine-grained)
-        </h2>
-        <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.6 }}>
-          <li style={{ marginBottom: 8 }}>
-            Aceda a{" "}
-            <a
-              href="https://github.com/settings/personal-access-tokens"
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "#2563eb", fontWeight: 600 }}
-            >
-              github.com/settings/personal-access-tokens
-            </a>
-            . Na secção <strong>Fine-grained personal access tokens</strong>, clique em{" "}
-            <strong>Generate new token</strong> e escolha a opção fine-grained.
-          </li>
-          <li style={{ marginBottom: 8 }}>
-            Em <strong>Token name</strong>, escreva <code style={{ background: "#e2e8f0", padding: "1px 6px", borderRadius: 4 }}>QAFeedback</code>{" "}
-            (assim fica fácil de reconhecer no GitHub).
-          </li>
-          <li style={{ marginBottom: 8 }}>
-            Em <strong>Repository access</strong>, inclua os repositórios onde o QA vai abrir issues (por exemplo{" "}
-            <em>Only select repositories</em> e escolha os projetos, ou outra opção adequada à conta).
-          </li>
-          <li style={{ marginBottom: 8 }}>
-            Em <strong>Permissions</strong> → separador <strong>Repositories</strong> → <strong>Add permissions</strong> →
-            procure <strong>Issues</strong> e defina <strong>Read and write</strong>.{" "}
-            <strong>Não precisa de outras permissões</strong> para esta extensão.
-          </li>
-          <li>
-            Clique em <strong>Generate token</strong>, copie o valor e cole no campo <strong>GitHub token</strong> abaixo
-            (o GitHub só mostra o token completo uma vez).
-          </li>
-        </ol>
-      </aside>
+      <details className="qaf-opt-acc" open>
+        <summary>
+          <span>GitHub</span>
+          <span className="qaf-opt-acc-chev" aria-hidden>
+            ▸
+          </span>
+        </summary>
+        <div className="qaf-opt-acc-body">
+          <aside
+            style={{
+              padding: 16,
+              borderRadius: 10,
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              fontSize: 14,
+              color: "#334155",
+            }}
+          >
+            <h2 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+              Como criar o token (fine-grained)
+            </h2>
+            <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.6 }}>
+              <li style={{ marginBottom: 8 }}>
+                Aceda a{" "}
+                <a
+                  href="https://github.com/settings/personal-access-tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#2563eb", fontWeight: 600 }}
+                >
+                  github.com/settings/personal-access-tokens
+                </a>
+                . Na secção <strong>Fine-grained personal access tokens</strong>, clique em{" "}
+                <strong>Generate new token</strong> e escolha a opção fine-grained.
+              </li>
+              <li style={{ marginBottom: 8 }}>
+                Em <strong>Token name</strong>, escreva{" "}
+                <code style={{ background: "#e2e8f0", padding: "1px 6px", borderRadius: 4 }}>QAFeedback</code> (assim
+                fica fácil de reconhecer no GitHub).
+              </li>
+              <li style={{ marginBottom: 8 }}>
+                Em <strong>Repository access</strong>, inclua os repositórios onde o QA vai abrir issues (por exemplo{" "}
+                <em>Only select repositories</em> e escolha os projetos, ou outra opção adequada à conta).
+              </li>
+              <li style={{ marginBottom: 8 }}>
+                Em <strong>Permissions</strong> → separador <strong>Repositories</strong> →{" "}
+                <strong>Add permissions</strong> → procure <strong>Issues</strong> e defina{" "}
+                <strong>Read and write</strong>. <strong>Não precisa de outras permissões</strong> para esta extensão.
+              </li>
+              <li>
+                Clique em <strong>Generate token</strong>, copie o valor e cole no campo <strong>GitHub token</strong>{" "}
+                abaixo (o GitHub só mostra o token completo uma vez).
+              </li>
+            </ol>
+          </aside>
 
-      <section style={{ marginTop: 24 }}>
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="token">
-          GitHub token
-        </label>
-        <input
-          id="token"
-          type="password"
-          autoComplete="off"
-          value={settings.githubToken}
-          onChange={(e) => setSettings({ ...settings, githubToken: e.target.value })}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-        />
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
-          <strong>Testar conexão</strong> valida o token e <strong>preenche a lista</strong> com os repositórios que a API permite ver (até milhares, em páginas de 100).
-        </p>
-        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={onTest} disabled={testing} style={btnPrimary}>
-            {testing ? "Carregando…" : "Testar conexão e listar repos"}
-          </button>
-          <button type="button" onClick={onClearToken} style={btnGhost}>
-            Apagar token
-          </button>
+          <section style={{ marginTop: 20 }}>
+            <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="token">
+              GitHub token
+            </label>
+            <input
+              id="token"
+              type="password"
+              autoComplete="off"
+              value={settings.githubToken}
+              onChange={(e) => setSettings({ ...settings, githubToken: e.target.value })}
+              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+            />
+            <p style={{ fontSize: 13, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
+              <strong>Testar conexão</strong> valida o token e <strong>preenche a lista</strong> com os repositórios que
+              a API permite ver (até milhares, em páginas de 100).
+            </p>
+            <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" onClick={onTest} disabled={testing} style={btnPrimary}>
+                {testing ? "Carregando…" : "Testar conexão e listar repos"}
+              </button>
+              <button type="button" onClick={onClearToken} style={btnGhost}>
+                Apagar token
+              </button>
+            </div>
+          </section>
+
+          <section style={{ marginTop: 20 }}>
+            <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="repos">
+              Repositórios destino (um por linha)
+            </label>
+            <textarea
+              id="repos"
+              value={reposText}
+              onChange={(e) => setReposText(e.target.value)}
+              rows={8}
+              style={{
+                width: "100%",
+                padding: 8,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                fontFamily: "monospace",
+                fontSize: 13,
+              }}
+              placeholder={"jorgsouza/meu-repo\norg/outro-repo|Projeto legado\nhttps://github.com/org/repo"}
+            />
+            <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+              Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. Pode ficar vazio
+              se usar só Jira.
+            </p>
+          </section>
         </div>
-      </section>
+      </details>
 
-      <section style={{ marginTop: 20 }}>
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="repos">
-          Repositórios destino (um por linha)
-        </label>
-        <textarea
-          id="repos"
-          value={reposText}
-          onChange={(e) => setReposText(e.target.value)}
-          rows={8}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
-          placeholder={"jorgsouza/meu-repo\norg/outro-repo|Projeto legado\nhttps://github.com/org/repo"}
-        />
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-          Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. Pode ficar vazio se
-          usar só Jira.
-        </p>
-      </section>
-
-      <section style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>Jira Cloud (Atlassian)</h2>
+      <details className="qaf-opt-acc">
+        <summary>
+          <span>Jira Cloud (Atlassian)</span>
+          <span className="qaf-opt-acc-chev" aria-hidden>
+            ▸
+          </span>
+        </summary>
+        <div className="qaf-opt-acc-body">
         <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12, lineHeight: 1.5 }}>
           Com <strong>email @empresa</strong> (ex. <code>@reclameaqui.com.br</code>) inferimos{" "}
           <code>https://reclameaqui.atlassian.net</code>. Não serve para Gmail/Hotmail — aí use{" "}
@@ -385,7 +452,48 @@ export function OptionsApp() {
           onChange={(e) => setSettings({ ...settings, jiraEmail: e.target.value })}
           style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
         />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-token">
+        <aside
+          style={{
+            marginTop: 16,
+            padding: 16,
+            borderRadius: 10,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            fontSize: 14,
+            color: "#334155",
+          }}
+        >
+          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            Como criar o API token (Jira Cloud)
+          </h3>
+          <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.6 }}>
+            <li style={{ marginBottom: 8 }}>
+              Inicie sessão na Atlassian e abra{" "}
+              <a
+                href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#2563eb", fontWeight: 600 }}
+              >
+                id.atlassian.com/manage-profile/security/api-tokens
+              </a>
+              .
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              Clique em <strong>Create API token</strong>, dê um nome reconhecível (ex.{" "}
+              <code style={{ background: "#e2e8f0", padding: "1px 6px", borderRadius: 4 }}>QAFeedback</code>) e confirme.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              Copie o token <strong>na hora</strong> (a Atlassian não o mostra outra vez) e cole no campo{" "}
+              <strong>API token Jira</strong> abaixo.
+            </li>
+            <li>
+              Use o <strong>mesmo email</strong> da conta Atlassian que aparece no Jira (Basic auth: email + token nas
+              chamadas REST).
+            </li>
+          </ol>
+        </aside>
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 16 }} htmlFor="jira-token">
           API token Jira
         </label>
         <input
@@ -526,7 +634,8 @@ export function OptionsApp() {
             style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
           />
         </details>
-      </section>
+        </div>
+      </details>
 
       <section style={{ marginTop: 20 }}>
         <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="hosts">

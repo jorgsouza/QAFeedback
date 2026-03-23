@@ -87,6 +87,16 @@ export type ExtensionSettings = {
   jiraBoardFilterSelectValue?: string;
 };
 
+/** Imagem serializada para o service worker anexar após criar a issue no Jira. */
+export type JiraImageAttachmentPayload = {
+  fileName: string;
+  mimeType: string;
+  /** Base64 sem prefixo data: */
+  base64: string;
+};
+
 export type CreateIssuePayload = IssueFormState & {
   technicalContext?: TechnicalContextPayload;
+  /** Só usado quando `sendToJira`; anexos via REST após POST /issue. */
+  jiraImageAttachments?: JiraImageAttachmentPayload[];
 };
