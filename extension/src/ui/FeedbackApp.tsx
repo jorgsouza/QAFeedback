@@ -59,6 +59,8 @@ export function FeedbackApp() {
   const [postSubmit, setPostSubmit] = useState<{
     github?: string;
     jira?: string;
+    /** Só quando `jira` aponta ao quadro: link /browse/KEY */
+    jiraIssueBrowse?: string;
     warnings?: string[];
   } | null>(null);
   const [repoTargets, setRepoTargets] = useState<RepoOption[]>([]);
@@ -131,9 +133,10 @@ export function FeedbackApp() {
   const canSubmit = (() => {
     if (!form.sendToGitHub && !form.sendToJira) return false;
     if (!form.whatHappened.trim()) return false;
-    if (form.sendToGitHub) {
-      if (!form.title.trim() || !selectedRepo) return false;
+    if (form.sendToGitHub || form.sendToJira) {
+      if (!form.title.trim()) return false;
     }
+    if (form.sendToGitHub && !selectedRepo) return false;
     if (form.sendToJira) {
       if (!isJiraMotivoAbertura(form.jiraMotivoAbertura)) return false;
     }
@@ -192,6 +195,7 @@ export function FeedbackApp() {
         message?: string;
         githubUrl?: string;
         jiraUrl?: string;
+        jiraIssueBrowseUrl?: string;
         warnings?: string[];
       };
 
@@ -199,6 +203,7 @@ export function FeedbackApp() {
         setPostSubmit({
           github: res.githubUrl,
           jira: res.jiraUrl,
+          jiraIssueBrowse: res.jiraIssueBrowseUrl,
           warnings: res.warnings,
         });
       } else {
@@ -365,10 +370,17 @@ export function FeedbackApp() {
                   {postSubmit.jira && (
                     <p>
                       <a href={postSubmit.jira} target="_blank" rel="noreferrer">
-                        Abrir issue no Jira
+                        {postSubmit.jiraIssueBrowse ? "Abrir no quadro Jira" : "Abrir issue no Jira"}
                       </a>
                     </p>
                   )}
+                  {postSubmit.jiraIssueBrowse ? (
+                    <p>
+                      <a href={postSubmit.jiraIssueBrowse} target="_blank" rel="noreferrer">
+                        Abrir issue no Jira (detalhe)
+                      </a>
+                    </p>
+                  ) : null}
                   {postSubmit.warnings?.length ? (
                     <div className="qaf-error qaf-error-warn">
                       {postSubmit.warnings.map((w) => (
@@ -393,7 +405,16 @@ export function FeedbackApp() {
                           className="qaf-btn qaf-btn-text"
                           onClick={() => copyText(postSubmit.jira!)}
                         >
-                          Copiar URL Jira
+                          {postSubmit.jiraIssueBrowse ? "Copiar URL do quadro" : "Copiar URL Jira"}
+                        </button>
+                      ) : null}
+                      {postSubmit.jiraIssueBrowse ? (
+                        <button
+                          type="button"
+                          className="qaf-btn qaf-btn-text"
+                          onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
+                        >
+                          Copiar URL da issue
                         </button>
                       ) : null}
                     </div>
@@ -456,19 +477,19 @@ export function FeedbackApp() {
                           </select>
                         </div>
                       )}
-                      {form.sendToGitHub && (
-                      <div className="qaf-field">
-                        <label className="qaf-label" htmlFor="qaf-title">
-                          Título <span className="qaf-required">*</span>
-                        </label>
-                        <input
-                          id="qaf-title"
-                          className="qaf-input"
-                          value={form.title}
-                          onChange={onField("title")}
-                          placeholder="Resumo curto do problema"
-                        />
-                      </div>
+                      {(form.sendToGitHub || form.sendToJira) && (
+                        <div className="qaf-field">
+                          <label className="qaf-label" htmlFor="qaf-title">
+                            Título <span className="qaf-required">*</span>
+                          </label>
+                          <input
+                            id="qaf-title"
+                            className="qaf-input"
+                            value={form.title}
+                            onChange={onField("title")}
+                            placeholder="Resumo curto (título no GitHub / resumo no Jira)"
+                          />
+                        </div>
                       )}
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">

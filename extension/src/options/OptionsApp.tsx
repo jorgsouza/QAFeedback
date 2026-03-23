@@ -16,7 +16,8 @@ import {
   parseReposTextarea,
   resolveRepoTargets,
 } from "../shared/repo-targets";
-import { normalizeJiraSiteUrl } from "../shared/jira-client";
+import { resolveJiraCloudBaseUrl } from "../shared/jira-client";
+import type { ResolveJiraBoardFilterResult } from "../shared/jira-board-filter-resolve";
 
 function hostsToText(hosts: string[]): string {
   return hosts.join("\n");
@@ -45,6 +46,7 @@ export function OptionsApp() {
   const [status, setStatus] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testingJira, setTestingJira] = useState(false);
+  const [jiraBoards, setJiraBoards] = useState<{ id: number; name: string; type: string }[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -59,15 +61,16 @@ export function OptionsApp() {
   const onSave = useCallback(async () => {
     setStatus(null);
     const repos = parseReposTextarea(reposText);
+    const jiraBaseGuess = resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "");
     const jiraOk =
-      Boolean(normalizeJiraSiteUrl(settings.jiraSiteUrl ?? "")) &&
+      Boolean(jiraBaseGuess) &&
       Boolean(settings.jiraEmail?.trim()) &&
       Boolean(settings.jiraApiToken?.trim()) &&
-      Boolean(settings.jiraProjectKey?.trim());
+      Boolean((settings.jiraSoftwareBoardId ?? "").trim() || (settings.jiraProjectKey ?? "").trim());
 
     if (repos.length === 0 && !jiraOk) {
       setStatus(
-        "Adicione ao menos um repositório GitHub ou configure Jira (site, email, API token e chave do projeto).",
+        "Adicione ao menos um repositório GitHub ou configure Jira (email, API token e ID do quadro — ou site em Avançado).",
       );
       return;
     }
@@ -105,7 +108,7 @@ export function OptionsApp() {
       setStatus("Não foi possível solicitar permissões para os hosts informados.");
     }
 
-    const jiraBase = normalizeJiraSiteUrl(settings.jiraSiteUrl ?? "");
+    const jiraBase = resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "");
     if (jiraBase) {
       try {
         const jiraOrigin = `${new URL(jiraBase).origin}/*`;
@@ -167,15 +170,70 @@ export function OptionsApp() {
     }
   }, [settings.githubToken]);
 
-  const onTestJira = useCallback(async () => {
+  const onTestJiraAndListBoards = useCallback(async () => {
     setTestingJira(true);
     setStatus(null);
     try {
-      const res = (await chrome.runtime.sendMessage({ type: "TEST_JIRA" })) as
-        | { ok: true; displayName: string }
+      const res = (await chrome.runtime.sendMessage({ type: "JIRA_TEST_AND_LIST_BOARDS" })) as
+        | {
+            ok: true;
+            displayName: string;
+            resolvedSiteUrl?: string;
+            resolvedProjectKey?: string;
+            boardResolveWarning?: string;
+            boards: { id: number; name: string; type: string }[];
+            boardFilterPreview?: ResolveJiraBoardFilterResult;
+          }
         | { ok: false; message?: string };
       if (res.ok) {
-        setStatus(`Jira: ligação OK (${res.displayName}).`);
+        setJiraBoards(res.boards);
+
+        const preview = res.boardFilterPreview;
+        setSettings((prev) => {
+          const next = { ...prev };
+          if (res.resolvedSiteUrl) next.jiraSiteUrl = res.resolvedSiteUrl;
+          if (res.resolvedProjectKey) next.jiraProjectKey = res.resolvedProjectKey;
+          if (preview?.ok) {
+            next.jiraBoardAutoFields = preview.fields.map((f) => ({ fieldId: f.fieldId, set: f.set }));
+          }
+          void saveSettings(next);
+          return next;
+        });
+
+        const lines: string[] = [];
+        lines.push(`Jira: ligação OK (${res.displayName}).`);
+        if (res.resolvedSiteUrl) lines.push(`Site: ${res.resolvedSiteUrl}`);
+        if (res.resolvedProjectKey) {
+          lines.push(`Chave do projeto (da API, a partir do quadro): ${res.resolvedProjectKey}.`);
+        }
+        if (res.boards.length === 0) {
+          lines.push("Nenhum quadro na lista — confira o token ou o acesso à API Jira Software.");
+        } else {
+          lines.push(`${res.boards.length} quadro(s) listado(s).`);
+        }
+
+        if (preview) {
+          if (preview.ok) {
+            if (preview.fields.length > 0) {
+              lines.push(
+                `Filtro do quadro: ${preview.fields.length} campo(s) guardados (${preview.fields.map((f) => f.fieldId).join(", ")}).`,
+              );
+            } else {
+              lines.push("Filtro do quadro: só projeto (sem selects extra).");
+            }
+            if (preview.unresolved.length > 0) {
+              lines.push(`Não mapeado no createmeta: ${preview.unresolved.join("; ")} — override em Avançado se precisar.`);
+            }
+          } else {
+            lines.push(`Filtro do quadro: ${preview.message}`);
+          }
+        } else if ((settings.jiraSoftwareBoardId ?? "").trim()) {
+          lines.push("Filtro do quadro: não analisado (confirme o ID do quadro).");
+        }
+
+        if (res.boardResolveWarning) lines.push(`Aviso: ${res.boardResolveWarning}`);
+
+        setStatus(lines.join(" "));
       } else {
         setStatus(res.message ?? "Falha ao testar Jira.");
       }
@@ -184,7 +242,7 @@ export function OptionsApp() {
     } finally {
       setTestingJira(false);
     }
-  }, []);
+  }, [settings.jiraSoftwareBoardId]);
 
   const onClearToken = useCallback(async () => {
     const next = { ...settings, githubToken: "" };
@@ -309,19 +367,14 @@ export function OptionsApp() {
 
       <section style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
         <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>Jira Cloud (Atlassian)</h2>
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-site">
-          URL do site
-        </label>
-        <input
-          id="jira-site"
-          type="url"
-          autoComplete="off"
-          placeholder="https://reclameaqui.atlassian.net"
-          value={settings.jiraSiteUrl ?? ""}
-          onChange={(e) => setSettings({ ...settings, jiraSiteUrl: e.target.value })}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-        />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-email">
+        <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12, lineHeight: 1.5 }}>
+          Com <strong>email @empresa</strong> (ex. <code>@reclameaqui.com.br</code>) inferimos{" "}
+          <code>https://reclameaqui.atlassian.net</code>. Não serve para Gmail/Hotmail — aí use{" "}
+          <strong>Site (opcional)</strong> em Avançado. O <strong>ID do quadro</strong> obtém a chave do projeto (REC,
+          CNS, …) e o JQL do filtro na API; o campo Squad e afins vêm do filtro, sem precisar de{" "}
+          <code>customfield_…</code> manual na maioria dos casos.
+        </p>
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-email">
           Email Atlassian
         </label>
         <input
@@ -343,51 +396,136 @@ export function OptionsApp() {
           onChange={(e) => setSettings({ ...settings, jiraApiToken: e.target.value })}
           style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
         />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-project">
-          Chave do projeto
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-board-id">
+          Quadro Software — ID (backlog destino)
         </label>
         <input
-          id="jira-project"
+          id="jira-board-id"
+          list="jira-boards-datalist"
           type="text"
+          inputMode="numeric"
           autoComplete="off"
-          placeholder="REC"
-          value={settings.jiraProjectKey ?? ""}
-          onChange={(e) => setSettings({ ...settings, jiraProjectKey: e.target.value })}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-        />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-type">
-          Nome do tipo de issue
-        </label>
-        <input
-          id="jira-type"
-          type="text"
-          autoComplete="off"
-          placeholder="Bug"
-          value={settings.jiraIssueTypeName ?? ""}
-          onChange={(e) => setSettings({ ...settings, jiraIssueTypeName: e.target.value })}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-        />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-cf">
-          ID do campo “Motivo da abertura” (opcional)
-        </label>
-        <input
-          id="jira-cf"
-          type="text"
-          autoComplete="off"
-          placeholder="customfield_12345"
-          value={settings.jiraMotivoCustomFieldId ?? ""}
-          onChange={(e) => setSettings({ ...settings, jiraMotivoCustomFieldId: e.target.value })}
+          placeholder="ex. 451 ou 2700 — depois use o botão para listar quadros"
+          value={settings.jiraSoftwareBoardId ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraSoftwareBoardId: e.target.value })}
           style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
         />
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-          Se vazio, o motivo escolhido pelo QA entra no início da descrição. Com o ID certo, o Jira recebe o campo nativo
-          (o texto tem de bater com as opções do projeto).
-        </p>
-        <div style={{ marginTop: 8 }}>
-          <button type="button" onClick={() => void onTestJira()} disabled={testingJira} style={btnPrimary}>
-            {testingJira ? "A testar…" : "Testar ligação Jira"}
+        <datalist id="jira-boards-datalist">
+          {jiraBoards.map((b) => (
+            <option key={b.id} value={String(b.id)} label={`${b.name} (${b.type})`} />
+          ))}
+        </datalist>
+        <div style={{ marginTop: 10, marginBottom: 4 }}>
+          <button
+            type="button"
+            onClick={() => void onTestJiraAndListBoards()}
+            disabled={testingJira}
+            style={btnPrimary}
+          >
+            {testingJira ? "A carregar…" : "Testar ligação e listar quadros"}
           </button>
         </div>
+        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6, marginBottom: 0 }}>
+          Ao testar, guardamos o site confirmado, a <strong>chave do projeto</strong> lida a partir do quadro e os
+          campos do filtro (Squad, etc.) para criar issues como <strong>Bug</strong>. O motivo da abertura continua na
+          descrição.
+        </p>
+        {(settings.jiraProjectKey ?? "").trim() ? (
+          <p
+            style={{
+              fontSize: 13,
+              color: "#334155",
+              marginTop: 10,
+              marginBottom: 0,
+              padding: "8px 10px",
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <strong>Chave do projeto (guardada):</strong> {settings.jiraProjectKey}
+            {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "") ? (
+              <>
+                {" "}
+                · <strong>Site:</strong> {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "")}
+              </>
+            ) : null}
+          </p>
+        ) : null}
+        {(settings.jiraBoardAutoFields?.length ?? 0) > 0 ? (
+          <p
+            style={{
+              fontSize: 13,
+              color: "#0f766e",
+              marginTop: 10,
+              marginBottom: 0,
+              padding: "8px 10px",
+              background: "#f0fdfa",
+              borderRadius: 8,
+              border: "1px solid #99f6e4",
+            }}
+          >
+            <strong>Deteção guardada:</strong>{" "}
+            {settings.jiraBoardAutoFields!.map((f) => f.fieldId).join(", ")} — aplicado ao criar issues.
+          </p>
+        ) : null}
+        <details style={{ marginTop: 14, fontSize: 13, color: "#475569" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, color: "#0f172a" }}>
+            Avançado — site manual, chave do projeto, override do filtro
+          </summary>
+          <p style={{ marginTop: 10, marginBottom: 10, lineHeight: 1.5 }}>
+            Só se a inferência do site pelo email falhar (domínio ≠ subdomínio Atlassian), ou se a leitura do JQL não
+            preencher um select — aí pode forçar <code>customfield_…</code> e o texto exacto da opção.
+          </p>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-site">
+            Site Atlassian (https://…atlassian.net ou URL com /boards/N/…)
+          </label>
+          <input
+            id="jira-site"
+            type="url"
+            autoComplete="off"
+            placeholder="Deixe vazio para inferir pelo email @empresa"
+            value={settings.jiraSiteUrl ?? ""}
+            onChange={(e) => setSettings({ ...settings, jiraSiteUrl: e.target.value })}
+            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+          />
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-project">
+            Chave do projeto (só se não usar ID de quadro ou quiser corrigir)
+          </label>
+          <input
+            id="jira-project"
+            type="text"
+            autoComplete="off"
+            placeholder="Preenchida automaticamente ao testar com ID do quadro"
+            value={settings.jiraProjectKey ?? ""}
+            onChange={(e) => setSettings({ ...settings, jiraProjectKey: e.target.value })}
+            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+          />
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 14 }} htmlFor="jira-board-filter-field">
+            Override — ID do campo select
+          </label>
+          <input
+            id="jira-board-filter-field"
+            type="text"
+            autoComplete="off"
+            placeholder="ex. customfield_12071 (Squad) — raro: o filtro costuma bastar"
+            value={settings.jiraBoardFilterSelectFieldId ?? ""}
+            onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectFieldId: e.target.value })}
+            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
+          />
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 10 }} htmlFor="jira-board-filter-value">
+            Override — valor da opção
+          </label>
+          <input
+            id="jira-board-filter-value"
+            type="text"
+            autoComplete="off"
+            placeholder="Texto exacto da opção no Jira"
+            value={settings.jiraBoardFilterSelectValue ?? ""}
+            onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectValue: e.target.value })}
+            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+          />
+        </details>
       </section>
 
       <section style={{ marginTop: 20 }}>

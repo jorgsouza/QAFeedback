@@ -13,9 +13,13 @@ export const emptySettings = (): ExtensionSettings => ({
   jiraSiteUrl: "",
   jiraEmail: "",
   jiraApiToken: "",
-  jiraProjectKey: "REC",
+  jiraProjectKey: "",
   jiraIssueTypeName: "Bug",
   jiraMotivoCustomFieldId: "",
+  jiraSoftwareBoardId: "",
+  jiraBoardAutoFields: [],
+  jiraBoardFilterSelectFieldId: "",
+  jiraBoardFilterSelectValue: "",
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -33,10 +37,22 @@ export async function loadSettings(): Promise<ExtensionSettings> {
     jiraSiteUrl: typeof raw.jiraSiteUrl === "string" ? raw.jiraSiteUrl : "",
     jiraEmail: typeof raw.jiraEmail === "string" ? raw.jiraEmail : "",
     jiraApiToken: typeof raw.jiraApiToken === "string" ? raw.jiraApiToken : "",
-    jiraProjectKey: typeof raw.jiraProjectKey === "string" ? raw.jiraProjectKey : "REC",
+    jiraProjectKey: typeof raw.jiraProjectKey === "string" ? raw.jiraProjectKey : "",
     jiraIssueTypeName: typeof raw.jiraIssueTypeName === "string" ? raw.jiraIssueTypeName : "Bug",
     jiraMotivoCustomFieldId:
       typeof raw.jiraMotivoCustomFieldId === "string" ? raw.jiraMotivoCustomFieldId : "",
+    jiraSoftwareBoardId:
+      typeof raw.jiraSoftwareBoardId === "string" ? raw.jiraSoftwareBoardId : "",
+    jiraBoardAutoFields: Array.isArray(raw.jiraBoardAutoFields)
+      ? raw.jiraBoardAutoFields.filter(
+          (x): x is { fieldId: string; set: unknown } =>
+            Boolean(x && typeof (x as { fieldId?: string }).fieldId === "string"),
+        )
+      : [],
+    jiraBoardFilterSelectFieldId:
+      typeof raw.jiraBoardFilterSelectFieldId === "string" ? raw.jiraBoardFilterSelectFieldId : "",
+    jiraBoardFilterSelectValue:
+      typeof raw.jiraBoardFilterSelectValue === "string" ? raw.jiraBoardFilterSelectValue : "",
   };
 }
 

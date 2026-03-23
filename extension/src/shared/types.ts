@@ -72,6 +72,19 @@ export type ExtensionSettings = {
    * Se vazio, o motivo é incluído no início da descrição em Markdown.
    */
   jiraMotivoCustomFieldId?: string;
+  /**
+   * ID numérico do quadro Jira Software (ex. 451). Preferência sobre extrair do URL.
+   * O JQL do filtro do quadro é lido na API para preencher campos na criação da issue.
+   */
+  jiraSoftwareBoardId?: string;
+  /**
+   * Cache do último teste de ligação: campos inferidos do filtro do quadro (opcional).
+   * Na criação, a extensão volta a consultar o Jira; isto só serve de fallback e resumo na UI.
+   */
+  jiraBoardAutoFields?: { fieldId: string; set: unknown }[];
+  /** Avançado: força um select se a deteção automática falhar. */
+  jiraBoardFilterSelectFieldId?: string;
+  jiraBoardFilterSelectValue?: string;
 };
 
 export type CreateIssuePayload = IssueFormState & {
