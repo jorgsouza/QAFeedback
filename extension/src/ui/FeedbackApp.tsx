@@ -15,6 +15,7 @@ import {
   isExtensionContextInvalidatedError,
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
+import { buildFallbackIssueTitle, truncateIssueTitle } from "../shared/title-fallback";
 
 type Tab = "form" | "preview";
 
@@ -57,9 +58,36 @@ export function FeedbackApp() {
   const [repoIndex, setRepoIndex] = useState(0);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
+  /** null = usar título automático (IA ou fallback); string = override do QA no Preview */
+  const [issueTitleOverride, setIssueTitleOverride] = useState<string | null>(null);
+  const [iaHealth, setIaHealth] = useState<{ configured: boolean; ok: boolean } | null>(null);
+  const [iaHealthBusy, setIaHealthBusy] = useState(false);
+  const [iaAuthWarn, setIaAuthWarn] = useState<string | null>(null);
 
   useEffect(() => {
     ensurePageBridgeInjected();
+  }, []);
+
+  const refreshIaHealth = useCallback(async () => {
+    setIaHealthBusy(true);
+    try {
+      const r = (await chrome.runtime.sendMessage({ type: "IA_HEALTH" })) as {
+        ok?: boolean;
+        configured?: boolean;
+      };
+      setIaHealth({
+        configured: Boolean(r?.configured),
+        ok: Boolean(r?.ok),
+      });
+    } catch (e) {
+      setIaHealth(
+        isExtensionContextInvalidatedError(e)
+          ? { configured: false, ok: false }
+          : { configured: false, ok: false },
+      );
+    } finally {
+      setIaHealthBusy(false);
+    }
   }, []);
 
   const loadRepoTargets = useCallback(async () => {
@@ -88,7 +116,8 @@ export function FeedbackApp() {
   useEffect(() => {
     if (!open) return;
     void loadRepoTargets();
-  }, [open, loadRepoTargets]);
+    void refreshIaHealth();
+  }, [open, loadRepoTargets, refreshIaHealth]);
 
   useEffect(() => {
     const onCap = (e: Event) => {
@@ -120,10 +149,8 @@ export function FeedbackApp() {
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
 
   const selectedRepo = repoTargets[repoIndex];
-  const canSubmit =
-    form.title.trim().length > 0 &&
-    form.whatHappened.trim().length > 0 &&
-    !!selectedRepo;
+  const canSubmit = form.whatHappened.trim().length > 0 && !!selectedRepo;
+  const titlePlaceholder = buildFallbackIssueTitle(form.whatHappened);
 
   const openOptions = useCallback(() => {
     setError(null);
@@ -148,6 +175,8 @@ export function FeedbackApp() {
     setError(null);
     setIssueUrl(null);
     setTab("form");
+    setIssueTitleOverride(null);
+    setIaAuthWarn(null);
   };
 
   const closeModal = () => {
@@ -166,16 +195,28 @@ export function FeedbackApp() {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    setIaAuthWarn(null);
+    const trimmedOverride = issueTitleOverride?.trim();
+    const overrideIssueTitle =
+      issueTitleOverride !== null && trimmedOverride
+        ? truncateIssueTitle(trimmedOverride)
+        : undefined;
     try {
       const res = (await chrome.runtime.sendMessage({
         type: "CREATE_ISSUE",
-        payload,
+        payload: { ...payload, title: "" },
         owner: selectedRepo?.owner,
         repo: selectedRepo?.repo,
-      })) as { ok: boolean; message?: string; htmlUrl?: string };
+        overrideIssueTitle,
+      })) as { ok: boolean; message?: string; htmlUrl?: string; iaAuthFailed?: boolean };
 
       if (res && "ok" in res && res.ok && res.htmlUrl) {
         setIssueUrl(res.htmlUrl);
+        if (res.iaAuthFailed) {
+          setIaAuthWarn(
+            "A API de IA recusou a chave (401). A issue foi criada com título e texto de fallback. Confira URL e chave do serviço nas opções.",
+          );
+        }
       } else {
         setError((res as { message?: string }).message ?? "Falha ao criar issue.");
       }
@@ -202,6 +243,8 @@ export function FeedbackApp() {
     setError(null);
     setIssueUrl(null);
     setTab("form");
+    setIssueTitleOverride(null);
+    setIaAuthWarn(null);
   }, []);
 
   return (
@@ -243,9 +286,38 @@ export function FeedbackApp() {
           <div className="qaf-modal" role="dialog" aria-modal="true" aria-labelledby="qaf-dlg-title">
             <div className="qaf-modal-header">
               <div className="qaf-modal-header-text">
-                <h2 className="qaf-modal-title" id="qaf-dlg-title">
-                  Enviar feedback
-                </h2>
+                <div className="qaf-modal-title-row">
+                  <h2 className="qaf-modal-title" id="qaf-dlg-title">
+                    Enviar feedback
+                  </h2>
+                  <span className="qaf-ia-pill">
+                    <button
+                      type="button"
+                      className={`qaf-ia-dot ${
+                        iaHealthBusy || iaHealth === null
+                          ? "qaf-ia-dot-unknown"
+                          : !iaHealth.configured
+                            ? "qaf-ia-dot-off"
+                            : iaHealth.ok
+                              ? "qaf-ia-dot-on"
+                              : "qaf-ia-dot-off"
+                      }`}
+                      onClick={() => void refreshIaHealth()}
+                      disabled={iaHealthBusy}
+                      title={
+                        iaHealthBusy || iaHealth === null
+                          ? "A verificar o serviço de IA…"
+                          : !iaHealth.configured
+                            ? "IA não configurada — defina URL e chave nas opções"
+                            : iaHealth.ok
+                              ? "Serviço de IA acessível"
+                              : "IA indisponível — será usado título automático (6 palavras) ao criar a issue"
+                      }
+                      aria-label="Estado do serviço de IA; clique para verificar de novo"
+                    />
+                    <span className="qaf-ia-pill-text">IA</span>
+                  </span>
+                </div>
                 <p className="qaf-modal-subtitle">
                   Envie o relatório como issue no GitHub. Descreva o que gostaria de ver alterado ou relate um problema.
                 </p>
@@ -329,6 +401,7 @@ export function FeedbackApp() {
               {issueUrl ? (
                 <div className="qaf-success">
                   <div>Issue criada com sucesso.</div>
+                  {iaAuthWarn && <div className="qaf-error qaf-error-warn qaf-success-warn">{iaAuthWarn}</div>}
                   <p>
                     <a href={issueUrl} target="_blank" rel="noreferrer">
                       Abrir no GitHub
@@ -356,18 +429,6 @@ export function FeedbackApp() {
 
                   {tab === "form" ? (
                     <>
-                      <div className="qaf-field">
-                        <label className="qaf-label" htmlFor="qaf-title">
-                          Título <span className="qaf-required">*</span>
-                        </label>
-                        <input
-                          id="qaf-title"
-                          className="qaf-input"
-                          value={form.title}
-                          onChange={onField("title")}
-                          placeholder="Resumo curto do problema"
-                        />
-                      </div>
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">
                           O que aconteceu <span className="qaf-required">*</span>
@@ -409,13 +470,32 @@ export function FeedbackApp() {
                             disabled={!canSubmit || busy}
                             onClick={submit}
                           >
-                            {busy ? "Enviando…" : "Criar issue"}
+                            {busy
+                              ? iaHealth?.configured
+                                ? "A preparar com IA…"
+                                : "Enviando…"
+                              : "Criar issue"}
                           </button>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
+                      <div className="qaf-field">
+                        <label className="qaf-label" htmlFor="qaf-preview-title">
+                          Título da issue
+                        </label>
+                        <input
+                          id="qaf-preview-title"
+                          className="qaf-input"
+                          value={issueTitleOverride ?? ""}
+                          onChange={(e) => setIssueTitleOverride(e.target.value)}
+                          placeholder={titlePlaceholder || "Será gerado ao enviar (IA ou automático)"}
+                        />
+                        <p className="qaf-hint">
+                          Deixe vazio para a IA ou o título automático (6 palavras). Preencha para forçar um título.
+                        </p>
+                      </div>
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
                       <div className="qaf-actions-row">
                         <div className="qaf-actions-left">
@@ -433,7 +513,11 @@ export function FeedbackApp() {
                             disabled={!canSubmit || busy}
                             onClick={submit}
                           >
-                            {busy ? "Enviando…" : "Criar issue"}
+                            {busy
+                              ? iaHealth?.configured
+                                ? "A preparar com IA…"
+                                : "Enviando…"
+                              : "Criar issue"}
                           </button>
                         </div>
                       </div>

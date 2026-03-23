@@ -27,11 +27,11 @@ Serviço HTTP (stack a escolha no implementar — ex. Node + Hono/Express ou Pyt
 
 ### Acceptance criteria
 
-- [ ] `GET /health` responde em local com o contrato acordado quando configurado corretamente.
-- [ ] `POST /v1/refine-issue` com key válida devolve `title` e `body` coerentes com entrada de exemplo (teste manual ou snapshot controlado).
-- [ ] Pedidos sem key ou com key errada recebem **401**.
-- [ ] Testes cobrem pelo menos sanitização/truncamento e auth.
-- [ ] README do backend permite a outra pessoa da equipa subir o serviço em &lt; 10 minutos.
+- [x] `GET /health` responde em local com o contrato acordado quando configurado corretamente.
+- [x] `POST /v1/refine-issue` com key válida devolve `title` e `body` coerentes com entrada de exemplo (teste manual ou snapshot controlado).
+- [x] Pedidos sem key ou com key errada recebem **401**.
+- [x] Testes cobrem pelo menos sanitização/truncamento e auth.
+- [x] README do backend permite a outra pessoa da equipa subir o serviço em &lt; 10 minutos.
 
 ---
 
@@ -45,9 +45,9 @@ Estender o modelo persistido e a página de **opções** com **URL base do servi
 
 ### Acceptance criteria
 
-- [ ] Utilizador pode gravar, limpar e regravar URL e key nas opções sem corromper token GitHub nem lista de repos.
-- [ ] Permissão de host para o domínio da IA é pedida quando aplicável e documentada em DOCUMENTATION.md.
-- [ ] Com campos vazios, nenhuma chamada ao backend é feita por defeito nos fluxos seguintes.
+- [x] Utilizador pode gravar, limpar e regravar URL e key nas opções sem corromper token GitHub nem lista de repos.
+- [x] Permissão de host para o domínio da IA é pedida quando aplicável e documentada em DOCUMENTATION.md.
+- [x] Com campos vazios, nenhuma chamada ao backend é feita por defeito nos fluxos seguintes.
 
 ---
 
@@ -61,10 +61,10 @@ Remover o campo de **título** do formulário no modal; manter validação de **
 
 ### Acceptance criteria
 
-- [ ] Sem URL/key de IA, issue cria-se com título fallback e corpo como hoje.
-- [ ] Com IA mockada ou real em local, issue cria-se com título/corpo devolvidos pelo serviço.
-- [ ] Timeout ou 5xx não impede criação com fallback.
-- [ ] PAT e criação GitHub permanecem no SW; key da IA não aparece na consola da página alvo.
+- [x] Sem URL/key de IA, issue cria-se com título fallback e corpo como hoje.
+- [x] Com IA mockada ou real em local, issue cria-se com título/corpo devolvidos pelo serviço.
+- [x] Timeout ou 5xx não impede criação com fallback.
+- [x] PAT e criação GitHub permanecem no SW; key da IA não aparece na consola da página alvo.
 
 ---
 
@@ -78,10 +78,10 @@ No cabeçalho do modal (ou zona visível), indicador **IA** (verde/vermelho) con
 
 ### Acceptance criteria
 
-- [ ] Ao abrir o modal, o estado verde/vermelho reflete o health ou ausência de configuração.
-- [ ] Retry atualiza o estado sem recarregar a página.
-- [ ] Preview permite alterar o título e o valor alterado é o usado no `CREATE_ISSUE` seguinte.
-- [ ] Documentação do utilizador menciona o indicador e o fallback.
+- [x] Ao abrir o modal, o estado verde/vermelho reflete o health ou ausência de configuração.
+- [x] Retry atualiza o estado sem recarregar a página.
+- [x] Preview permite alterar o título e o valor alterado é o usado no `CREATE_ISSUE` seguinte.
+- [x] Documentação do utilizador menciona o indicador e o fallback.
 
 ---
 

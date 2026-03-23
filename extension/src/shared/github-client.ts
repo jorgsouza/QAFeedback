@@ -112,7 +112,8 @@ export async function createGitHubIssue(params: {
   const { token, payload } = params;
   const { owner, repo } = normalizeGitHubRepoRef(params.owner, params.repo);
   const title = buildIssueTitle(payload);
-  const body = buildIssueBody(payload);
+  const body =
+    payload.bodyMarkdown?.trim() ? payload.bodyMarkdown.trim() : buildIssueBody(payload);
   if (!title) return { ok: false, message: "Título obrigatório." };
   if (!payload.whatHappened?.trim()) return { ok: false, message: '"O que aconteceu" é obrigatório.' };
   if (!owner || !repo) return { ok: false, message: "Owner ou repositório inválido nas opções." };

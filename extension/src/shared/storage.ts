@@ -10,6 +10,8 @@ export const emptySettings = (): ExtensionSettings => ({
   repo: "",
   repos: [],
   allowedHosts: [...DEFAULT_ALLOWED_HOSTS],
+  iaServiceBaseUrl: "",
+  iaServiceApiKey: "",
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -24,6 +26,8 @@ export async function loadSettings(): Promise<ExtensionSettings> {
       Array.isArray(raw.allowedHosts) && raw.allowedHosts.length
         ? raw.allowedHosts
         : [...DEFAULT_ALLOWED_HOSTS],
+    iaServiceBaseUrl: typeof raw.iaServiceBaseUrl === "string" ? raw.iaServiceBaseUrl : "",
+    iaServiceApiKey: typeof raw.iaServiceApiKey === "string" ? raw.iaServiceApiKey : "",
   };
 }
 

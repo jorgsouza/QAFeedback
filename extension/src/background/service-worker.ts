@@ -1,8 +1,16 @@
 import { createGitHubIssue, testTokenAndListRepos } from "../shared/github-client";
 import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
+import {
+  fetchIaRefine,
+  fetchIaHealth,
+  IA_HEALTH_TIMEOUT_MS,
+  IA_REFINE_TIMEOUT_MS,
+  normalizeIaBaseUrl,
+} from "../shared/ia-service";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
 import { loadSettings } from "../shared/storage";
 import { normalizeGitHubRepoRef } from "../shared/github-repo-normalize";
+import { buildFallbackIssueTitle, truncateIssueTitle } from "../shared/title-fallback";
 
 const SCRIPT_ID = "qa-feedback-content";
 
@@ -125,6 +133,8 @@ type CreateIssueMessage = {
   payload: import("../shared/types").CreateIssuePayload;
   owner?: string;
   repo?: string;
+  /** Se preenchido, substitui o título gerado pela IA (corpo ainda pode vir da IA). */
+  overrideIssueTitle?: string;
 };
 
 type TestGitHubMessage = {
@@ -134,12 +144,57 @@ type TestGitHubMessage = {
 
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
+type IaHealthMessage = { type: "IA_HEALTH" };
 
 type Messages =
   | CreateIssueMessage
   | TestGitHubMessage
   | ListRepoTargetsMessage
-  | OpenOptionsMessage;
+  | OpenOptionsMessage
+  | IaHealthMessage;
+
+async function refinePayloadWithIa(
+  settings: import("../shared/types").ExtensionSettings,
+  payload: import("../shared/types").CreateIssuePayload,
+  overrideIssueTitle: string | undefined,
+): Promise<{ payload: import("../shared/types").CreateIssuePayload; iaAuthFailed: boolean }> {
+  const baseUrl = (settings.iaServiceBaseUrl ?? "").trim();
+  const apiKey = (settings.iaServiceApiKey ?? "").trim();
+  const manual = overrideIssueTitle?.trim() ?? "";
+  const next: import("../shared/types").CreateIssuePayload = { ...payload };
+  delete next.bodyMarkdown;
+
+  const normalizedBase = normalizeIaBaseUrl(baseUrl);
+  if (!normalizedBase || !apiKey) {
+    next.title = truncateIssueTitle(manual || buildFallbackIssueTitle(next.whatHappened));
+    return { payload: next, iaAuthFailed: false };
+  }
+
+  const controller = new AbortController();
+  const to = setTimeout(() => controller.abort(), IA_REFINE_TIMEOUT_MS);
+  let iaAuthFailed = false;
+  try {
+    const ctx = next.includeTechnicalContext ? next.technicalContext : undefined;
+    const r = await fetchIaRefine({
+      baseUrl: normalizedBase,
+      apiKey,
+      whatHappened: next.whatHappened,
+      technicalContext: ctx,
+      locale: "pt",
+      signal: controller.signal,
+    });
+    clearTimeout(to);
+    next.title = truncateIssueTitle(manual || r.title);
+    next.bodyMarkdown = r.body;
+  } catch (e) {
+    clearTimeout(to);
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "ia_unauthorized") iaAuthFailed = true;
+    next.title = truncateIssueTitle(manual || buildFallbackIssueTitle(next.whatHappened));
+    delete next.bodyMarkdown;
+  }
+  return { payload: next, iaAuthFailed };
+}
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, _sender, sendResponse: (r: unknown) => void) => {
@@ -158,6 +213,34 @@ chrome.runtime.onMessage.addListener(
         console.error("[QA Feedback] openOptionsPage:", err);
         sendResponse({ ok: false });
       }
+      return true;
+    }
+
+    if (message.type === "IA_HEALTH") {
+      void (async () => {
+        try {
+          const s = await loadSettings();
+          const baseUrl = (s.iaServiceBaseUrl ?? "").trim();
+          const apiKey = (s.iaServiceApiKey ?? "").trim();
+          if (!normalizeIaBaseUrl(baseUrl) || !apiKey) {
+            sendResponse({ ok: false, configured: false });
+            return;
+          }
+          const controller = new AbortController();
+          const t = setTimeout(() => controller.abort(), IA_HEALTH_TIMEOUT_MS);
+          try {
+            const ok = await fetchIaHealth(baseUrl, controller.signal);
+            clearTimeout(t);
+            sendResponse({ ok, configured: true });
+          } catch {
+            clearTimeout(t);
+            sendResponse({ ok: false, configured: true });
+          }
+        } catch (err) {
+          console.error("[QA Feedback] IA_HEALTH:", err);
+          sendResponse({ ok: false, configured: false });
+        }
+      })();
       return true;
     }
 
@@ -217,12 +300,17 @@ chrome.runtime.onMessage.addListener(
           return;
         }
 
+        const refined = await refinePayloadWithIa(s, message.payload, message.overrideIssueTitle);
         const r = await createGitHubIssue({
           token: s.githubToken,
           owner: n.owner,
           repo: n.repo,
-          payload: message.payload,
+          payload: refined.payload,
         });
+        if (r.ok && refined.iaAuthFailed) {
+          sendResponse({ ...r, iaAuthFailed: true });
+          return;
+        }
         sendResponse(r);
       })();
       return true;

@@ -43,9 +43,11 @@ Abra a página de opções pelo menu da extensão, pelo atalho em **chrome://ext
 | **GitHub token** | PAT classic (ex.: escopo `repo`) ou **fine-grained** só com **Issues** (read/write) nos repositórios desejados. Na página há instruções passo a passo com link para [Fine-grained tokens](https://github.com/settings/personal-access-tokens). |
 | **Testar conexão e listar repos** | Valida o token e preenche a caixa de repositórios com o que a API devolve. Depois confira e clique em **Salvar**. |
 | **Repositórios destino** | Uma linha por repo: `owner/repo`, URL do GitHub ou `owner/repo|Nome no menu`. No modal, o QA escolhe o destino. |
+| **URL base do serviço de IA** (opcional) | Ex.: `http://127.0.0.1:8787` ou `https://ia-feedback.empresa.com`. **Não** é a lista de sites onde o botão aparece. |
+| **Chave da API do serviço de IA** (opcional) | O mesmo segredo que `IA_FEEDBACK_API_KEY` no servidor do serviço. Enviada como `Authorization: Bearer …` pelo service worker. |
 | **Domínios permitidos** | Hostnames (ex.: `localhost`, `jorgesouza.dev.br`). Ao **Salvar**, o Chrome pode pedir permissão para hosts novos. |
 
-O token é guardado em **`chrome.storage.local`** e só é usado no **background** ao criar issues.
+O token GitHub e a chave do serviço de IA ficam em **`chrome.storage.local`**; as chamadas ao serviço de IA e ao GitHub são feitas no **background**.
 
 ---
 
@@ -54,8 +56,10 @@ O token é guardado em **`chrome.storage.local`** e só é usado no **background
 1. Visite um site cujo host está na lista e com permissão concedida.
 2. Se a extensão estiver em **“Ao clicar na extensão”**, clique no **ícone da extensão** na barra para injetar o UI nesse separador (`activeTab` + `scripting`).
 3. Use o **botão circular** (capi QA) para abrir o modal.
-4. Preencha **título** e **o que aconteceu**, escolha o repositório (se houver vários), opcionalmente inclua **contexto técnico**.
-5. **Preview** mostra o Markdown do corpo da issue; **Criar issue** envia via API.
+4. Preencha **o que aconteceu** (obrigatório), escolha o repositório (se houver vários), opcionalmente inclua **contexto técnico**. O **título** é gerado pelo serviço de IA (se configurado) ou pelas primeiras seis palavras da descrição.
+5. O indicador **IA** (bolinha) junto ao título do modal: verde se o health do serviço respondeu OK; vermelho se não há configuração ou o serviço falhou. Clique na bolinha para repetir o health check.
+6. **Preview** permite editar o **título** antes de enviar (opcional). O Markdown do corpo reflete o formulário até à criação; com IA ativa, o corpo final na GitHub usa o texto refinado pelo serviço.
+7. **Criar issue** chama o serviço de IA (se configurado) e depois a API do GitHub.
 
 ---
 

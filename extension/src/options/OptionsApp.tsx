@@ -16,6 +16,7 @@ import {
   parseReposTextarea,
   resolveRepoTargets,
 } from "../shared/repo-targets";
+import { iaOriginPatternFromBaseUrl } from "../shared/ia-service";
 
 function hostsToText(hosts: string[]): string {
   return hosts.join("\n");
@@ -87,6 +88,22 @@ export function OptionsApp() {
       }
     } catch {
       setStatus("Não foi possível solicitar permissões para os hosts informados.");
+    }
+
+    const iaPattern = iaOriginPatternFromBaseUrl(settings.iaServiceBaseUrl ?? "");
+    if (iaPattern) {
+      try {
+        const iaGranted = await chrome.permissions.request({ origins: [iaPattern] });
+        if (!iaGranted) {
+          setStatus(
+            (prev) =>
+              prev ??
+              "Permissão para o host do serviço de IA não concedida: o refine pode falhar até aprovar no Chrome.",
+          );
+        }
+      } catch {
+        setStatus((prev) => prev ?? "Não foi possível solicitar permissão para o serviço de IA.");
+      }
     }
 
     const next: ExtensionSettings = {
@@ -253,6 +270,39 @@ export function OptionsApp() {
         <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
           Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. O QA escolhe qual usar ao abrir o feedback.
         </p>
+      </section>
+
+      <section style={{ marginTop: 20 }}>
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="ia-url">
+          URL base do serviço de IA (opcional)
+        </label>
+        <input
+          id="ia-url"
+          type="url"
+          autoComplete="off"
+          placeholder="https://ia-feedback.empresa.com ou http://127.0.0.1:8787"
+          value={settings.iaServiceBaseUrl ?? ""}
+          onChange={(e) => setSettings({ ...settings, iaServiceBaseUrl: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+          Separado dos <strong>Domínios permitidos</strong> (onde o botão aparece). Ao salvar, o Chrome pode pedir permissão para este host.
+        </p>
+        <label
+          style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }}
+          htmlFor="ia-key"
+        >
+          Chave da API do serviço de IA (opcional)
+        </label>
+        <input
+          id="ia-key"
+          type="password"
+          autoComplete="off"
+          placeholder="Mesmo valor que IA_FEEDBACK_API_KEY no servidor"
+          value={settings.iaServiceApiKey ?? ""}
+          onChange={(e) => setSettings({ ...settings, iaServiceApiKey: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
       </section>
 
       <section style={{ marginTop: 20 }}>

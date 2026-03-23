@@ -52,8 +52,17 @@ export type ExtensionSettings = {
   repos?: RepoTarget[];
   /** Hostnames without protocol, e.g. "app.staging.example.com" */
   allowedHosts: string[];
+  /** URL base do serviço de IA (ex. https://ia-feedback.empresa.com ou http://127.0.0.1:8787) */
+  iaServiceBaseUrl?: string;
+  /** Segredo enviado como Bearer ao serviço de IA (não é o PAT do GitHub) */
+  iaServiceApiKey?: string;
 };
 
 export type CreateIssuePayload = IssueFormState & {
   technicalContext?: TechnicalContextPayload;
+  /**
+   * Corpo completo da issue (Markdown) quando a IA refinou o texto.
+   * Se ausente, usa-se `buildIssueBody` com o formulário + contexto técnico.
+   */
+  bodyMarkdown?: string;
 };

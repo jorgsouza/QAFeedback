@@ -52,8 +52,9 @@ Toda a implementação vive em **`extension/`**.
 |-----------|----------|
 | [extension/README.md](extension/README.md) | Instalação em modo desenvolvedor, token, build, primeiros passos, permissões. |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia mais longo: fluxos, resolução de problemas, arquitetura, scripts (`test`, `build`, ícones). |
+| [services/ia-feedback/README.md](services/ia-feedback/README.md) | Serviço HTTP opcional (Gemini) para título e corpo da issue — desenvolvimento local e `curl`. |
 
-**Especificação de produto** e imagens de referência: pasta **[PRD](PRD/)** (inclui o documento principal em Markdown e `capiQA.png` usado nos ícones).
+**Especificação de produto** e imagens de referência: pasta **[PRD](PRD/)** (inclui o documento principal em Markdown e `capiQA.png` usado nos ícones). Planos de implementação: **[plans/](plans/)**.
 
 ---
 
