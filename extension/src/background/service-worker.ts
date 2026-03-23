@@ -144,7 +144,14 @@ type TestGitHubMessage = {
 };
 
 type TestJiraMessage = { type: "TEST_JIRA" };
-type JiraTestAndListBoardsMessage = { type: "JIRA_TEST_AND_LIST_BOARDS" };
+/** Campos opcionais substituem o storage (opções ainda não guardadas na página de configuração). */
+type JiraTestAndListBoardsMessage = {
+  type: "JIRA_TEST_AND_LIST_BOARDS";
+  jiraEmail?: string;
+  jiraApiToken?: string;
+  jiraSiteUrl?: string;
+  jiraSoftwareBoardId?: string;
+};
 
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
@@ -225,30 +232,39 @@ chrome.runtime.onMessage.addListener(
     if (message.type === "JIRA_TEST_AND_LIST_BOARDS") {
       void (async () => {
         const s = await loadSettings();
+        const m = message as JiraTestAndListBoardsMessage;
+        const siteUrl = (m.jiraSiteUrl ?? s.jiraSiteUrl ?? "").trim();
+        const email = (m.jiraEmail ?? s.jiraEmail ?? "").trim();
+        const apiToken = (m.jiraApiToken ?? s.jiraApiToken ?? "").trim();
+        const boardIdStr = (m.jiraSoftwareBoardId ?? s.jiraSoftwareBoardId ?? "").trim();
+
         const conn = await testJiraConnection({
-          siteUrl: s.jiraSiteUrl ?? "",
-          email: s.jiraEmail ?? "",
-          apiToken: s.jiraApiToken ?? "",
+          siteUrl,
+          email,
+          apiToken,
         });
         if (!conn.ok) {
           sendResponse(conn);
           return;
         }
 
-        let projectKey = (s.jiraProjectKey ?? "").trim();
-        const bid = Number.parseInt((s.jiraSoftwareBoardId ?? "").trim(), 10);
+        /** Sem quadro escolhido: lista todos os quadros acessíveis (como na UI de opções). */
+        let boardListProjectKey = "";
+        const bid = Number.parseInt(boardIdStr, 10);
         let boardResolveWarning: string | undefined;
         let resolvedProjectKey: string | undefined;
+        let projectKeyForFilter = "";
 
         if (Number.isFinite(bid) && bid > 0) {
           const fb = await fetchJiraSoftwareBoard({
-            siteUrl: s.jiraSiteUrl ?? "",
-            email: s.jiraEmail ?? "",
-            apiToken: s.jiraApiToken ?? "",
+            siteUrl,
+            email,
+            apiToken,
             boardId: bid,
           });
           if (fb.ok) {
-            projectKey = fb.board.projectKey;
+            boardListProjectKey = fb.board.projectKey;
+            projectKeyForFilter = fb.board.projectKey;
             resolvedProjectKey = fb.board.projectKey;
           } else {
             boardResolveWarning = `Quadro ${bid}: ${fb.message}`;
@@ -256,10 +272,10 @@ chrome.runtime.onMessage.addListener(
         }
 
         const lb = await listJiraBoards({
-          siteUrl: s.jiraSiteUrl ?? "",
-          email: s.jiraEmail ?? "",
-          apiToken: s.jiraApiToken ?? "",
-          projectKey,
+          siteUrl,
+          email,
+          apiToken,
+          projectKey: boardListProjectKey,
         });
         if (!lb.ok) {
           sendResponse({ ok: false, message: lb.message, status: lb.status });
@@ -269,13 +285,13 @@ chrome.runtime.onMessage.addListener(
         let boardFilterPreview:
           | Awaited<ReturnType<typeof resolveJiraBoardFieldsForIssueCreate>>
           | undefined;
-        if (Number.isFinite(bid) && bid > 0 && projectKey) {
+        if (Number.isFinite(bid) && bid > 0 && projectKeyForFilter) {
           boardFilterPreview = await resolveJiraBoardFieldsForIssueCreate({
             baseUrl: conn.baseUrl,
-            email: s.jiraEmail ?? "",
-            apiToken: s.jiraApiToken ?? "",
+            email,
+            apiToken,
             boardId: bid,
-            projectKey,
+            projectKey: projectKeyForFilter,
             issueTypeName: (s.jiraIssueTypeName ?? "Bug").trim() || "Bug",
           });
         }

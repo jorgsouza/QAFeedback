@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   DEFAULT_ALLOWED_HOSTS,
   emptySettings,
@@ -46,7 +46,12 @@ export function OptionsApp() {
   const [status, setStatus] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testingJira, setTestingJira] = useState(false);
+  /** Listagem automática de quadros (email + token válidos). */
+  const [jiraBoardsLoading, setJiraBoardsLoading] = useState(false);
   const [jiraBoards, setJiraBoards] = useState<{ id: number; name: string; type: string }[]>([]);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const jiraListRequestId = useRef(0);
 
   useEffect(() => {
     void (async () => {
@@ -170,27 +175,165 @@ export function OptionsApp() {
     }
   }, [settings.githubToken]);
 
-  const onTestJiraAndListBoards = useCallback(async () => {
-    setTestingJira(true);
-    setStatus(null);
-    try {
-      const res = (await chrome.runtime.sendMessage({ type: "JIRA_TEST_AND_LIST_BOARDS" })) as
-        | {
-            ok: true;
-            displayName: string;
-            resolvedSiteUrl?: string;
-            resolvedProjectKey?: string;
-            boardResolveWarning?: string;
-            boards: { id: number; name: string; type: string }[];
-            boardFilterPreview?: ResolveJiraBoardFilterResult;
-          }
-        | { ok: false; message?: string };
-      if (res.ok) {
-        setJiraBoards(res.boards);
+  const sendJiraTestAndListBoards = useCallback(async (boardIdForApi: string) => {
+    const s = settingsRef.current;
+    return (await chrome.runtime.sendMessage({
+      type: "JIRA_TEST_AND_LIST_BOARDS",
+      jiraEmail: s.jiraEmail,
+      jiraApiToken: s.jiraApiToken,
+      jiraSiteUrl: s.jiraSiteUrl ?? "",
+      jiraSoftwareBoardId: boardIdForApi,
+    })) as
+      | {
+          ok: true;
+          displayName: string;
+          resolvedSiteUrl?: string;
+          resolvedProjectKey?: string;
+          boardResolveWarning?: string;
+          boards: { id: number; name: string; type: string }[];
+          boardFilterPreview?: ResolveJiraBoardFilterResult;
+        }
+      | { ok: false; message?: string; status?: number };
+  }, []);
 
+  const buildJiraOkStatusLines = useCallback(
+    (
+      res: {
+        displayName: string;
+        resolvedSiteUrl?: string;
+        resolvedProjectKey?: string;
+        boardResolveWarning?: string;
+        boards: { id: number; name: string; type: string }[];
+        boardFilterPreview?: ResolveJiraBoardFilterResult;
+      },
+      opts: { boardIdChosen?: string } = {},
+    ) => {
+      const lines: string[] = [];
+      lines.push(`Jira: ligação OK (${res.displayName}).`);
+      if (res.resolvedSiteUrl) lines.push(`Site: ${res.resolvedSiteUrl}`);
+      if (res.resolvedProjectKey) {
+        lines.push(`Chave do projeto (da API, a partir do quadro): ${res.resolvedProjectKey}.`);
+      }
+      if (res.boards.length === 0) {
+        lines.push("Nenhum quadro na lista — confira o token ou o acesso à API Jira Software.");
+      } else if (!opts.boardIdChosen) {
+        lines.push(`${res.boards.length} quadro(s) listado(s).`);
+      }
+
+      const preview = res.boardFilterPreview;
+      if (preview) {
+        if (preview.ok) {
+          if (preview.fields.length > 0) {
+            lines.push(
+              `Filtro do quadro: ${preview.fields.length} campo(s) guardados (${preview.fields.map((f) => f.fieldId).join(", ")}).`,
+            );
+          } else {
+            lines.push("Filtro do quadro: só projeto (sem selects extra).");
+          }
+          if (preview.unresolved.length > 0) {
+            lines.push(`Não mapeado no createmeta: ${preview.unresolved.join("; ")} — override em Avançado se precisar.`);
+          }
+        } else {
+          lines.push(`Filtro do quadro: ${preview.message}`);
+        }
+      } else if ((opts.boardIdChosen ?? "").trim()) {
+        lines.push("Filtro do quadro: não analisado (confirme o ID do quadro).");
+      }
+
+      if (res.boardResolveWarning) lines.push(`Aviso: ${res.boardResolveWarning}`);
+      return lines.join(" ");
+    },
+    [],
+  );
+
+  /** Após email + token (e site inferível), lista todos os quadros sem precisar de botão. */
+  const jiraEmailTrim = (settings.jiraEmail ?? "").trim();
+  const jiraTokenTrim = (settings.jiraApiToken ?? "").trim();
+  const jiraSiteTrim = (settings.jiraSiteUrl ?? "").trim();
+  const jiraCredsReady = Boolean(
+    jiraEmailTrim &&
+      jiraTokenTrim &&
+      resolveJiraCloudBaseUrl(jiraSiteTrim, jiraEmailTrim),
+  );
+
+  useEffect(() => {
+    if (!jiraCredsReady) {
+      setJiraBoards([]);
+      setJiraBoardsLoading(false);
+      return;
+    }
+    const reqId = ++jiraListRequestId.current;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        setJiraBoardsLoading(true);
+        setStatus(null);
+        try {
+          const res = await sendJiraTestAndListBoards("");
+          if (reqId !== jiraListRequestId.current) return;
+          if (!res.ok) {
+            setStatus(res.message ?? "Falha ao listar quadros Jira.");
+            setJiraBoards([]);
+            return;
+          }
+          setJiraBoards(res.boards);
+          setSettings((prev) => {
+            const next = { ...prev };
+            if (res.resolvedSiteUrl) next.jiraSiteUrl = res.resolvedSiteUrl;
+            void saveSettings(next);
+            return next;
+          });
+          setStatus(
+            res.boards.length > 0
+              ? `Jira: ligação OK (${res.displayName}). ${res.boards.length} quadro(s) listados — escolha o backlog destino no menu.`
+              : `Jira: ligação OK (${res.displayName}), mas a API não devolveu quadros (confira o token e o Jira Software).`,
+          );
+        } catch {
+          if (reqId !== jiraListRequestId.current) return;
+          setStatus("Erro ao comunicar com o service worker.");
+          setJiraBoards([]);
+        } finally {
+          if (reqId === jiraListRequestId.current) setJiraBoardsLoading(false);
+        }
+      })();
+    }, 550);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [jiraCredsReady, jiraEmailTrim, jiraTokenTrim, jiraSiteTrim, sendJiraTestAndListBoards]);
+
+  /** ID guardado deixou de existir na nova lista (ex.: mudou de conta). */
+  useEffect(() => {
+    if (jiraBoardsLoading || jiraBoards.length === 0) return;
+    const id = (settings.jiraSoftwareBoardId ?? "").trim();
+    if (!id) return;
+    if (!jiraBoards.some((b) => String(b.id) === id)) {
+      setSettings((p) => {
+        const next = { ...p, jiraSoftwareBoardId: "" };
+        void saveSettings(next);
+        return next;
+      });
+    }
+  }, [jiraBoards, jiraBoardsLoading, settings.jiraSoftwareBoardId]);
+
+  const onJiraBoardSelect = useCallback(
+    async (boardId: string) => {
+      setSettings((p) => ({ ...p, jiraSoftwareBoardId: boardId }));
+      if (!boardId.trim()) {
+        setStatus(null);
+        return;
+      }
+      setTestingJira(true);
+      setStatus(null);
+      try {
+        const res = await sendJiraTestAndListBoards(boardId);
+        if (!res.ok) {
+          setStatus(res.message ?? "Falha ao aplicar o quadro escolhido.");
+          return;
+        }
+        setJiraBoards(res.boards);
         const preview = res.boardFilterPreview;
         setSettings((prev) => {
-          const next = { ...prev };
+          const next = { ...prev, jiraSoftwareBoardId: boardId };
           if (res.resolvedSiteUrl) next.jiraSiteUrl = res.resolvedSiteUrl;
           if (res.resolvedProjectKey) next.jiraProjectKey = res.resolvedProjectKey;
           if (preview?.ok) {
@@ -199,50 +342,15 @@ export function OptionsApp() {
           void saveSettings(next);
           return next;
         });
-
-        const lines: string[] = [];
-        lines.push(`Jira: ligação OK (${res.displayName}).`);
-        if (res.resolvedSiteUrl) lines.push(`Site: ${res.resolvedSiteUrl}`);
-        if (res.resolvedProjectKey) {
-          lines.push(`Chave do projeto (da API, a partir do quadro): ${res.resolvedProjectKey}.`);
-        }
-        if (res.boards.length === 0) {
-          lines.push("Nenhum quadro na lista — confira o token ou o acesso à API Jira Software.");
-        } else {
-          lines.push(`${res.boards.length} quadro(s) listado(s).`);
-        }
-
-        if (preview) {
-          if (preview.ok) {
-            if (preview.fields.length > 0) {
-              lines.push(
-                `Filtro do quadro: ${preview.fields.length} campo(s) guardados (${preview.fields.map((f) => f.fieldId).join(", ")}).`,
-              );
-            } else {
-              lines.push("Filtro do quadro: só projeto (sem selects extra).");
-            }
-            if (preview.unresolved.length > 0) {
-              lines.push(`Não mapeado no createmeta: ${preview.unresolved.join("; ")} — override em Avançado se precisar.`);
-            }
-          } else {
-            lines.push(`Filtro do quadro: ${preview.message}`);
-          }
-        } else if ((settings.jiraSoftwareBoardId ?? "").trim()) {
-          lines.push("Filtro do quadro: não analisado (confirme o ID do quadro).");
-        }
-
-        if (res.boardResolveWarning) lines.push(`Aviso: ${res.boardResolveWarning}`);
-
-        setStatus(lines.join(" "));
-      } else {
-        setStatus(res.message ?? "Falha ao testar Jira.");
+        setStatus(buildJiraOkStatusLines(res, { boardIdChosen: boardId }));
+      } catch {
+        setStatus("Erro ao comunicar com o service worker.");
+      } finally {
+        setTestingJira(false);
       }
-    } catch {
-      setStatus("Erro ao comunicar com o service worker.");
-    } finally {
-      setTestingJira(false);
-    }
-  }, [settings.jiraSoftwareBoardId]);
+    },
+    [sendJiraTestAndListBoards, buildJiraOkStatusLines],
+  );
 
   const onClearToken = useCallback(async () => {
     const next = { ...settings, githubToken: "" };
@@ -504,39 +612,43 @@ export function OptionsApp() {
           onChange={(e) => setSettings({ ...settings, jiraApiToken: e.target.value })}
           style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
         />
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-board-id">
-          Quadro Software — ID (backlog destino)
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-board-select">
+          Quadro Software — backlog destino
         </label>
-        <input
-          id="jira-board-id"
-          list="jira-boards-datalist"
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="ex. 451 ou 2700 — depois use o botão para listar quadros"
+        <select
+          id="jira-board-select"
           value={settings.jiraSoftwareBoardId ?? ""}
-          onChange={(e) => setSettings({ ...settings, jiraSoftwareBoardId: e.target.value })}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
-        />
-        <datalist id="jira-boards-datalist">
+          disabled={!jiraCredsReady || jiraBoardsLoading || testingJira}
+          onChange={(e) => void onJiraBoardSelect(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 8,
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            fontSize: 14,
+            background: "#fff",
+          }}
+        >
+          <option value="">
+            {jiraBoardsLoading
+              ? "A carregar quadros…"
+              : !jiraCredsReady
+                ? "Preencha email Atlassian e API token"
+                : jiraBoards.length === 0
+                  ? "Nenhum quadro encontrado"
+                  : "Escolha um quadro…"}
+          </option>
           {jiraBoards.map((b) => (
-            <option key={b.id} value={String(b.id)} label={`${b.name} (${b.type})`} />
+            <option key={b.id} value={String(b.id)}>
+              {b.name} ({b.type}) — ID {b.id}
+            </option>
           ))}
-        </datalist>
-        <div style={{ marginTop: 10, marginBottom: 4 }}>
-          <button
-            type="button"
-            onClick={() => void onTestJiraAndListBoards()}
-            disabled={testingJira}
-            style={btnPrimary}
-          >
-            {testingJira ? "A carregar…" : "Testar ligação e listar quadros"}
-          </button>
-        </div>
+        </select>
         <p style={{ fontSize: 13, color: "#64748b", marginTop: 6, marginBottom: 0 }}>
-          Ao testar, guardamos o site confirmado, a <strong>chave do projeto</strong> lida a partir do quadro e os
-          campos do filtro (Squad, etc.) para criar issues como <strong>Bug</strong>. O motivo da abertura continua na
-          descrição.
+          Com <strong>email</strong> e <strong>token</strong> válidos, a lista de quadros carrega automaticamente (como
+          os repositórios no GitHub). Ao <strong>escolher um quadro</strong>, confirmamos o site, a{" "}
+          <strong>chave do projeto</strong> e o <strong>filtro do quadro</strong> (Squad, etc.) e guardamos — não é
+          preciso botão de teste. O motivo da abertura continua na descrição ao criar issues.
         </p>
         {(settings.jiraProjectKey ?? "").trim() ? (
           <p
