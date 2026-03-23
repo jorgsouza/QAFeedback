@@ -8,6 +8,9 @@ function payload(p: Partial<CreateIssuePayload> = {}): CreateIssuePayload {
     title: "Login falha",
     whatHappened: "O botão não responde após clicar.",
     includeTechnicalContext: false,
+    sendToGitHub: true,
+    sendToJira: false,
+    jiraMotivoAbertura: "",
     ...p,
   };
 }

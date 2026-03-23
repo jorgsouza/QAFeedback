@@ -1,4 +1,15 @@
 import { createGitHubIssue, testTokenAndListRepos } from "../shared/github-client";
+import { resolveJiraBoardFieldsForIssueCreate } from "../shared/jira-board-filter-resolve";
+import {
+  createJiraIssue,
+  fetchJiraSoftwareBoard,
+  jiraResolvedBoardWebUrl,
+  listJiraBoards,
+  resolveJiraCloudBaseUrl,
+  testJiraConnection,
+  uploadJiraIssueAttachments,
+} from "../shared/jira-client";
+import { isJiraMotivoAbertura } from "../shared/jira-motivo";
 import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
 import { loadSettings } from "../shared/storage";
@@ -132,12 +143,17 @@ type TestGitHubMessage = {
   token?: string;
 };
 
+type TestJiraMessage = { type: "TEST_JIRA" };
+type JiraTestAndListBoardsMessage = { type: "JIRA_TEST_AND_LIST_BOARDS" };
+
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 
 type Messages =
   | CreateIssueMessage
   | TestGitHubMessage
+  | TestJiraMessage
+  | JiraTestAndListBoardsMessage
   | ListRepoTargetsMessage
   | OpenOptionsMessage;
 
@@ -165,10 +181,19 @@ chrome.runtime.onMessage.addListener(
       void (async () => {
         try {
           const s = await loadSettings();
-          sendResponse({ repos: repoTargetsForUi(s) });
+          sendResponse({
+            repos: repoTargetsForUi(s),
+            githubTokenConfigured: Boolean(s.githubToken?.trim()),
+            jiraTokenConfigured: Boolean(s.jiraApiToken?.trim()),
+          });
         } catch (err) {
           console.error("[QA Feedback] LIST_REPO_TARGETS:", err);
-          sendResponse({ repos: [], loadFailed: true });
+          sendResponse({
+            repos: [],
+            githubTokenConfigured: false,
+            jiraTokenConfigured: false,
+            loadFailed: true,
+          });
         }
       })();
       return true;
@@ -184,46 +209,239 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === "TEST_JIRA") {
+      void (async () => {
+        const s = await loadSettings();
+        const r = await testJiraConnection({
+          siteUrl: s.jiraSiteUrl ?? "",
+          email: s.jiraEmail ?? "",
+          apiToken: s.jiraApiToken ?? "",
+        });
+        sendResponse(r);
+      })();
+      return true;
+    }
+
+    if (message.type === "JIRA_TEST_AND_LIST_BOARDS") {
+      void (async () => {
+        const s = await loadSettings();
+        const conn = await testJiraConnection({
+          siteUrl: s.jiraSiteUrl ?? "",
+          email: s.jiraEmail ?? "",
+          apiToken: s.jiraApiToken ?? "",
+        });
+        if (!conn.ok) {
+          sendResponse(conn);
+          return;
+        }
+
+        let projectKey = (s.jiraProjectKey ?? "").trim();
+        const bid = Number.parseInt((s.jiraSoftwareBoardId ?? "").trim(), 10);
+        let boardResolveWarning: string | undefined;
+        let resolvedProjectKey: string | undefined;
+
+        if (Number.isFinite(bid) && bid > 0) {
+          const fb = await fetchJiraSoftwareBoard({
+            siteUrl: s.jiraSiteUrl ?? "",
+            email: s.jiraEmail ?? "",
+            apiToken: s.jiraApiToken ?? "",
+            boardId: bid,
+          });
+          if (fb.ok) {
+            projectKey = fb.board.projectKey;
+            resolvedProjectKey = fb.board.projectKey;
+          } else {
+            boardResolveWarning = `Quadro ${bid}: ${fb.message}`;
+          }
+        }
+
+        const lb = await listJiraBoards({
+          siteUrl: s.jiraSiteUrl ?? "",
+          email: s.jiraEmail ?? "",
+          apiToken: s.jiraApiToken ?? "",
+          projectKey,
+        });
+        if (!lb.ok) {
+          sendResponse({ ok: false, message: lb.message, status: lb.status });
+          return;
+        }
+
+        let boardFilterPreview:
+          | Awaited<ReturnType<typeof resolveJiraBoardFieldsForIssueCreate>>
+          | undefined;
+        if (Number.isFinite(bid) && bid > 0 && projectKey) {
+          boardFilterPreview = await resolveJiraBoardFieldsForIssueCreate({
+            baseUrl: conn.baseUrl,
+            email: s.jiraEmail ?? "",
+            apiToken: s.jiraApiToken ?? "",
+            boardId: bid,
+            projectKey,
+            issueTypeName: (s.jiraIssueTypeName ?? "Bug").trim() || "Bug",
+          });
+        }
+
+        sendResponse({
+          ok: true,
+          displayName: conn.displayName,
+          resolvedSiteUrl: conn.baseUrl,
+          resolvedProjectKey,
+          boardResolveWarning,
+          boards: lb.boards,
+          boardFilterPreview,
+        });
+      })();
+      return true;
+    }
+
     if (message.type === "CREATE_ISSUE") {
       void (async () => {
         const s = await loadSettings();
-        if (!s.githubToken.trim()) {
-          sendResponse({ ok: false, message: "Configure o token GitHub nas opções da extensão." });
+        const p = message.payload;
+        const wantGh = Boolean(p.sendToGitHub);
+        const wantJi = Boolean(p.sendToJira);
+
+        if (!wantGh && !wantJi) {
+          sendResponse({ ok: false, message: "Selecione GitHub e/ou Jira como destino." });
           return;
         }
 
-        const targets = resolveRepoTargets(s);
-        if (targets.length === 0) {
-          sendResponse({ ok: false, message: "Configure ao menos um repositório nas opções." });
-          return;
-        }
+        const warnings: string[] = [];
+        let githubUrl: string | undefined;
+        let jiraUrl: string | undefined;
+        let jiraIssueBrowseUrl: string | undefined;
 
-        let owner = message.owner?.trim();
-        let repo = message.repo?.trim();
-
-        if (owner && repo) {
-          if (!isAllowedRepoTarget(s, owner, repo)) {
-            sendResponse({ ok: false, message: "Repositório selecionado não está na lista permitida." });
+        if (wantGh) {
+          if (!s.githubToken.trim()) {
+            sendResponse({ ok: false, message: "Configure o token GitHub nas opções ou desmarque GitHub." });
             return;
           }
-        } else {
-          owner = targets[0].owner;
-          repo = targets[0].repo;
+          const targets = resolveRepoTargets(s);
+          if (targets.length === 0) {
+            sendResponse({
+              ok: false,
+              message: "Configure ao menos um repositório nas opções ou desmarque GitHub.",
+            });
+            return;
+          }
+
+          let owner = message.owner?.trim();
+          let repo = message.repo?.trim();
+
+          if (owner && repo) {
+            if (!isAllowedRepoTarget(s, owner, repo)) {
+              sendResponse({ ok: false, message: "Repositório selecionado não está na lista permitida." });
+              return;
+            }
+          } else {
+            owner = targets[0].owner;
+            repo = targets[0].repo;
+          }
+
+          const n = normalizeGitHubRepoRef(owner, repo);
+          if (!n.owner || !n.repo) {
+            sendResponse({ ok: false, message: "Owner/repositório inválido." });
+            return;
+          }
+
+          const r = await createGitHubIssue({
+            token: s.githubToken,
+            owner: n.owner,
+            repo: n.repo,
+            payload: p,
+          });
+          if (r.ok) githubUrl = r.htmlUrl;
+          else warnings.push(`GitHub: ${r.message}`);
         }
 
-        const n = normalizeGitHubRepoRef(owner, repo);
-        if (!n.owner || !n.repo) {
-          sendResponse({ ok: false, message: "Owner/repositório inválido." });
+        if (wantJi) {
+          const jiraBase = resolveJiraCloudBaseUrl(s.jiraSiteUrl ?? "", s.jiraEmail ?? "");
+          if (!jiraBase || !s.jiraEmail?.trim() || !s.jiraApiToken?.trim()) {
+            if (wantGh && githubUrl) {
+              sendResponse({
+                ok: true,
+                githubUrl,
+                warnings: [
+                  "Jira: configure email @empresa + API token (e ID do quadro) nas opções ou desmarque Jira.",
+                ],
+              });
+              return;
+            }
+            sendResponse({
+              ok: false,
+              message:
+                "Configure Jira nas opções (email @empresa + API token + ID do quadro, ou site em Avançado) ou desmarque Jira.",
+            });
+            return;
+          }
+
+          if (!isJiraMotivoAbertura(p.jiraMotivoAbertura)) {
+            sendResponse({
+              ok: false,
+              message: "Selecione o motivo da abertura (Jira).",
+            });
+            return;
+          }
+
+          const jr = await createJiraIssue({
+            siteUrl: s.jiraSiteUrl ?? "",
+            email: s.jiraEmail ?? "",
+            apiToken: s.jiraApiToken ?? "",
+            projectKey: s.jiraProjectKey ?? "",
+            issueTypeName: s.jiraIssueTypeName ?? "Bug",
+            payload: p,
+            motivoAbertura: p.jiraMotivoAbertura,
+            motivoCustomFieldId: s.jiraMotivoCustomFieldId,
+            jiraSoftwareBoardId: s.jiraSoftwareBoardId,
+            jiraBoardAutoFields: s.jiraBoardAutoFields,
+            jiraBoardFilterSelectFieldId: s.jiraBoardFilterSelectFieldId,
+            jiraBoardFilterSelectValue: s.jiraBoardFilterSelectValue,
+          });
+          if (jr.ok) {
+            const attach = p.jiraImageAttachments;
+            if (attach && attach.length > 0) {
+              const up = await uploadJiraIssueAttachments({
+                baseUrl: jiraBase,
+                email: s.jiraEmail ?? "",
+                apiToken: s.jiraApiToken ?? "",
+                issueKey: jr.key,
+                attachments: attach,
+              });
+              if (!up.ok) warnings.push(`Jira anexos: ${up.message}`);
+            }
+
+            const browse = jr.htmlUrl;
+            const issueProjectKey =
+              (s.jiraProjectKey ?? "").trim() ||
+              (jr.key.match(/^([A-Z][A-Z0-9_]*)-\d+$/i)?.[1]?.toUpperCase() ?? "");
+            const boardLink = jiraResolvedBoardWebUrl({
+              siteUrl: jiraBase,
+              projectKey: issueProjectKey,
+              jiraSoftwareBoardId: s.jiraSoftwareBoardId,
+              selectedIssueKey: jr.key,
+            });
+            jiraUrl = boardLink ?? browse;
+            jiraIssueBrowseUrl = boardLink ? browse : undefined;
+            if (jr.warning) warnings.push(jr.warning);
+          } else {
+            warnings.push(`Jira: ${jr.message}`);
+          }
+        }
+
+        if (!githubUrl && !jiraUrl) {
+          sendResponse({
+            ok: false,
+            message: warnings.join(" ") || "Não foi possível criar em nenhum destino.",
+          });
           return;
         }
 
-        const r = await createGitHubIssue({
-          token: s.githubToken,
-          owner: n.owner,
-          repo: n.repo,
-          payload: message.payload,
+        sendResponse({
+          ok: true,
+          githubUrl,
+          jiraUrl,
+          jiraIssueBrowseUrl,
+          warnings: warnings.length ? warnings : undefined,
         });
-        sendResponse(r);
       })();
       return true;
     }
