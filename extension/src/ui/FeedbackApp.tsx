@@ -15,6 +15,7 @@ import {
   isExtensionContextInvalidatedError,
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
+import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
 
 type Tab = "form" | "preview";
 
@@ -42,6 +43,9 @@ const initialForm = (): IssueFormState => ({
   title: "",
   whatHappened: "",
   includeTechnicalContext: true,
+  sendToGitHub: true,
+  sendToJira: false,
+  jiraMotivoAbertura: "",
 });
 
 export function FeedbackApp() {
@@ -52,7 +56,11 @@ export function FeedbackApp() {
   const [lastTarget, setLastTarget] = useState<Element | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [issueUrl, setIssueUrl] = useState<string | null>(null);
+  const [postSubmit, setPostSubmit] = useState<{
+    github?: string;
+    jira?: string;
+    warnings?: string[];
+  } | null>(null);
   const [repoTargets, setRepoTargets] = useState<RepoOption[]>([]);
   const [repoIndex, setRepoIndex] = useState(0);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
@@ -120,10 +128,17 @@ export function FeedbackApp() {
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
 
   const selectedRepo = repoTargets[repoIndex];
-  const canSubmit =
-    form.title.trim().length > 0 &&
-    form.whatHappened.trim().length > 0 &&
-    !!selectedRepo;
+  const canSubmit = (() => {
+    if (!form.sendToGitHub && !form.sendToJira) return false;
+    if (!form.whatHappened.trim()) return false;
+    if (form.sendToGitHub) {
+      if (!form.title.trim() || !selectedRepo) return false;
+    }
+    if (form.sendToJira) {
+      if (!isJiraMotivoAbertura(form.jiraMotivoAbertura)) return false;
+    }
+    return true;
+  })();
 
   const openOptions = useCallback(() => {
     setError(null);
@@ -146,7 +161,7 @@ export function FeedbackApp() {
   const resetFlow = () => {
     setForm(initialForm());
     setError(null);
-    setIssueUrl(null);
+    setPostSubmit(null);
     setTab("form");
   };
 
@@ -172,12 +187,22 @@ export function FeedbackApp() {
         payload,
         owner: selectedRepo?.owner,
         repo: selectedRepo?.repo,
-      })) as { ok: boolean; message?: string; htmlUrl?: string };
+      })) as {
+        ok: boolean;
+        message?: string;
+        githubUrl?: string;
+        jiraUrl?: string;
+        warnings?: string[];
+      };
 
-      if (res && "ok" in res && res.ok && res.htmlUrl) {
-        setIssueUrl(res.htmlUrl);
+      if (res && res.ok && (res.githubUrl || res.jiraUrl)) {
+        setPostSubmit({
+          github: res.githubUrl,
+          jira: res.jiraUrl,
+          warnings: res.warnings,
+        });
       } else {
-        setError((res as { message?: string }).message ?? "Falha ao criar issue.");
+        setError((res as { message?: string }).message ?? "Falha ao enviar feedback.");
       }
     } catch (e) {
       setError(
@@ -200,7 +225,7 @@ export function FeedbackApp() {
   const openModal = useCallback(() => {
     setOpen(true);
     setError(null);
-    setIssueUrl(null);
+    setPostSubmit(null);
     setTab("form");
   }, []);
 
@@ -214,7 +239,7 @@ export function FeedbackApp() {
               type="button"
               className="qaf-fab qaf-fab-icon-only"
               onClick={openModal}
-              aria-label="Abrir feedback — criar issue no GitHub"
+              aria-label="Abrir feedback — GitHub e/ou Jira"
             >
               <FeedbackFabIcon />
             </button>
@@ -247,7 +272,8 @@ export function FeedbackApp() {
                   Enviar feedback
                 </h2>
                 <p className="qaf-modal-subtitle">
-                  Envie o relatório como issue no GitHub. Descreva o que gostaria de ver alterado ou relate um problema.
+                  Envie o relatório para o <strong>GitHub</strong> e/ou para o <strong>Jira</strong>. Escolha os destinos
+                  abaixo e preencha o que aconteceu.
                 </p>
                 <button type="button" className="qaf-modal-settings-link" onClick={openOptions}>
                   Configurações
@@ -258,10 +284,10 @@ export function FeedbackApp() {
               </button>
             </div>
 
-            {!issueUrl && (
+            {!postSubmit && form.sendToGitHub && (
               <div className="qaf-repo-bar qaf-field">
                 <label className="qaf-label" htmlFor="qaf-repo">
-                  Repositório destino
+                  Repositório destino (GitHub)
                 </label>
                 {repoListIssue === "context" ? (
                   <div className="qaf-error qaf-error-warn">
@@ -306,7 +332,7 @@ export function FeedbackApp() {
               </div>
             )}
 
-            {!issueUrl && (
+            {!postSubmit && (
               <div className="qaf-tabs">
                 <button
                   type="button"
@@ -326,19 +352,50 @@ export function FeedbackApp() {
             )}
 
             <div className="qaf-body">
-              {issueUrl ? (
+              {postSubmit ? (
                 <div className="qaf-success">
-                  <div>Issue criada com sucesso.</div>
-                  <p>
-                    <a href={issueUrl} target="_blank" rel="noreferrer">
-                      Abrir no GitHub
-                    </a>
-                  </p>
+                  <div>Envio concluído.</div>
+                  {postSubmit.github && (
+                    <p>
+                      <a href={postSubmit.github} target="_blank" rel="noreferrer">
+                        Abrir issue no GitHub
+                      </a>
+                    </p>
+                  )}
+                  {postSubmit.jira && (
+                    <p>
+                      <a href={postSubmit.jira} target="_blank" rel="noreferrer">
+                        Abrir issue no Jira
+                      </a>
+                    </p>
+                  )}
+                  {postSubmit.warnings?.length ? (
+                    <div className="qaf-error qaf-error-warn">
+                      {postSubmit.warnings.map((w) => (
+                        <div key={w}>{w}</div>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="qaf-actions-row qaf-success-actions">
                     <div className="qaf-actions-left">
-                      <button type="button" className="qaf-btn qaf-btn-text" onClick={() => copyText(issueUrl)}>
-                        Copiar URL
-                      </button>
+                      {postSubmit.github ? (
+                        <button
+                          type="button"
+                          className="qaf-btn qaf-btn-text"
+                          onClick={() => copyText(postSubmit.github!)}
+                        >
+                          Copiar URL GitHub
+                        </button>
+                      ) : null}
+                      {postSubmit.jira ? (
+                        <button
+                          type="button"
+                          className="qaf-btn qaf-btn-text"
+                          onClick={() => copyText(postSubmit.jira!)}
+                        >
+                          Copiar URL Jira
+                        </button>
+                      ) : null}
                     </div>
                     <div className="qaf-actions-right">
                       <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
@@ -356,6 +413,50 @@ export function FeedbackApp() {
 
                   {tab === "form" ? (
                     <>
+                      <div className="qaf-field qaf-dest-row">
+                        <span className="qaf-label">Destinos</span>
+                        <label className="qaf-check">
+                          <input
+                            type="checkbox"
+                            checked={form.sendToGitHub}
+                            onChange={(e) => setForm((f) => ({ ...f, sendToGitHub: e.target.checked }))}
+                          />
+                          <span className="qaf-check-text">
+                            <span className="qaf-check-title">GitHub</span>
+                          </span>
+                        </label>
+                        <label className="qaf-check">
+                          <input
+                            type="checkbox"
+                            checked={form.sendToJira}
+                            onChange={(e) => setForm((f) => ({ ...f, sendToJira: e.target.checked }))}
+                          />
+                          <span className="qaf-check-text">
+                            <span className="qaf-check-title">Jira</span>
+                          </span>
+                        </label>
+                      </div>
+                      {form.sendToJira && (
+                        <div className="qaf-field">
+                          <label className="qaf-label" htmlFor="qaf-motivo">
+                            Motivo da abertura do Bug/Sub-Bug <span className="qaf-required">*</span>
+                          </label>
+                          <select
+                            id="qaf-motivo"
+                            className="qaf-select"
+                            value={form.jiraMotivoAbertura}
+                            onChange={(e) => setForm((f) => ({ ...f, jiraMotivoAbertura: e.target.value }))}
+                          >
+                            <option value="">Selecionar…</option>
+                            {JIRA_MOTIVO_ABERTURA_OPTIONS.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {form.sendToGitHub && (
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-title">
                           Título <span className="qaf-required">*</span>
@@ -368,6 +469,7 @@ export function FeedbackApp() {
                           placeholder="Resumo curto do problema"
                         />
                       </div>
+                      )}
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">
                           O que aconteceu <span className="qaf-required">*</span>
@@ -409,7 +511,7 @@ export function FeedbackApp() {
                             disabled={!canSubmit || busy}
                             onClick={submit}
                           >
-                            {busy ? "Enviando…" : "Criar issue"}
+                            {busy ? "Enviando…" : "Enviar"}
                           </button>
                         </div>
                       </div>
@@ -433,7 +535,7 @@ export function FeedbackApp() {
                             disabled={!canSubmit || busy}
                             onClick={submit}
                           >
-                            {busy ? "Enviando…" : "Criar issue"}
+                            {busy ? "Enviando…" : "Enviar"}
                           </button>
                         </div>
                       </div>

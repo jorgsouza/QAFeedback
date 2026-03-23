@@ -305,6 +305,17 @@ export const shadowCss = `
 
 .qaf-textarea { min-height: 88px; resize: vertical; }
 
+.qaf-dest-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.qaf-dest-row .qaf-label {
+  margin-bottom: 0;
+}
+
 .qaf-check {
   display: flex;
   align-items: flex-start;

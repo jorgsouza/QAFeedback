@@ -10,6 +10,12 @@ export const emptySettings = (): ExtensionSettings => ({
   repo: "",
   repos: [],
   allowedHosts: [...DEFAULT_ALLOWED_HOSTS],
+  jiraSiteUrl: "",
+  jiraEmail: "",
+  jiraApiToken: "",
+  jiraProjectKey: "REC",
+  jiraIssueTypeName: "Bug",
+  jiraMotivoCustomFieldId: "",
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -24,6 +30,13 @@ export async function loadSettings(): Promise<ExtensionSettings> {
       Array.isArray(raw.allowedHosts) && raw.allowedHosts.length
         ? raw.allowedHosts
         : [...DEFAULT_ALLOWED_HOSTS],
+    jiraSiteUrl: typeof raw.jiraSiteUrl === "string" ? raw.jiraSiteUrl : "",
+    jiraEmail: typeof raw.jiraEmail === "string" ? raw.jiraEmail : "",
+    jiraApiToken: typeof raw.jiraApiToken === "string" ? raw.jiraApiToken : "",
+    jiraProjectKey: typeof raw.jiraProjectKey === "string" ? raw.jiraProjectKey : "REC",
+    jiraIssueTypeName: typeof raw.jiraIssueTypeName === "string" ? raw.jiraIssueTypeName : "Bug",
+    jiraMotivoCustomFieldId:
+      typeof raw.jiraMotivoCustomFieldId === "string" ? raw.jiraMotivoCustomFieldId : "",
   };
 }
 

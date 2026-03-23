@@ -16,6 +16,7 @@ import {
   parseReposTextarea,
   resolveRepoTargets,
 } from "../shared/repo-targets";
+import { normalizeJiraSiteUrl } from "../shared/jira-client";
 
 function hostsToText(hosts: string[]): string {
   return hosts.join("\n");
@@ -43,6 +44,7 @@ export function OptionsApp() {
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [testingJira, setTestingJira] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -57,8 +59,16 @@ export function OptionsApp() {
   const onSave = useCallback(async () => {
     setStatus(null);
     const repos = parseReposTextarea(reposText);
-    if (repos.length === 0) {
-      setStatus("Adicione ao menos um repositório (uma linha: owner/repo ou URL do GitHub).");
+    const jiraOk =
+      Boolean(normalizeJiraSiteUrl(settings.jiraSiteUrl ?? "")) &&
+      Boolean(settings.jiraEmail?.trim()) &&
+      Boolean(settings.jiraApiToken?.trim()) &&
+      Boolean(settings.jiraProjectKey?.trim());
+
+    if (repos.length === 0 && !jiraOk) {
+      setStatus(
+        "Adicione ao menos um repositório GitHub ou configure Jira (site, email, API token e chave do projeto).",
+      );
       return;
     }
 
@@ -74,8 +84,14 @@ export function OptionsApp() {
       return;
     }
 
-    const first = repos[0];
-    const { owner, repo } = normalizeGitHubRepoRef(first.owner, first.repo);
+    let owner = "";
+    let repo = "";
+    if (repos.length > 0) {
+      const first = repos[0];
+      const n = normalizeGitHubRepoRef(first.owner, first.repo);
+      owner = n.owner;
+      repo = n.repo;
+    }
 
     const origins = originPatternsForHosts(hosts);
     try {
@@ -87,6 +103,19 @@ export function OptionsApp() {
       }
     } catch {
       setStatus("Não foi possível solicitar permissões para os hosts informados.");
+    }
+
+    const jiraBase = normalizeJiraSiteUrl(settings.jiraSiteUrl ?? "");
+    if (jiraBase) {
+      try {
+        const jiraOrigin = `${new URL(jiraBase).origin}/*`;
+        const jg = await chrome.permissions.request({ origins: [jiraOrigin] });
+        if (!jg) {
+          setStatus((prev) => prev ?? "Permissão para o site Jira não concedida: chamadas à API podem falhar.");
+        }
+      } catch {
+        setStatus((prev) => prev ?? "Não foi possível solicitar permissão para o Jira.");
+      }
     }
 
     const next: ExtensionSettings = {
@@ -138,6 +167,25 @@ export function OptionsApp() {
     }
   }, [settings.githubToken]);
 
+  const onTestJira = useCallback(async () => {
+    setTestingJira(true);
+    setStatus(null);
+    try {
+      const res = (await chrome.runtime.sendMessage({ type: "TEST_JIRA" })) as
+        | { ok: true; displayName: string }
+        | { ok: false; message?: string };
+      if (res.ok) {
+        setStatus(`Jira: ligação OK (${res.displayName}).`);
+      } else {
+        setStatus(res.message ?? "Falha ao testar Jira.");
+      }
+    } catch {
+      setStatus("Erro ao comunicar com o service worker.");
+    } finally {
+      setTestingJira(false);
+    }
+  }, []);
+
   const onClearToken = useCallback(async () => {
     const next = { ...settings, githubToken: "" };
     setSettings(next);
@@ -159,10 +207,13 @@ export function OptionsApp() {
         color: "#0f172a",
       }}
     >
-      <h1 style={{ fontSize: 22 }}>QA Feedback → GitHub</h1>
+      <h1 style={{ fontSize: 22 }}>QA Feedback — GitHub e Jira</h1>
       <p style={{ color: "#475569", fontSize: 14 }}>
-        Use um <strong>fine-grained personal access token</strong> só com permissão de Issues (recomendado para QA) ou um
-        PAT classic com escopo <code>repo</code>.
+        GitHub: PAT com permissão de Issues. Jira Cloud: API token Atlassian + email (ver{" "}
+        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">
+          API tokens
+        </a>
+        ).
       </p>
 
       <aside
@@ -251,8 +302,92 @@ export function OptionsApp() {
           placeholder={"jorgsouza/meu-repo\norg/outro-repo|Projeto legado\nhttps://github.com/org/repo"}
         />
         <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-          Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. O QA escolhe qual usar ao abrir o feedback.
+          Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. Pode ficar vazio se
+          usar só Jira.
         </p>
+      </section>
+
+      <section style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
+        <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>Jira Cloud (Atlassian)</h2>
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-site">
+          URL do site
+        </label>
+        <input
+          id="jira-site"
+          type="url"
+          autoComplete="off"
+          placeholder="https://reclameaqui.atlassian.net"
+          value={settings.jiraSiteUrl ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraSiteUrl: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-email">
+          Email Atlassian
+        </label>
+        <input
+          id="jira-email"
+          type="email"
+          autoComplete="off"
+          value={settings.jiraEmail ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraEmail: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-token">
+          API token Jira
+        </label>
+        <input
+          id="jira-token"
+          type="password"
+          autoComplete="off"
+          value={settings.jiraApiToken ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraApiToken: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-project">
+          Chave do projeto
+        </label>
+        <input
+          id="jira-project"
+          type="text"
+          autoComplete="off"
+          placeholder="REC"
+          value={settings.jiraProjectKey ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraProjectKey: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-type">
+          Nome do tipo de issue
+        </label>
+        <input
+          id="jira-type"
+          type="text"
+          autoComplete="off"
+          placeholder="Bug"
+          value={settings.jiraIssueTypeName ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraIssueTypeName: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+        />
+        <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-cf">
+          ID do campo “Motivo da abertura” (opcional)
+        </label>
+        <input
+          id="jira-cf"
+          type="text"
+          autoComplete="off"
+          placeholder="customfield_12345"
+          value={settings.jiraMotivoCustomFieldId ?? ""}
+          onChange={(e) => setSettings({ ...settings, jiraMotivoCustomFieldId: e.target.value })}
+          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
+        />
+        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+          Se vazio, o motivo escolhido pelo QA entra no início da descrição. Com o ID certo, o Jira recebe o campo nativo
+          (o texto tem de bater com as opções do projeto).
+        </p>
+        <div style={{ marginTop: 8 }}>
+          <button type="button" onClick={() => void onTestJira()} disabled={testingJira} style={btnPrimary}>
+            {testingJira ? "A testar…" : "Testar ligação Jira"}
+          </button>
+        </div>
       </section>
 
       <section style={{ marginTop: 20 }}>

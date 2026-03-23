@@ -1,4 +1,6 @@
 import { createGitHubIssue, testTokenAndListRepos } from "../shared/github-client";
+import { createJiraIssue, normalizeJiraSiteUrl, testJiraConnection } from "../shared/jira-client";
+import { isJiraMotivoAbertura } from "../shared/jira-motivo";
 import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
 import { loadSettings } from "../shared/storage";
@@ -132,12 +134,15 @@ type TestGitHubMessage = {
   token?: string;
 };
 
+type TestJiraMessage = { type: "TEST_JIRA" };
+
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 
 type Messages =
   | CreateIssueMessage
   | TestGitHubMessage
+  | TestJiraMessage
   | ListRepoTargetsMessage
   | OpenOptionsMessage;
 
@@ -184,46 +189,134 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === "TEST_JIRA") {
+      void (async () => {
+        const s = await loadSettings();
+        const r = await testJiraConnection({
+          siteUrl: s.jiraSiteUrl ?? "",
+          email: s.jiraEmail ?? "",
+          apiToken: s.jiraApiToken ?? "",
+        });
+        sendResponse(r);
+      })();
+      return true;
+    }
+
     if (message.type === "CREATE_ISSUE") {
       void (async () => {
         const s = await loadSettings();
-        if (!s.githubToken.trim()) {
-          sendResponse({ ok: false, message: "Configure o token GitHub nas opções da extensão." });
+        const p = message.payload;
+        const wantGh = Boolean(p.sendToGitHub);
+        const wantJi = Boolean(p.sendToJira);
+
+        if (!wantGh && !wantJi) {
+          sendResponse({ ok: false, message: "Selecione GitHub e/ou Jira como destino." });
           return;
         }
 
-        const targets = resolveRepoTargets(s);
-        if (targets.length === 0) {
-          sendResponse({ ok: false, message: "Configure ao menos um repositório nas opções." });
-          return;
-        }
+        const warnings: string[] = [];
+        let githubUrl: string | undefined;
+        let jiraUrl: string | undefined;
 
-        let owner = message.owner?.trim();
-        let repo = message.repo?.trim();
-
-        if (owner && repo) {
-          if (!isAllowedRepoTarget(s, owner, repo)) {
-            sendResponse({ ok: false, message: "Repositório selecionado não está na lista permitida." });
+        if (wantGh) {
+          if (!s.githubToken.trim()) {
+            sendResponse({ ok: false, message: "Configure o token GitHub nas opções ou desmarque GitHub." });
             return;
           }
-        } else {
-          owner = targets[0].owner;
-          repo = targets[0].repo;
+          const targets = resolveRepoTargets(s);
+          if (targets.length === 0) {
+            sendResponse({
+              ok: false,
+              message: "Configure ao menos um repositório nas opções ou desmarque GitHub.",
+            });
+            return;
+          }
+
+          let owner = message.owner?.trim();
+          let repo = message.repo?.trim();
+
+          if (owner && repo) {
+            if (!isAllowedRepoTarget(s, owner, repo)) {
+              sendResponse({ ok: false, message: "Repositório selecionado não está na lista permitida." });
+              return;
+            }
+          } else {
+            owner = targets[0].owner;
+            repo = targets[0].repo;
+          }
+
+          const n = normalizeGitHubRepoRef(owner, repo);
+          if (!n.owner || !n.repo) {
+            sendResponse({ ok: false, message: "Owner/repositório inválido." });
+            return;
+          }
+
+          const r = await createGitHubIssue({
+            token: s.githubToken,
+            owner: n.owner,
+            repo: n.repo,
+            payload: p,
+          });
+          if (r.ok) githubUrl = r.htmlUrl;
+          else warnings.push(`GitHub: ${r.message}`);
         }
 
-        const n = normalizeGitHubRepoRef(owner, repo);
-        if (!n.owner || !n.repo) {
-          sendResponse({ ok: false, message: "Owner/repositório inválido." });
+        if (wantJi) {
+          const base = normalizeJiraSiteUrl(s.jiraSiteUrl ?? "");
+          if (!base || !s.jiraEmail?.trim() || !s.jiraApiToken?.trim()) {
+            if (wantGh && githubUrl) {
+              sendResponse({
+                ok: true,
+                githubUrl,
+                warnings: [
+                  "Jira: configure site, email e API token nas opções ou desmarque Jira.",
+                ],
+              });
+              return;
+            }
+            sendResponse({
+              ok: false,
+              message: "Configure Jira nas opções (site, email, API token) ou desmarque Jira.",
+            });
+            return;
+          }
+
+          if (!isJiraMotivoAbertura(p.jiraMotivoAbertura)) {
+            sendResponse({
+              ok: false,
+              message: "Selecione o motivo da abertura (Jira).",
+            });
+            return;
+          }
+
+          const jr = await createJiraIssue({
+            siteUrl: s.jiraSiteUrl ?? "",
+            email: s.jiraEmail ?? "",
+            apiToken: s.jiraApiToken ?? "",
+            projectKey: s.jiraProjectKey ?? "REC",
+            issueTypeName: s.jiraIssueTypeName ?? "Bug",
+            payload: p,
+            motivoAbertura: p.jiraMotivoAbertura,
+            motivoCustomFieldId: s.jiraMotivoCustomFieldId,
+          });
+          if (jr.ok) jiraUrl = jr.htmlUrl;
+          else warnings.push(`Jira: ${jr.message}`);
+        }
+
+        if (!githubUrl && !jiraUrl) {
+          sendResponse({
+            ok: false,
+            message: warnings.join(" ") || "Não foi possível criar em nenhum destino.",
+          });
           return;
         }
 
-        const r = await createGitHubIssue({
-          token: s.githubToken,
-          owner: n.owner,
-          repo: n.repo,
-          payload: message.payload,
+        sendResponse({
+          ok: true,
+          githubUrl,
+          jiraUrl,
+          warnings: warnings.length ? warnings : undefined,
         });
-        sendResponse(r);
       })();
       return true;
     }
