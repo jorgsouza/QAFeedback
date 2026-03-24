@@ -44,7 +44,9 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Página: ${p.title}\n`;
     md += `- Data/Hora: ${p.timestamp}\n`;
     md += `- Navegador: ${truncate(p.userAgent, 300)}\n`;
-    md += `- Viewport: ${p.viewport}\n\n`;
+    md += `- Viewport (janela): ${p.viewport}\n`;
+    md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
+    md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n\n`;
 
     if (ctx.element && shouldIncludeElementSection(ctx.element)) {
       const e = ctx.element;

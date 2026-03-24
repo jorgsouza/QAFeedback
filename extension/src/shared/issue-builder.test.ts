@@ -3,6 +3,19 @@ import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
 import { buildIssueBody, buildIssueTitle } from "./issue-builder";
 import type { CreateIssuePayload } from "./types";
 
+const pageCtx = {
+  url: "https://exemplo.test/foo",
+  title: "Página",
+  userAgent: "UA",
+  timestamp: "2025-01-01T00:00:00.000Z",
+  viewport: "800x600",
+  screenCss: "1920x1080",
+  devicePixelRatio: "1",
+  maxTouchPoints: 0,
+  pointerCoarse: false,
+  viewModeHint: "Indício de teste.",
+};
+
 function payload(p: Partial<CreateIssuePayload> = {}): CreateIssuePayload {
   return {
     title: "Login falha",
@@ -38,13 +51,7 @@ describe("buildIssueBody", () => {
       payload({
         includeTechnicalContext: true,
         technicalContext: {
-          page: {
-            url: "https://exemplo.test/foo",
-            title: "Página",
-            userAgent: "UA",
-            timestamp: "2025-01-01T00:00:00.000Z",
-            viewport: "800x600",
-          },
+          page: { ...pageCtx },
           console: [],
           failedRequests: [],
         },
@@ -52,6 +59,9 @@ describe("buildIssueBody", () => {
     );
     expect(md).toContain("## Contexto técnico");
     expect(md).toContain("https://exemplo.test/foo");
+    expect(md).toContain("Ecrã (screen):");
+    expect(md).toContain("Vista / dispositivo");
+    expect(md).toContain("Indício de teste.");
   });
 
   it("does not add elemento afetado for the extension root host id", () => {
@@ -65,6 +75,11 @@ describe("buildIssueBody", () => {
             userAgent: "u",
             timestamp: "t",
             viewport: "1x1",
+            screenCss: "1x1",
+            devicePixelRatio: "1",
+            maxTouchPoints: 0,
+            pointerCoarse: false,
+            viewModeHint: "x",
           },
           element: {
             tag: "div",
@@ -91,6 +106,11 @@ describe("buildIssueBody", () => {
             userAgent: "u",
             timestamp: "t",
             viewport: "1x1",
+            screenCss: "1x1",
+            devicePixelRatio: "1",
+            maxTouchPoints: 0,
+            pointerCoarse: false,
+            viewModeHint: "x",
           },
           console: [{ level: "error", message: "boom" }],
           failedRequests: [],
