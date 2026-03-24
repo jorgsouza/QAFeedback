@@ -1,63 +1,55 @@
-# QAFeedback — feedback de QA para GitHub e/ou Jira
+# QAFeedback
 
-**QAFeedback** é uma extensão para **Google Chrome** (Manifest V3) para equipas de QA, desenvolvimento e produto: quem testa **abre um formulário na própria página**, descreve o problema e pode **enviar para o GitHub**, para o **Jira Cloud (Atlassian)** ou **para os dois** — com título (GitHub), **Motivo da abertura** (Jira, valores alinhados ao vosso quadro), corpo em Markdown, **prints anexados ao Jira** (opcional), **reconhecimento de voz no Chrome** (opcional) e **contexto técnico** opcional (URL, viewport, elemento, consola, pedidos falhados).
-
-O objetivo é **encurtar o caminho entre “vi um bug neste ecrã” e “existe um ticket rastreável”**, com texto padronizado e menos fricção.
+Extensão para **Google Chrome** que ajuda equipas de **QA**, desenvolvimento e produto a **abrir issues no GitHub** e/ou no **Jira Cloud** sem sair da página que estão a testar. Preenche um formulário, vê o resultado em Markdown e envia — o objetivo é menos cliques entre “encontrei um problema aqui” e “ficou registado no sistema”.
 
 ---
 
-## O que a extensão faz, na prática
+## O que a extensão faz
 
-1. **Botão flutuante** (ícone QA) aparece nos sites que a equipa autorizar (staging, localhost, domínio de homologação, etc.).
-2. Ao clicar, abre-se um **modal** com separadores **Formulário** / **Preview**:
-   - **Destinos** só aparecem se existir token configurado: **GitHub**, **Jira** ou **Ambos** (controlo tipo segmento).
-   - **Jira**: campo obrigatório **Motivo da abertura do Bug/Sub-Bug** (lista fixa no código, alinhada ao vosso projeto).
-   - **Repositório GitHub** quando o envio inclui GitHub e há vários repos nas opções.
-   - **Título** e **O que aconteceu**; ao lado, **microfone** para **voz do Chrome** (`pt-BR` por defeito) ou, nas dicas, ditado nativo do SO.
-   - **Prints para o Jira**: ficheiros e/ou **colar imagem** (Ctrl+V) na descrição quando o destino inclui Jira.
-   - **Preview** em Markdown; opção **incluir contexto técnico**.
-3. **Enviar** corre no **service worker** (GitHub API e/ou Jira REST); em sucesso mostra link(s) e permite copiar URLs.
-4. **Tokens** (PAT GitHub, email Atlassian + API token Jira) ficam nas **opções**; o content script não recebe segredos.
-
----
-
-## Para quem é
-
-- **QA** que reportam em **GitHub Issues** e/ou **Jira Cloud**.
-- **Equipas** que querem issues com estrutura parecida e **anexos** no Jira.
-- **Quem usa vários repositórios** ou **quadros Jira** e escolhe o destino no envio.
+- Mostra um **botão flutuante** (ícone de QA) nos sites que a equipa autorizar (por exemplo homologação, staging ou `localhost`).
+- Abre um **formulário** na própria página com:
+  - **Para onde enviar:** só **GitHub**, só **Jira** ou **os dois** (consoante tenha configurado tokens nas opções).
+  - No **Jira:** lista **Motivo da abertura do Bug/Sub-Bug** (valores definidos para o vosso projeto).
+  - No **GitHub:** título da issue e repositório de destino, se tiver vários configurados.
+  - **Descrição** do problema, com opção de juntar **contexto técnico** (URL, tamanho da janela, erros de consola ou pedidos falhados, quando está ativo).
+  - No **Jira**, pode **anexar capturas de ecrã** (ficheiros ou colar imagem na caixa de descrição com Ctrl+V).
+- Há um separador **Preview** para ver antecipadamente o texto em Markdown.
+- Depois de enviar, mostra **links** para abrir ou copiar o ticket no GitHub e/ou no Jira.
 
 ---
 
-## Funcionalidades principais
+## Como usar (no dia a dia)
 
-| Área | Descrição |
-|------|-----------|
-| **GitHub** | Vários repositórios nas opções; escolha no modal; preview Markdown; contexto técnico opcional. |
-| **Jira Cloud** | Criação de issue tipo Bug, motivo de abertura, inferência de site pelo email `@empresa`, quadro via **menu** (lista automática), anexos de imagem. |
-| **Opções Jira** | Email + token → lista de **quadros** carrega sozinha; ao **escolher o quadro**, confirma-se projeto e filtro (ex. Squad) e grava-se — sem botão “testar”. |
-| **Voz** | **Web Speech API** no Chrome (`pt-BR` por defeito); microfone ao lado dos campos de texto. |
-| **UI** | **Shadow DOM** para isolar CSS; ícone redondo a partir de `PRD/capiQA.png`. |
+1. **Instale e configure** a extensão uma vez (tokens, domínios, repositórios e/ou quadro Jira). Resumo em [extension/README.md](extension/README.md) — primeiro uso em poucos passos.
+2. Abra o **site onde testa** (tem de estar na lista de domínios permitidos e com permissão do Chrome, se pedida).
+3. Clique no **botão redondo de QA** no canto da página para abrir o formulário.
+4. Escolha **GitHub**, **Jira** ou **Ambos**, se aparecer essa opção.
+5. No Jira, escolha o **motivo da abertura** na lista.
+6. Preencha o **Título** (resumo) e **O que aconteceu** (descrição). Se o envio incluir **Jira**, pode **anexar imagens** (área dedicada ou colar com Ctrl+V na descrição).
+7. Veja o **Preview** se quiser confirmar o texto.
+8. Clique em **Enviar** e use os links para abrir ou copiar a issue.
 
----
+### Falar em vez de escrever (opcional)
 
-## Onde está o código e a documentação
+Ao lado dos campos **Título** e **O que aconteceu** há um **ícone de microfone**.
 
-Toda a implementação vive em **`extension/`**.
-
-| Documento | Conteúdo |
-|-----------|----------|
-| [extension/README.md](extension/README.md) | Instalação, tokens GitHub/Jira, build, primeiro uso, permissões. |
-| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia longo: opções, fluxos, Jira, voz, permissões, problemas, arquitetura, scripts. |
-
-**Especificação de produto** e imagens: pasta **[PRD](PRD/)**.
+- **No Chrome:** ao clicar, o campo fica ativo e pode **ditar em português** — a transcrição é feita pelo **reconhecimento de voz do próprio Chrome** (por defeito em **português do Brasil**). Volte a clicar no microfone para parar de escutar. É preciso **HTTPS** e permitir o microfone se o browser pedir.
+- **Preferir o ditado do sistema?** Pode **clicar dentro do campo de texto** e usar o atalho habitual do **Windows**, **macOS** ou **Linux** (por exemplo ditado por voz). Ao passar o rato sobre o campo ou o microfone, as **dicas** do formulário relembram esse caminho. A extensão não grava áudio por conta própria: quem trata da voz é o **Chrome** ou o **sistema operativo**.
 
 ---
 
-## Requisitos e arranque rápido
+## Quem se beneficia
 
-- **Node.js** 18+
-- **Chrome** (MV3)
+- Equipas que já usam **GitHub Issues** e/ou **Jira Cloud** para bugs e melhorias.
+- QAs que querem **texto mais uniforme** e **menos copy-paste** entre o browser e o backoffice.
+- Quem gere **vários repositórios** ou **quadros** e escolhe o destino no momento do envio.
+
+---
+
+## Configurar e instalar
+
+- **Quem só vai usar a extensão:** siga [extension/README.md](extension/README.md) (tokens, domínios, lista de repositórios no GitHub, email + token + escolha do quadro no Jira).
+- **Quem desenvolve:** precisa de **Node.js 18+**, depois:
 
 ```bash
 cd extension
@@ -65,10 +57,16 @@ npm install
 npm run build
 ```
 
-Em **chrome://extensions**, modo de programador → **Carregar sem compactação** → pasta **`extension/dist`**. Pormenores em [extension/README.md](extension/README.md).
+Carregue a pasta **`extension/dist`** em **chrome://extensions** (modo programador). Mais detalhes, permissões e resolução de problemas: [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md).
 
 ---
 
-## Skills do projeto (Cursor)
+## Onde está o código e documentação extra
 
-Em **[`.cursor/skills/`](.cursor/skills/)** há `SKILL.md` (TDD, PRD → plano, testes, etc.), descritos em [`.cursor/skills/README.md`](.cursor/skills/README.md).
+| Ficheiro | Conteúdo |
+|----------|----------|
+| [extension/README.md](extension/README.md) | Primeiro uso, GitHub e Jira, build |
+| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia completo, permissões, mensagens técnicas, page-bridge |
+| [PRD/](PRD/) | Especificação e imagens de referência |
+
+Para quem programa no Cursor: [`.cursor/skills/`](.cursor/skills/).
