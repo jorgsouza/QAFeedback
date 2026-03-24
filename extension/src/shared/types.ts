@@ -36,6 +36,17 @@ export type TechnicalContextPayload = {
     userAgent: string;
     timestamp: string;
     viewport: string;
+    /** `screen.width`×`screen.height` em CSS px (ecrã físico / OS). */
+    screenCss: string;
+    devicePixelRatio: string;
+    maxTouchPoints: number;
+    /** `matchMedia('(pointer: coarse)')` — indício de interação tátil. */
+    pointerCoarse: boolean;
+    /**
+     * Indício automático desktop vs móvel / emulação DevTools.
+     * Não existe API fiável para “toggle dispositivo” do DevTools na página.
+     */
+    viewModeHint: string;
   };
   element?: ElementContext;
   console: ConsoleEntry[];

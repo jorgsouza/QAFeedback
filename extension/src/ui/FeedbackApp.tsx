@@ -974,7 +974,8 @@ export function FeedbackApp() {
                         <span className="qaf-check-text">
                           <span className="qaf-check-title">Incluir contexto técnico</span>
                           <span className="qaf-check-hint">
-                            URL, viewport, último clique na página (não no botão), console e requests com falha.
+                            URL, viewport e ecrã (screen), indício desktop/móvel/emulação DevTools, último clique na
+                            página (não no botão), console e requests com falha.
                           </span>
                         </span>
                       </label>

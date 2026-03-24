@@ -1,6 +1,7 @@
 import type { ElementContext, TechnicalContextPayload } from "./types";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
+import { buildViewModeHint } from "./view-layout-hint";
 
 const MAX_CONSOLE = 8;
 const MAX_FAILED = 5;
@@ -85,13 +86,36 @@ export function buildTechnicalContext(params: {
 }): TechnicalContextPayload {
   const { lastTarget, bridge } = params;
   const url = sanitizeUrl(window.location.href);
+
+  let pointerCoarse = false;
+  try {
+    pointerCoarse = window.matchMedia("(pointer: coarse)").matches;
+  } catch {
+    /* ignore */
+  }
+  const mtp = typeof navigator.maxTouchPoints === "number" ? navigator.maxTouchPoints : 0;
+  const iw = window.innerWidth;
+  const ih = window.innerHeight;
+
   return {
     page: {
       url,
       title: truncate(document.title || "", 200),
       userAgent: truncate(navigator.userAgent, 400),
       timestamp: new Date().toISOString(),
-      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      viewport: `${iw}x${ih}`,
+      screenCss: `${screen.width}x${screen.height}`,
+      devicePixelRatio: String(window.devicePixelRatio ?? 1),
+      maxTouchPoints: mtp,
+      pointerCoarse,
+      viewModeHint: buildViewModeHint({
+        innerWidth: iw,
+        innerHeight: ih,
+        screenWidth: screen.width,
+        screenHeight: screen.height,
+        maxTouchPoints: mtp,
+        pointerCoarse,
+      }),
     },
     element: captureElementContext(lastTarget),
     console: bridge.console.map((c) => ({
