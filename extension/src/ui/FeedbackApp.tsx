@@ -137,7 +137,11 @@ export function FeedbackApp() {
   }, [open, clearSpeechError]);
 
   const addImageFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const arr = Array.from(files).filter(
+      (f) =>
+        f.type.startsWith("image/") ||
+        (!(f.type ?? "").trim() && /\.(png|apng|jpe?g|gif|webp|bmp)$/i.test(f.name)),
+    );
     setPendingImages((prev) => {
       if (prev.length >= JIRA_FEEDBACK_MAX_IMAGES) return prev;
       const next = [...prev];

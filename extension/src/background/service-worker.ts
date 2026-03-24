@@ -365,30 +365,31 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === "CAPTURE_VISIBLE_TAB") {
-      const tabId = sender.tab?.id;
-      if (tabId == null) {
-        sendResponse({ ok: false, message: "Separador desconhecido." });
-        return true;
-      }
-      try {
-        chrome.tabs.captureVisibleTab(tabId, { format: "png" }, (dataUrl) => {
-          const err = chrome.runtime.lastError;
-          if (err?.message) {
-            sendResponse({ ok: false, message: err.message });
-            return;
-          }
+      void (async () => {
+        const windowId = sender.tab?.windowId;
+        if (windowId == null) {
+          sendResponse({ ok: false, message: "Separador desconhecido." });
+          return;
+        }
+        /**
+         * API: `captureVisibleTab(windowId, options)` — o 1.º argumento é o ID da **janela**,
+         * não o da aba. Passar `tabId` quebrava a captura (silenciosamente ou com erro opaco).
+         */
+        try {
+          const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
           if (!dataUrl) {
             sendResponse({ ok: false, message: "Captura vazia." });
             return;
           }
           sendResponse({ ok: true, dataUrl });
-        });
-      } catch (e) {
-        sendResponse({
-          ok: false,
-          message: e instanceof Error ? e.message : "Falha ao capturar.",
-        });
-      }
+        } catch (e) {
+          const msg =
+            e instanceof Error
+              ? e.message
+              : chrome.runtime.lastError?.message ?? "Falha ao capturar o separador.";
+          sendResponse({ ok: false, message: msg });
+        }
+      })();
       return true;
     }
 

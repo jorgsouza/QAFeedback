@@ -40,24 +40,37 @@ export async function runRegionScreenshotFlow(): Promise<RegionScreenshotFlowRes
 
     await waitFrames(2);
 
-    const cap = (await chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" })) as {
-      ok?: boolean;
-      dataUrl?: string;
-      message?: string;
-    };
+    const cap = (await chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" })) as
+      | {
+          ok?: boolean;
+          dataUrl?: string;
+          message?: string;
+        }
+      | undefined;
 
-    if (!cap?.ok || !cap.dataUrl) {
+    if (cap == null || typeof cap !== "object") {
       return {
         ok: false,
-        message: cap?.message ?? "Não foi possível capturar o separador (permissões ou página restrita).",
+        message:
+          "Sem resposta da extensão ao capturar. Recarregue a página (F5) ou verifique se o site tem permissão nas opções.",
+      };
+    }
+
+    if (!cap.ok || !cap.dataUrl) {
+      return {
+        ok: false,
+        message: cap.message ?? "Não foi possível capturar o separador (permissões ou página restrita).",
       };
     }
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const blob = await cropDataUrlToPngBlob(cap.dataUrl, rect, vw, vh);
+    if (!blob || blob.size === 0) {
+      return { ok: false, message: "A captura ficou vazia; tente uma área maior." };
+    }
     const file = new File([blob], safeImageFileNameForJira("captura-regiao.png"), {
-      type: "image/png",
+      type: blob.type || "image/png",
       lastModified: Date.now(),
     });
 
