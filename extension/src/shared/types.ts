@@ -85,6 +85,11 @@ export type ExtensionSettings = {
   /** Avançado: força um select se a deteção automática falhar. */
   jiraBoardFilterSelectFieldId?: string;
   jiraBoardFilterSelectValue?: string;
+  /**
+   * Quando true, o modal de feedback tenta capturar tráfego HTTP (CDP) e anexar HAR ao Jira.
+   * Requer permissão `debugger` e pode conflitar com DevTools aberto na mesma aba.
+   */
+  fullNetworkDiagnostic?: boolean;
 };
 
 /** Imagem serializada para o service worker anexar após criar a issue no Jira. */

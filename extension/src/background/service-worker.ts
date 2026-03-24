@@ -1,4 +1,9 @@
 import { createGitHubIssue, testTokenAndListRepos } from "../shared/github-client";
+import {
+  consumeNetworkHarForTab,
+  startNetworkDiagnosticForTab,
+  stopNetworkDiagnosticForTab,
+} from "./network-debugger-capture";
 import { resolveJiraBoardFieldsForIssueCreate } from "../shared/jira-board-filter-resolve";
 import {
   createJiraIssue,
@@ -9,6 +14,7 @@ import {
   testJiraConnection,
   uploadJiraIssueAttachments,
 } from "../shared/jira-client";
+import { networkHarJiraDescriptionMarkdown } from "../shared/network-har-jira-help";
 import { isJiraMotivoAbertura } from "../shared/jira-motivo";
 import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
@@ -155,6 +161,8 @@ type JiraTestAndListBoardsMessage = {
 
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
+type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
+type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
 
 type Messages =
   | CreateIssueMessage
@@ -162,10 +170,12 @@ type Messages =
   | TestJiraMessage
   | JiraTestAndListBoardsMessage
   | ListRepoTargetsMessage
-  | OpenOptionsMessage;
+  | OpenOptionsMessage
+  | StartNetworkDiagnosticMessage
+  | StopNetworkDiagnosticMessage;
 
 chrome.runtime.onMessage.addListener(
-  (message: Messages, _sender, sendResponse: (r: unknown) => void) => {
+  (message: Messages, sender, sendResponse: (r: unknown) => void) => {
     if (message.type === "OPEN_OPTIONS") {
       try {
         chrome.runtime.openOptionsPage(() => {
@@ -192,6 +202,7 @@ chrome.runtime.onMessage.addListener(
             repos: repoTargetsForUi(s),
             githubTokenConfigured: Boolean(s.githubToken?.trim()),
             jiraTokenConfigured: Boolean(s.jiraApiToken?.trim()),
+            fullNetworkDiagnostic: Boolean(s.fullNetworkDiagnostic),
           });
         } catch (err) {
           console.error("[QA Feedback] LIST_REPO_TARGETS:", err);
@@ -199,6 +210,7 @@ chrome.runtime.onMessage.addListener(
             repos: [],
             githubTokenConfigured: false,
             jiraTokenConfigured: false,
+            fullNetworkDiagnostic: false,
             loadFailed: true,
           });
         }
@@ -309,10 +321,52 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === "START_NETWORK_DIAGNOSTIC") {
+      void (async () => {
+        try {
+          const s = await loadSettings();
+          if (!s.fullNetworkDiagnostic) {
+            sendResponse({ ok: true, active: false });
+            return;
+          }
+          const tabId = sender.tab?.id;
+          if (tabId == null) {
+            sendResponse({ ok: false, message: "Aba desconhecida.", active: false });
+            return;
+          }
+          const r = await startNetworkDiagnosticForTab(tabId);
+          sendResponse({ ok: r.ok, message: r.message, active: r.active });
+        } catch (err) {
+          console.error("[QA Feedback] START_NETWORK_DIAGNOSTIC:", err);
+          sendResponse({
+            ok: false,
+            message: err instanceof Error ? err.message : "Falha ao iniciar captura.",
+            active: false,
+          });
+        }
+      })();
+      return true;
+    }
+
+    if (message.type === "STOP_NETWORK_DIAGNOSTIC") {
+      void (async () => {
+        try {
+          const tabId = sender.tab?.id;
+          if (tabId != null) await stopNetworkDiagnosticForTab(tabId);
+          sendResponse({ ok: true });
+        } catch (err) {
+          console.error("[QA Feedback] STOP_NETWORK_DIAGNOSTIC:", err);
+          sendResponse({ ok: false });
+        }
+      })();
+      return true;
+    }
+
     if (message.type === "CREATE_ISSUE") {
       void (async () => {
         const s = await loadSettings();
         const p = message.payload;
+        const tabId = sender.tab?.id;
         const wantGh = Boolean(p.sendToGitHub);
         const wantJi = Boolean(p.sendToJira);
 
@@ -398,6 +452,26 @@ chrome.runtime.onMessage.addListener(
             return;
           }
 
+          let appendHarHelp: string | undefined;
+          const jiraAttachments = [...(p.jiraImageAttachments ?? [])];
+          if (s.fullNetworkDiagnostic && tabId != null) {
+            try {
+              const har = await consumeNetworkHarForTab(tabId);
+              if (har) {
+                jiraAttachments.push({
+                  fileName: har.fileName,
+                  mimeType: "application/json",
+                  base64: har.base64,
+                });
+                appendHarHelp = networkHarJiraDescriptionMarkdown(har.fileName);
+              }
+            } catch (e) {
+              warnings.push(
+                `HAR rede: ${e instanceof Error ? e.message : "falha ao gerar anexo"}.`,
+              );
+            }
+          }
+
           const jr = await createJiraIssue({
             siteUrl: s.jiraSiteUrl ?? "",
             email: s.jiraEmail ?? "",
@@ -411,16 +485,16 @@ chrome.runtime.onMessage.addListener(
             jiraBoardAutoFields: s.jiraBoardAutoFields,
             jiraBoardFilterSelectFieldId: s.jiraBoardFilterSelectFieldId,
             jiraBoardFilterSelectValue: s.jiraBoardFilterSelectValue,
+            appendDescriptionMarkdown: appendHarHelp,
           });
           if (jr.ok) {
-            const attach = p.jiraImageAttachments;
-            if (attach && attach.length > 0) {
+            if (jiraAttachments.length > 0) {
               const up = await uploadJiraIssueAttachments({
                 baseUrl: jiraBase,
                 email: s.jiraEmail ?? "",
                 apiToken: s.jiraApiToken ?? "",
                 issueKey: jr.key,
-                attachments: attach,
+                attachments: jiraAttachments,
               });
               if (!up.ok) warnings.push(`Jira anexos: ${up.message}`);
             }
