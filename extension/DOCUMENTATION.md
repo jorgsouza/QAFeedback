@@ -141,6 +141,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Storage / tipos | `src/shared/storage.ts`, `types.ts` |
 | Runtime da extensão | `src/shared/extension-runtime.ts` |
 | HAR / captura CDP | `src/shared/network-har.ts`, `network-har-jira-help.ts`, `src/background/network-debugger-capture.ts` |
+| Captura por região | `src/shared/region-screenshot-crop.ts`, `src/content/region-picker-overlay.ts`, `region-screenshot-flow.ts` |
 
 ---
 
@@ -155,6 +156,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). |
 | `START_NETWORK_DIAGNOSTIC` | Com opção ativa: anexa CDP à aba do remetente e inicia `Network.enable`. |
 | `STOP_NETWORK_DIAGNOSTIC` | Desliga o depurador na aba do remetente (cancelar/fechar modal). |
+| `CAPTURE_VISIBLE_TAB` | Devolve `dataUrl` PNG do viewport (`chrome.tabs.captureVisibleTab(windowId, …)` — usa `sender.tab.windowId`, não `tabId`). |
 | `TEST_GITHUB` | Valida PAT e lista repos (as opções podem mandar o token no corpo da mensagem). |
 | `TEST_JIRA` | Teste simples de conexão (legado / uso interno). |
 | `JIRA_TEST_AND_LIST_BOARDS` | Teste + lista de quadros; campos opcionais **`jiraEmail`**, **`jiraApiToken`**, **`jiraSiteUrl`**, **`jiraSoftwareBoardId`** substituem temporariamente o storage (opções antes de Salvar). Sem ID de quadro, lista **todos** os quadros Agile acessíveis. |

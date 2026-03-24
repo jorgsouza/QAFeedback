@@ -69,6 +69,10 @@ Nas **opções**, pode ativar **Modo diagnóstico completo**. Com isso, ao abrir
 - Se **outro depurador** já estiver ligado à mesma aba (por exemplo **DevTools**), a captura pode falhar: **feche o DevTools nessa aba** e reabra o feedback.
 - Cabeçalhos como **Cookie** e **Authorization** são substituídos por `[REDACTED]` no HAR; corpos mantêm-se como capturados.
 
+### Captura por região (prints Jira)
+
+No modal, com **Jira** como destino, **«Capturar área da página»** esconde o FAB/modal, permite **arrastar um retângulo** na área **visível** do separador e anexa o recorte em PNG (`captureVisibleTab` no service worker).
+
 ## Estrutura (principais arquivos)
 
 | Área | Caminho |
@@ -83,6 +87,7 @@ Nas **opções**, pode ativar **Modo diagnóstico completo**. Com isso, ao abrir
 | Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |
 | Storage | `src/shared/storage.ts` |
 | HAR / captura rede | `src/shared/network-har.ts`, `src/background/network-debugger-capture.ts` |
+| Captura por região | `src/shared/region-screenshot-crop.ts`, `src/content/region-picker-overlay.ts`, `region-screenshot-flow.ts` |
 
 ## Scripts
 

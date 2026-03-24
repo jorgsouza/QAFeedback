@@ -163,6 +163,7 @@ type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
+type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB" };
 
 type Messages =
   | CreateIssueMessage
@@ -172,7 +173,8 @@ type Messages =
   | ListRepoTargetsMessage
   | OpenOptionsMessage
   | StartNetworkDiagnosticMessage
-  | StopNetworkDiagnosticMessage;
+  | StopNetworkDiagnosticMessage
+  | CaptureVisibleTabMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
@@ -357,6 +359,35 @@ chrome.runtime.onMessage.addListener(
         } catch (err) {
           console.error("[QA Feedback] STOP_NETWORK_DIAGNOSTIC:", err);
           sendResponse({ ok: false });
+        }
+      })();
+      return true;
+    }
+
+    if (message.type === "CAPTURE_VISIBLE_TAB") {
+      void (async () => {
+        const windowId = sender.tab?.windowId;
+        if (windowId == null) {
+          sendResponse({ ok: false, message: "Separador desconhecido." });
+          return;
+        }
+        /**
+         * API: `captureVisibleTab(windowId, options)` — o 1.º argumento é o ID da **janela**,
+         * não o da aba. Passar `tabId` quebrava a captura (silenciosamente ou com erro opaco).
+         */
+        try {
+          const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
+          if (!dataUrl) {
+            sendResponse({ ok: false, message: "Captura vazia." });
+            return;
+          }
+          sendResponse({ ok: true, dataUrl });
+        } catch (e) {
+          const msg =
+            e instanceof Error
+              ? e.message
+              : chrome.runtime.lastError?.message ?? "Falha ao capturar o separador.";
+          sendResponse({ ok: false, message: msg });
         }
       })();
       return true;

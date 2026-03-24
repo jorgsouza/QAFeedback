@@ -25,6 +25,7 @@ import {
 } from "../shared/extension-runtime";
 import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
 import { useChromeSpeechDictation } from "./useChromeSpeechDictation";
+import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 
 type Tab = "form" | "preview";
 
@@ -108,6 +109,7 @@ export function FeedbackApp() {
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
+  const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -135,7 +137,11 @@ export function FeedbackApp() {
   }, [open, clearSpeechError]);
 
   const addImageFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    const arr = Array.from(files).filter(
+      (f) =>
+        f.type.startsWith("image/") ||
+        (!(f.type ?? "").trim() && /\.(png|apng|jpe?g|gif|webp|bmp)$/i.test(f.name)),
+    );
     setPendingImages((prev) => {
       if (prev.length >= JIRA_FEEDBACK_MAX_IMAGES) return prev;
       const next = [...prev];
@@ -156,6 +162,38 @@ export function FeedbackApp() {
       return prev.filter((p) => p.id !== id);
     });
   }, []);
+
+  const onRegionScreenshot = useCallback(async () => {
+    if (!jiraTokenConfigured || !form.sendToJira) return;
+    if (pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES) {
+      setError(`Limite de ${JIRA_FEEDBACK_MAX_IMAGES} imagens.`);
+      return;
+    }
+    setRegionScreenshotBusy(true);
+    setError(null);
+    try {
+      const r = await runRegionScreenshotFlow();
+      if (!r.ok) {
+        if (r.message !== "Captura cancelada.") setError(r.message);
+        return;
+      }
+      if (r.file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
+        setError(
+          `Imagem demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB).`,
+        );
+        return;
+      }
+      addImageFiles([r.file]);
+    } catch (e) {
+      setError(
+        isExtensionContextInvalidatedError(e)
+          ? "Recarregue a página (F5): a ligação à extensão expirou."
+          : "Falha na captura por região.",
+      );
+    } finally {
+      setRegionScreenshotBusy(false);
+    }
+  }, [addImageFiles, form.sendToJira, jiraTokenConfigured, pendingImages.length]);
 
   const loadRepoTargets = useCallback(async () => {
     setRepoListIssue(null);
@@ -882,16 +920,30 @@ export function FeedbackApp() {
                                 e.target.value = "";
                               }}
                             />
-                            <button
-                              type="button"
-                              className="qaf-btn-ghost"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              Adicionar imagens…
-                            </button>
+                            <div className="qaf-img-btn-row">
+                              <button
+                                type="button"
+                                className="qaf-btn-ghost"
+                                onClick={() => fileInputRef.current?.click()}
+                              >
+                                Adicionar imagens…
+                              </button>
+                              <button
+                                type="button"
+                                className="qaf-btn-ghost"
+                                disabled={
+                                  regionScreenshotBusy ||
+                                  pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES
+                                }
+                                onClick={() => void onRegionScreenshot()}
+                              >
+                                {regionScreenshotBusy ? "A capturar…" : "Capturar área da página…"}
+                              </button>
+                            </div>
                             <p className="qaf-img-hint">
                               Até {JIRA_FEEDBACK_MAX_IMAGES} imagens, {JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB
-                              cada. Colar captura também funciona neste formulário.
+                              cada. «Capturar área» esconde o botão de feedback, permite arrastar um retângulo na página
+                              visível e anexa o recorte. Colar captura (Ctrl+V) também funciona.
                             </p>
                           </div>
                           {pendingImages.length > 0 ? (
