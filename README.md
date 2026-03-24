@@ -1,55 +1,63 @@
 # QAFeedback
 
-Extensão para **Google Chrome** que ajuda **equipes** de **QA**, desenvolvimento e produto a **abrir issues no GitHub** e/ou no **Jira Cloud** sem sair da página em que estão **testando**. Você preenche um formulário, vê o resultado em Markdown e envia — o objetivo é ter **menos cliques** entre “encontrei um problema aqui” e “ficou **registrado** no sistema”.
+Extensão para **Google Chrome** que ajuda equipas de **QA**, desenvolvimento e produto a **abrir issues no GitHub** e/ou no **Jira Cloud** **sem sair da página** em que estão a testar. Preenches um formulário, vês o texto em Markdown e envias — o objetivo é **menos cliques** entre “encontrei um problema aqui” e “ficou **registado** no sistema”.
 
 ---
 
 ## O que a extensão faz
 
-- Mostra um **botão flutuante** (ícone de QA) nos sites que a **equipe** autorizar (por exemplo homologação, staging ou `localhost`).
-- Abre um **formulário** na própria página com:
-  - **Para onde enviar:** só **GitHub**, só **Jira** ou **os dois** (conforme você tenha configurado tokens nas opções).
-  - No **Jira:** lista **Motivo da abertura do Bug/Sub-Bug** (valores definidos para o **seu** projeto).
-  - No **GitHub:** título da issue e repositório de destino, se tiver vários configurados.
-  - **Descrição** do problema, com opção de juntar **contexto técnico** (URL, tamanho da janela, erros de **console** ou **requisições que falharam**, quando a opção está ativa).
-  - No **Jira**, dá para **anexar capturas de tela** (**arquivos** ou colar imagem no campo de descrição com Ctrl+V).
-- Há uma aba **Preview** para ver **antes** o texto em Markdown.
-- Depois de enviar, mostra **links** para abrir ou copiar o ticket no GitHub e/ou no Jira.
+### Na página em teste
+
+- **Botão flutuante (FAB)** com ícone de QA nos **domínios** que a equipa autorizar (homologação, staging, `localhost`, etc.).
+- **Modal** com **Formulário** e **Preview** em Markdown antes de enviar.
+- **Minimizar** o FAB se precisares de mais espaço no ecrã.
+- Se o Chrome estiver em modo **“só ao clicar”** na extensão, usa o **ícone da extensão** nessa aba para aparecer o botão de feedback.
+
+### Para onde envia
+
+- **Só GitHub**, **só Jira** ou **os dois** no mesmo envio — conforme tenhas **token GitHub** e/ou **Jira** configurados nas opções.
+- **GitHub:** escolhes o **repositório** se tiveres vários na lista.
+- **Jira:** escolhes o **motivo da abertura** (Bug/Sub-Bug) na lista definida para o projeto.
+
+### O que podes incluir no relatório
+
+- **Título** e **O que aconteceu** (descrição).
+- **Voz:** microfone nos campos (reconhecimento de voz do **Chrome**, **português do Brasil** por defeito, com HTTPS) ou **ditado do sistema** (atalhos do Windows / macOS / Linux — dicas no formulário).
+- **Contexto técnico opcional:** URL, viewport, **ecrã e DPR**, indício **desktop / móvel / possível emulação no DevTools**, elemento em que clicaste, resumo de **consola** e **pedidos em falha** na rede (via bridge na página).
+- **Prints no Jira:** ficheiros, **colar imagem (Ctrl+V)** na descrição, ou **capturar uma área** do ecrã (retângulo sobre o que está visível no separador).
+- **Modo diagnóstico completo** (nas **opções**): ao enviar para o Jira, pode anexar um **ficheiro `.har`** com o tráfego HTTP da aba (para o dev importar no DevTools), com cabeçalhos sensíveis redigidos.
+
+### Depois de enviar
+
+- **Ligações** para abrir a issue no GitHub e/ou no Jira, e opção de **copiar URLs**.
 
 ---
 
-## Como usar (no dia a dia)
+## Como usar (resumo)
 
-1. **Instale e configure** a extensão uma vez (tokens, domínios, repositórios e/ou quadro Jira). Resumo em [extension/README.md](extension/README.md) — primeiro uso em poucos passos.
-2. Abra o **site em que você testa** (ele **precisa** estar na lista de domínios permitidos e com permissão do Chrome, se solicitada).
-3. Clique no **botão redondo de QA** no canto da página para abrir o formulário.
-4. Escolha **GitHub**, **Jira** ou **Ambos**, se essa opção aparecer.
-5. No Jira, escolha o **motivo da abertura** na lista.
-6. Preencha o **Título** (resumo) e **O que aconteceu** (descrição). Se o envio incluir **Jira**, você pode **anexar imagens** (área dedicada ou colar com Ctrl+V na descrição).
-7. Veja o **Preview** se quiser conferir o texto.
-8. Clique em **Enviar** e use os links para abrir ou copiar a issue.
+1. **Configura** uma vez: tokens, domínios, repositórios GitHub e/ou quadro Jira — vê [extension/README.md](extension/README.md).
+2. Abre o **site permitido** (com permissão do Chrome, se pedida).
+3. Clica no **FAB** (ou no ícone da extensão) → preenche o formulário → **Preview** se quiseres → **Enviar**.
 
-### Falar em vez de escrever (opcional)
+### Falar em vez de escrever
 
-Ao lado dos campos **Título** e **O que aconteceu** há um **ícone de microfone**.
-
-- **No Chrome:** ao clicar, o campo fica ativo e você pode **ditar em português** — a transcrição é feita pelo **reconhecimento de voz do próprio Chrome** (**português do Brasil** por **padrão**). Clique de novo no microfone para parar de ouvir. É necessário **HTTPS** e permitir o microfone se o **navegador** pedir.
-- **Prefere o ditado do sistema?** **Clique dentro do campo de texto** e use o atalho habitual do **Windows**, **macOS** ou **Linux** (por exemplo ditado por voz). Ao **passar o mouse** sobre o campo ou o microfone, as **dicas** do formulário lembram esse jeito. A extensão **não grava áudio** por conta própria: quem cuida da voz é o **Chrome** ou o **sistema operacional**.
+- **Chrome:** microfone ao lado do título e da descrição; clicas outra vez para parar. O áudio é tratado pelo **Google/Chrome**, não pela extensão.
+- **Sistema:** foca o campo e usa o ditado nativo (ex. atalhos do Windows). A extensão **não grava áudio** por conta própria.
 
 ---
 
 ## Quem se beneficia
 
-- **Equipes** que já usam **GitHub Issues** e/ou **Jira Cloud** para bugs e melhorias.
-- QAs que querem **texto mais padronizado** e **menos copiar e colar** entre o navegador e o backoffice.
-- Quem administra **vários repositórios** ou **quadros** e escolhe o destino na hora do envio.
+- Equipas que já usam **GitHub Issues** e/ou **Jira Cloud**.
+- QAs que querem **texto mais padronizado** e menos copiar/colar entre o browser e o backoffice.
+- Quem gere **vários repositórios** ou **quadros** e escolhe o destino no momento do envio.
 
 ---
 
 ## Configurar e instalar
 
-- **Quem só vai usar a extensão:** siga [extension/README.md](extension/README.md) (tokens, domínios, lista de repositórios no GitHub, e-mail + token + escolha do quadro no Jira).
-- **Quem desenvolve:** precisa do **Node.js 18+**, depois:
+- **Utilizadores:** [extension/README.md](extension/README.md) — tokens, domínios, primeiro uso.
+- **Desenvolvimento:** Node.js **18+**, depois:
 
 ```bash
 cd extension
@@ -57,16 +65,17 @@ npm install
 npm run build
 ```
 
-Carregue a pasta **`extension/dist`** em **chrome://extensions** (modo desenvolvedor). Mais detalhes, permissões e resolução de problemas: [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md).
+Carrega a pasta **`extension/dist`** em **chrome://extensions** (modo desenvolvedor). Permissões, mensagens do service worker e resolução de problemas: [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md).
 
 ---
 
-## Onde está o código e a documentação extra
+## Onde está o código e a documentação
 
-| Arquivo | Conteúdo |
-|---------|----------|
-| [extension/README.md](extension/README.md) | Primeiro uso, GitHub e Jira, build |
-| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia completo, permissões, mensagens técnicas, page-bridge |
+| Ficheiro | Conteúdo |
+|----------|----------|
+| [extension/README.md](extension/README.md) | Funcionalidades completas, build, permissões, estrutura do código |
+| [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico detalhado, page-bridge, mensagens do SW |
 | [PRD/](PRD/) | Especificação e imagens de referência |
+| [plans/](plans/) | Planos de funcionalidades (ex.: HAR, captura por região) |
 
-Para quem programa no Cursor: [`.cursor/skills/`](.cursor/skills/).
+No Cursor: [`.cursor/skills/`](.cursor/skills/).
