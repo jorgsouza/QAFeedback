@@ -696,6 +696,31 @@ export const shadowCss = `
   color: #d4d4d4;
 }
 
+.qaf-network-diag {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #bae6fd;
+  background: rgba(12, 74, 110, 0.45);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+}
+
+.qaf-network-diag strong {
+  color: #e0f2fe;
+}
+
+.qaf-network-diag--error {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.4);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.qaf-network-diag--error strong {
+  color: #fee2e2;
+}
+
 .qaf-error {
   background: rgba(127, 29, 29, 0.35);
   color: #fecaca;

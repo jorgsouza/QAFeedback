@@ -58,9 +58,16 @@ Detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 
 ## Permissões
 
-- `storage`, `scripting`, `activeTab`
+- `storage`, `scripting`, `activeTab`, **`debugger`** (só necessário para o modo diagnóstico de rede / HAR)
 - Fixas: `https://api.github.com/*`, **`https://*.atlassian.net/*`**, localhost / 127.0.0.1
 - `optional_host_permissions` para os hosts que você adicionar nas opções (ao Salvar)
+
+### Modo diagnóstico completo (HAR no Jira)
+
+Nas **opções**, pode ativar **Modo diagnóstico completo**. Com isso, ao abrir o modal de feedback a extensão tenta **registar o tráfego HTTP** da aba (Chrome DevTools Protocol) e, ao **criar a issue no Jira**, anexa um ficheiro **`.har`** (se houver pedidos capturados) e acrescenta à descrição um texto com instruções de importação no DevTools.
+
+- Se **outro depurador** já estiver ligado à mesma aba (por exemplo **DevTools**), a captura pode falhar: **feche o DevTools nessa aba** e reabra o feedback.
+- Cabeçalhos como **Cookie** e **Authorization** são substituídos por `[REDACTED]` no HAR; corpos mantêm-se como capturados.
 
 ## Estrutura (principais arquivos)
 
@@ -75,6 +82,7 @@ Detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
 | Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |
 | Storage | `src/shared/storage.ts` |
+| HAR / captura rede | `src/shared/network-har.ts`, `src/background/network-debugger-capture.ts` |
 
 ## Scripts
 

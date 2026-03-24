@@ -749,6 +749,46 @@ export function OptionsApp() {
         </div>
       </details>
 
+      <section
+        style={{
+          marginTop: 24,
+          padding: 16,
+          borderRadius: 10,
+          border: "1px solid #e2e8f0",
+          background: "#f8fafc",
+        }}
+      >
+        <label
+          style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(settings.fullNetworkDiagnostic)}
+            onChange={(e) => setSettings({ ...settings, fullNetworkDiagnostic: e.target.checked })}
+            style={{ marginTop: 3, flexShrink: 0 }}
+          />
+          <span>
+            Modo diagnóstico completo (captura HAR para o Jira)
+            <span
+              style={{
+                display: "block",
+                fontWeight: 400,
+                fontSize: 13,
+                color: "#64748b",
+                marginTop: 8,
+                lineHeight: 1.55,
+              }}
+            >
+              Com o modal de feedback aberto, a extensão regista o tráfego HTTP da aba e pode anexar um ficheiro{" "}
+              <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>.har</code> ao criar a issue
+              no Jira. Requer a permissão de <strong>depurador</strong> do Chrome; se a captura falhar, feche o{" "}
+              <strong>DevTools nesta aba</strong> e tente de novo. Cabeçalhos como Cookie e Authorization são substituídos
+              por <code>[REDACTED]</code> no ficheiro exportado.
+            </span>
+          </span>
+        </label>
+      </section>
+
       <section style={{ marginTop: 20 }}>
         <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="hosts">
           Domínios permitidos (um por linha)

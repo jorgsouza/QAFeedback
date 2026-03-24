@@ -105,6 +105,9 @@ export function FeedbackApp() {
   const [jiraTokenConfigured, setJiraTokenConfigured] = useState(false);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
+  /** Opção nas definições: captura HAR com o modal aberto. */
+  const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
+  const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -161,6 +164,7 @@ export function FeedbackApp() {
         repos?: RepoOption[];
         githubTokenConfigured?: boolean;
         jiraTokenConfigured?: boolean;
+        fullNetworkDiagnostic?: boolean;
         loadFailed?: boolean;
       };
       if (r && "loadFailed" in r && r.loadFailed) {
@@ -168,12 +172,14 @@ export function FeedbackApp() {
         setRepoIndex(0);
         setGithubTokenConfigured(false);
         setJiraTokenConfigured(false);
+        setFullNetworkDiagnosticEnabled(false);
         setRepoListIssue("loadFailed");
         return;
       }
       const list = Array.isArray(r?.repos) ? r.repos : [];
       const ghOk = Boolean(r?.githubTokenConfigured);
       const jiraOk = Boolean(r?.jiraTokenConfigured);
+      setFullNetworkDiagnosticEnabled(Boolean(r?.fullNetworkDiagnostic));
       setGithubTokenConfigured(ghOk);
       setJiraTokenConfigured(jiraOk);
       setForm((f) => {
@@ -205,6 +211,7 @@ export function FeedbackApp() {
       setRepoIndex(0);
       setGithubTokenConfigured(false);
       setJiraTokenConfigured(false);
+      setFullNetworkDiagnosticEnabled(false);
       setRepoListIssue(isExtensionContextInvalidatedError(e) ? "context" : "other");
     }
   }, []);
@@ -213,6 +220,36 @@ export function FeedbackApp() {
     if (!open) return;
     void loadRepoTargets();
   }, [open, loadRepoTargets]);
+
+  useEffect(() => {
+    if (!open || postSubmit || !fullNetworkDiagnosticEnabled) {
+      setNetworkDiagError(null);
+      void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = (await chrome.runtime.sendMessage({ type: "START_NETWORK_DIAGNOSTIC" })) as {
+          ok?: boolean;
+          message?: string;
+          active?: boolean;
+        };
+        if (cancelled) return;
+        if (!r?.ok) {
+          setNetworkDiagError(r?.message ?? "Não foi possível iniciar a captura de rede.");
+        } else {
+          setNetworkDiagError(null);
+        }
+      } catch {
+        if (!cancelled) setNetworkDiagError("Não foi possível falar com o processo da extensão.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
+    };
+  }, [open, postSubmit, fullNetworkDiagnosticEnabled]);
 
   useEffect(() => {
     const onCap = (e: Event) => {
@@ -516,6 +553,19 @@ export function FeedbackApp() {
             )}
 
             <div className="qaf-body">
+              {fullNetworkDiagnosticEnabled && !postSubmit ? (
+                networkDiagError ? (
+                  <div className="qaf-network-diag qaf-network-diag--error" role="alert">
+                    <strong>Captura de rede:</strong> {networkDiagError}
+                  </div>
+                ) : (
+                  <div className="qaf-network-diag" role="status">
+                    <strong>Modo diagnóstico:</strong> a registar pedidos HTTP desta aba; ao enviar ao{" "}
+                    <strong>Jira</strong> pode anexar-se um ficheiro HAR. Se isto falhar, feche o{" "}
+                    <strong>DevTools nesta aba</strong> e reabra o feedback.
+                  </div>
+                )
+              ) : null}
               {postSubmit ? (
                 <div className="qaf-success">
                   <div>Envio concluído.</div>

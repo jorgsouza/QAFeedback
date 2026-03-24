@@ -19,7 +19,8 @@ export const emptySettings = (): ExtensionSettings => ({
   jiraSoftwareBoardId: "",
   jiraBoardAutoFields: [],
   jiraBoardFilterSelectFieldId: "",
-  jiraBoardFilterSelectValue: "",
+    jiraBoardFilterSelectValue: "",
+    fullNetworkDiagnostic: false,
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -53,6 +54,7 @@ export async function loadSettings(): Promise<ExtensionSettings> {
       typeof raw.jiraBoardFilterSelectFieldId === "string" ? raw.jiraBoardFilterSelectFieldId : "",
     jiraBoardFilterSelectValue:
       typeof raw.jiraBoardFilterSelectValue === "string" ? raw.jiraBoardFilterSelectValue : "",
+    fullNetworkDiagnostic: raw.fullNetworkDiagnostic === true,
   };
 }
 

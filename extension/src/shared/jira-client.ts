@@ -632,7 +632,7 @@ export async function uploadJiraIssueAttachments(params: {
       return { ok: false, message: "Anexo: dados base64 inválidos." };
     }
     const mime = a.mimeType?.trim() || "application/octet-stream";
-    const blob = new Blob([bytes], { type: mime });
+    const blob = new Blob([Uint8Array.from(bytes)], { type: mime });
     const name = a.fileName?.trim() || "image.png";
     fd.append("file", blob, name);
   }
@@ -670,6 +670,8 @@ export async function createJiraIssue(params: {
   jiraBoardAutoFields?: { fieldId: string; set: unknown }[];
   jiraBoardFilterSelectFieldId?: string;
   jiraBoardFilterSelectValue?: string;
+  /** Markdown acrescentado no fim da descrição (ex.: ajuda sobre anexo HAR). */
+  appendDescriptionMarkdown?: string;
 }): Promise<JiraIssueResult | JiraError> {
   const base = resolveJiraCloudBaseUrl(params.siteUrl, params.email);
   if (!base) {
@@ -709,6 +711,11 @@ export async function createJiraIssue(params: {
   const motivoLine = `**Motivo da abertura do Bug/Sub-Bug:** ${params.motivoAbertura}`;
   if (!params.motivoCustomFieldId?.trim()) {
     bodyText = `${motivoLine}\n\n${bodyText}`;
+  }
+
+  const extra = params.appendDescriptionMarkdown?.trim();
+  if (extra) {
+    bodyText = `${bodyText}\n\n${extra}`;
   }
 
   const fields: Record<string, unknown> = {

@@ -4,7 +4,7 @@
 
 export type SpeechRecognitionField = "title" | "whatHappened";
 
-type SpeechRecognitionLike = {
+export type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
