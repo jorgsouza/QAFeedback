@@ -1,6 +1,6 @@
 # QA Feedback — GitHub e Jira (Chrome MV3)
 
-Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **GitHub Issues** e/ou **Jira Cloud** sem abrir outro separador. Tokens e chamadas às APIs ficam no **service worker**; a UI corre em **Shadow DOM** para não misturar CSS com o site.
+Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **GitHub Issues** e/ou **Jira Cloud** sem abrir outra **aba**. Tokens e chamadas às APIs ficam no **service worker**; a UI **roda** em **Shadow DOM** para não misturar CSS com o site.
 
 **Documentação técnica completa:** [DOCUMENTATION.md](./DOCUMENTATION.md)
 
@@ -10,46 +10,46 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 
 ### Interface na página
 
-- **Botão flutuante (FAB)** com ícone de QA nos domínios que configurares; podes **minimizar** o controlo.
-- Se o Chrome estiver em modo **“só ao clicar no ícone”**, usa o **ícone da extensão** na barra para injetar o FAB nessa aba.
-- **Modal** com separadores **Formulário** e **Preview** (Markdown antes de enviar).
-- Ligação **Configurações** para abrir a página de opções da extensão.
+- **Botão flutuante (FAB)** com ícone de QA nos domínios que você configurar nas opções; dá para **minimizar** o controle.
+- Se o Chrome estiver em modo **“só ao clicar no ícone”**, use o **ícone da extensão** na barra para injetar o FAB nessa aba.
+- **Modal** com abas **Formulário** e **Preview** (Markdown antes de enviar).
+- Link **Configurações** para abrir a página de opções da extensão.
 
 ### Destinos do envio
 
-- **GitHub** (opcional): PAT com permissão de **Issues**; podes listar **vários repositórios** e escolher um no menu ao enviar.
+- **GitHub** (opcional): PAT com permissão de **Issues**; dá para listar **vários repositórios** e escolher um no menu ao enviar.
 - **Jira Cloud** (opcional): e-mail Atlassian + **API token** + **quadro Software** (backlog destino).
-- **GitHub**, **Jira** ou **ambos** no mesmo envio, quando tiveres os dois configurados.
+- **GitHub**, **Jira** ou **ambos** no mesmo envio, quando os dois estiverem configurados.
 
 ### Formulário
 
 - **Título** (resumo) e **O que aconteceu** (descrição), obrigatórios conforme o destino.
-- **Jira:** campo **Motivo da abertura do Bug/Sub-Bug** (valores fixos alinhados ao vosso fluxo).
-- **Voz no Chrome:** microfone ao lado do título e da descrição — **pt-BR** por defeito (Web Speech API; requer HTTPS).
-- **Ditado do sistema:** dicas no UI para usar o atalho do SO (ex.: Windows) nos mesmos campos.
+- **Jira:** campo **Motivo da abertura do Bug/Sub-Bug** (valores fixos alinhados ao fluxo da sua equipe).
+- **Voz no Chrome:** microfone ao lado do título e da descrição — **pt-BR** por **padrão** (Web Speech API; requer HTTPS).
+- **Ditado do sistema:** dicas na UI para usar o atalho do SO (ex.: Windows) nos mesmos campos.
 - **Copiar markdown** do preview.
 
 ### Anexos e capturas (Jira)
 
-- **Adicionar imagens** (ficheiros, até ao limite configurado).
+- **Adicionar imagens** (arquivos, até o limite configurado).
 - **Colar imagem** com **Ctrl+V** na área da descrição (com Jira selecionado).
-- **Capturar área da página:** esconde o FAB/modal, desenhas um **retângulo** no viewport visível e a extensão anexa um **PNG** recortado.
+- **Capturar área da página:** esconde o FAB/modal; você **arrasta** um **retângulo** no viewport visível e a extensão anexa um **PNG** recortado.
 
 ### Contexto técnico (opcional)
 
 Com **Incluir contexto técnico** ativo, o relatório Markdown inclui, entre outros:
 
 - URL, título da página, data/hora, **User-Agent**.
-- **Viewport** (janela) e **ecrã** (`screen`), **DPR**, **maxTouchPoints**, **pointer fine/coarse**.
+- **Viewport** (janela) e **tela** (`screen`), **DPR**, **maxTouchPoints**, **pointer fine/coarse**.
 - **Indício automático** de vista desktop vs móvel vs **possível emulação no DevTools** (heurística — não há API oficial para o toggle de dispositivo).
 - **Elemento em foco/clicado** na página (não o botão da extensão), com tag, id, classes e atributos sanitizados.
-- **Console** (erros, avisos, logs) e **pedidos `fetch` falhados** recolhidos via **page-bridge** injetado na página.
+- **Console** (erros, avisos, logs) e **requisições `fetch` com falha** obtidas via **page-bridge** injetado na página.
 
 ### Modo diagnóstico completo (opções)
 
-- Opção **Modo diagnóstico completo:** ao abrir o modal, a extensão pode **anexar um ficheiro `.har`** ao criar a issue no **Jira** (captura de rede via **Chrome DevTools Protocol** com permissão `debugger`).
+- Opção **Modo diagnóstico completo:** ao abrir o modal, a extensão pode **anexar um arquivo `.har`** ao criar a issue no **Jira** (captura de rede via **Chrome DevTools Protocol** com permissão `debugger`).
 - Cabeçalhos sensíveis (ex.: **Cookie**, **Authorization**) aparecem como `[REDACTED]` no HAR; o texto da descrição inclui ajuda para importar no DevTools.
-- Se a captura falhar com **DevTools** aberto na mesma aba, fecha o DevTools e tenta de novo.
+- Se a captura falhar com **DevTools** aberto na mesma aba, feche o DevTools e tente de novo.
 
 ### Depois do envio
 
@@ -75,7 +75,7 @@ Com **Incluir contexto técnico** ativo, o relatório Markdown inclui, entre out
 
 - **E-mail** Atlassian (o mesmo do Jira).
 - **API token** ([Atlassian — API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)).
-- Com e-mail **@empresa**, o site `https://empresa.atlassian.net` em geral é **inferido** automaticamente (não funciona só com Gmail “pessoal” como identificador — usa **Site** em Avançado se precisar).
+- Com e-mail **@empresa**, o site `https://empresa.atlassian.net` em geral é **inferido** automaticamente (não funciona só com Gmail “pessoal” como identificador — use **Site** em Avançado se precisar).
 - **Quadro**: depois de e-mail + token, a **lista de quadros** **carrega sozinha**; **ao escolher o quadro**, projeto/filtro são confirmados e **salvos** — não há botão “testar conexão” separado para isso.
 
 ## Build
@@ -88,25 +88,25 @@ npm run build
 
 O `build` **executa** **`npm run icons`** primeiro (`../PRD/capiQA.png` → `public/qa.png` + `public/icons/`).
 
-Saída: **`dist/`**. Carrega **`extension/dist`** em **chrome://extensions** (modo desenvolvedor).
+Saída: **`dist/`**. Carregue **`extension/dist`** em **chrome://extensions** (modo desenvolvedor).
 
 ## Erro “Extension context invalidated”
 
-Acontece se recarregares a extensão sem dar **F5** na **aba** do site. Vê [DOCUMENTATION.md](./DOCUMENTATION.md#extension-context-invalidated).
+Acontece se você **recarregar a extensão** sem dar **F5** na **aba** do site. Veja [DOCUMENTATION.md](./DOCUMENTATION.md#extension-context-invalidated).
 
 ## Primeiro uso
 
-1. Abre as **Opções** da extensão.
-2. **GitHub** (opcional): token → **Testar conexão e listar repos** → ajusta a lista → **Salvar**.
-3. **Jira** (opcional): e-mail + API token → espera o menu **Quadro Software** → escolhe o quadro → **Salvar**.
+1. Abra as **Opções** da extensão.
+2. **GitHub** (opcional): token → **Testar conexão e listar repos** → ajuste a lista → **Salvar**.
+3. **Jira** (opcional): e-mail + API token → espere o menu **Quadro Software** → escolha o quadro → **Salvar**.
 4. **Domínios permitidos**: um por linha; ao **Salvar** o Chrome pode pedir permissão para sites novos.
-5. Abre um site permitido; usa o **FAB** (ou o ícone da extensão se estiver “ao clicar”).
+5. Abra um site permitido; use o **FAB** (ou o ícone da extensão se estiver “ao clicar”).
 
 ### Botão não aparece?
 
-1. Ícone da extensão → **“Esta extensão pode ler e alterar dados do site”** — não deixes só “ao clicar” sem clicar no ícone na aba, ou escolhe o site / todos os sites.
+1. Ícone da extensão → **“Esta extensão pode ler e alterar dados do site”** — não deixe só “ao clicar” sem clicar no ícone na aba, ou escolha o site / todos os sites.
 2. Domínio correto nas opções + permissão aceita ao **Salvar**.
-3. Não uses `chrome://`, Web Store, etc., para o feedback embutido.
+3. Não use `chrome://`, Web Store, etc., para o feedback embutido.
 
 Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 
@@ -115,15 +115,15 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Permissão | Uso |
 |-----------|-----|
 | `storage` | Guardar opções e tokens localmente |
-| `scripting` | Registar/injetar o content script nos hosts permitidos |
+| `scripting` | Registrar/injetar o content script nos hosts permitidos |
 | `activeTab` | Injeção ao clicar no ícone; captura do viewport para “Capturar área” |
 | `debugger` | Só quando **Modo diagnóstico completo** está ligado (captura HAR) |
 | Hosts fixos | `api.github.com`, `*.atlassian.net`, localhost / 127.0.0.1 |
-| Hosts opcionais | Os que adicionares nas opções (pedido ao **Salvar**) |
+| Hosts opcionais | Os que você adicionar nas opções (pedido ao **Salvar**) |
 
 ---
 
-## Estrutura (principais ficheiros)
+## Estrutura (principais arquivos)
 
 | Área | Caminho |
 |------|---------|
@@ -148,4 +148,4 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 - `npm run check` — TypeScript
 - `npm test` / `npm run test:watch` — Vitest
 
-Alteraste o código? Corre `npm run build` e **Recarrega** a extensão em `chrome://extensions`.
+Alterou o código? Rode `npm run build` e **recarregue** a extensão em `chrome://extensions`.
