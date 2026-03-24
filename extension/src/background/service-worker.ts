@@ -163,6 +163,7 @@ type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
+type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB" };
 
 type Messages =
   | CreateIssueMessage
@@ -172,7 +173,8 @@ type Messages =
   | ListRepoTargetsMessage
   | OpenOptionsMessage
   | StartNetworkDiagnosticMessage
-  | StopNetworkDiagnosticMessage;
+  | StopNetworkDiagnosticMessage
+  | CaptureVisibleTabMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
@@ -359,6 +361,34 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ ok: false });
         }
       })();
+      return true;
+    }
+
+    if (message.type === "CAPTURE_VISIBLE_TAB") {
+      const tabId = sender.tab?.id;
+      if (tabId == null) {
+        sendResponse({ ok: false, message: "Separador desconhecido." });
+        return true;
+      }
+      try {
+        chrome.tabs.captureVisibleTab(tabId, { format: "png" }, (dataUrl) => {
+          const err = chrome.runtime.lastError;
+          if (err?.message) {
+            sendResponse({ ok: false, message: err.message });
+            return;
+          }
+          if (!dataUrl) {
+            sendResponse({ ok: false, message: "Captura vazia." });
+            return;
+          }
+          sendResponse({ ok: true, dataUrl });
+        });
+      } catch (e) {
+        sendResponse({
+          ok: false,
+          message: e instanceof Error ? e.message : "Falha ao capturar.",
+        });
+      }
       return true;
     }
 

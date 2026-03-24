@@ -417,6 +417,14 @@ export const shadowCss = `
   margin-bottom: 10px;
 }
 
+.qaf-img-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
 .qaf-btn-ghost {
   border: 1px solid var(--qaf-m-border);
   background: var(--qaf-m-input);
@@ -431,6 +439,11 @@ export const shadowCss = `
 
 .qaf-btn-ghost:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.qaf-btn-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .qaf-img-hint {
