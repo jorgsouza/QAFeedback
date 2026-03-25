@@ -94,8 +94,17 @@
 
 ---
 
-## 6. Próximo passo
+## 6. Estado da implementação (atualizado)
 
-1. Decidir backdrop (sim/não) e se **×** reseta ou só fecha.
-2. Confirmar política: allowlist vazia = todos os boards ou nenhum.
-3. Abrir branch (ex.: `feature/docked-panel-jira-boards`) e executar fases **A→B→C**, depois **D**.
+Implementado na linha **`feature/qa-automation-layout-trust-ds`** (merge alvo: `main`):
+
+- **Allowlist de quadros:** `BOARD_ID` ou `VITE_JIRA_BOARD_ALLOWLIST` no `.env` (raiz ou `extension/`) → Vite injeta em build; `jira-board-allowlist.ts` + listagem ordenada em opções e no modal.
+- **`LIST_REPO_TARGETS`:** devolve `jiraBoards`, `jiraDefaultBoardId` e eventual `jiraBoardsError`.
+- **`CREATE_ISSUE`:** aceita **`jiraSoftwareBoardId`** opcional no payload (quadro só para aquele envio), validado contra a lista filtrada.
+- **UI:** painel em sheet à direita, recolher com seta, FAB reabre; seletor **Board do Jira para vincular** no formulário quando há Jira.
+- **Docs:** `README.md` (raiz e `extension/`) e `DOCUMENTATION.md` descrevem allowlist, modal e tipo Task quando o filtro do quadro exclui Bug.
+
+### Próximos ajustes opcionais
+
+1. Revisar **backdrop** (opacidade / clique fora) e comportamento exato do **×** vs rascunho.
+2. Critérios de aceite nas secções 2.3 / 3.x: marcar checkboxes conforme QA validar em produção.

@@ -13,18 +13,19 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 - **Botão flutuante (FAB)** com ícone de QA nos domínios que você configurar nas opções; dá para **minimizar** o controle.
 - Se o Chrome estiver em modo **“só ao clicar no ícone”**, use o **ícone da extensão** na barra para injetar o FAB nessa aba.
 - **Painel** (sheet à direita) com abas **Formulário** e **Preview** (Markdown antes de enviar); **recolher** com a seta no cabeçalho mantém o rascunho — o **FAB** volta a abrir o painel.
-- Link **Configurações** para abrir a página de opções da extensão.
+- **Ícone de engrenagem** no cabeçalho abre a página de **opções** da extensão.
+- **Faixa de estado** no topo do formulário: **bolinhas verdes** (GitHub e/ou Jira com token configurado); com **modo diagnóstico** ligado, **ícone ℹ️** com tooltip sobre captura HAR e DevTools. Erros de captura de rede continuam em banner visível.
 
 ### Destinos do envio
 
 - **GitHub** (opcional): PAT com permissão de **Issues**; dá para listar **vários repositórios** e escolher um no menu ao enviar.
-- **Jira Cloud** (opcional): e-mail Atlassian + **API token** + **quadro Software** (backlog destino).
+- **Jira Cloud** (opcional): e-mail Atlassian + **API token** + **quadro Software** (predefinido nas opções). No **modal**, quando aplicável, pode escolher **outro quadro** da lista (filtrada pela allowlist de build, se existir).
 - **GitHub**, **Jira** ou **ambos** no mesmo envio, quando os dois estiverem configurados.
 
 ### Formulário
 
 - **Título** (resumo) e **O que aconteceu** (descrição), obrigatórios conforme o destino.
-- **Jira:** campo **Motivo da abertura do Bug/Sub-Bug** (valores fixos alinhados ao fluxo da sua equipe).
+- **Jira:** campo **Motivo da abertura do Bug/Sub-Bug** (valores fixos alinhados ao fluxo da sua equipe). O **tipo de issue** nas opções costuma ser **Bug**; se o **JQL do quadro** só permitir tipos como **Task**, a extensão usa **Task** na criação (e nas opções, ao testar o quadro, aparece aviso *Tipo na criação neste quadro: Task (nas opções: Bug)*). Se a API rejeitar o tipo Bug por outro motivo, há **uma nova tentativa** automática com **Task**.
 - **Voz no Chrome:** microfone ao lado do título e da descrição — **pt-BR** por **padrão** (Web Speech API; requer HTTPS).
 - **Ditado do sistema:** dicas na UI para usar o atalho do SO (ex.: Windows) nos mesmos campos.
 - **Copiar markdown** do preview.
@@ -133,7 +134,7 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Opções | `src/options/` |
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
-| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts` |
 | Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts` |
 | Indício vista desktop/móvel | `src/shared/view-layout-hint.ts` |
 | page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
@@ -144,7 +145,7 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 
 ## Scripts
 
-- `npm run icons` — ícones a partir do PRD
+- `npm run icons` — ícones a partir do PRD (`trim` + preenchimento do círculo para o mascote ocupar melhor o slot da barra do Chrome)
 - `npm run build` — produção → `dist/`
 - `npm run dev` — igual ao `build`
 - `npm run check` — TypeScript

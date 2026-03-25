@@ -13,6 +13,8 @@
 - **Filtro de hosts:** **não obrigatório** no MVP (uso apenas em ambientes já alinhados).
 - **Concorrência DevTools:** documentar e mostrar aviso na UI: **“Se a captura falhar, feche o DevTools nesta aba.”** Tratar erro de `attach` com mensagem legível.
 
+**UI atual:** o texto longo do modo diagnóstico no formulário foi compactado para um **ícone ℹ️** (tooltip + `aria-label`); erros de captura continuam em **banner**; ver `DOCUMENTATION.md` → *Uso no dia a dia (modal)*.
+
 ---
 
 ## Fase 1: Toggle + permissão + ciclo attach/detach (sem HAR completo)
