@@ -1,5 +1,6 @@
 import type { ElementContext, TechnicalContextPayload } from "./types";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
+import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
 import { buildViewModeHint } from "./view-layout-hint";
 
@@ -86,6 +87,7 @@ export function buildTechnicalContext(params: {
 }): TechnicalContextPayload {
   const { lastTarget, bridge } = params;
   const url = sanitizeUrl(window.location.href);
+  const route = resolvePageRouteInfo(window.location);
 
   let pointerCoarse = false;
   try {
@@ -100,6 +102,10 @@ export function buildTechnicalContext(params: {
   return {
     page: {
       url,
+      pathname: route.pathname,
+      routeSearch: route.routeSearch,
+      routeLabel: route.routeLabel,
+      routeKey: route.routeKey,
       title: truncate(document.title || "", 200),
       userAgent: truncate(navigator.userAgent, 400),
       timestamp: new Date().toISOString(),

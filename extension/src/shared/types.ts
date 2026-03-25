@@ -32,6 +32,14 @@ export type ElementContext = {
 export type TechnicalContextPayload = {
   page: {
     url: string;
+    /** `location.pathname` normalizado (SPA incluído). */
+    pathname: string;
+    /** `location.search` (query string). */
+    routeSearch: string;
+    /** Rótulo para humanos (ex.: Home, Página da empresa). */
+    routeLabel: string;
+    /** Chave estável para agrupar (ex.: home, empresa, other). */
+    routeKey: string;
     title: string;
     userAgent: string;
     timestamp: string;

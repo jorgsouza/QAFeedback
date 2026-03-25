@@ -723,10 +723,28 @@ export const shadowCss = `
 .qaf-status-strip {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
   min-height: 24px;
   margin: 0 0 10px;
+}
+
+.qaf-route-chip {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--qaf-m-muted);
+  max-width: min(200px, 55vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.qaf-status-strip-trailing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .qaf-status-strip-dots {

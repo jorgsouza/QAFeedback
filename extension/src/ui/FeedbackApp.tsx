@@ -14,6 +14,8 @@ import {
   ensurePageBridgeInjected,
   readBridgeSnapshot,
 } from "../shared/context-collector";
+import { subscribeToLocationChanges } from "../shared/location-subscription";
+import { resolvePageRouteInfo } from "../shared/page-route-context";
 import { shadowCss } from "./shadow-styles";
 import {
   elementIsInsideExtensionUi,
@@ -174,6 +176,9 @@ export function FeedbackApp() {
   useEffect(() => {
     ensurePageBridgeInjected();
   }, []);
+
+  const [routeRevision, setRouteRevision] = useState(0);
+  useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
 
   useEffect(() => {
     if (open) clearSpeechError();
@@ -369,6 +374,8 @@ export function FeedbackApp() {
     };
   }, []);
 
+  const routeInfo = useMemo(() => resolvePageRouteInfo(window.location), [routeRevision]);
+
   const payload = useMemo((): CreateIssuePayload => {
     const bridge = readBridgeSnapshot();
     const target =
@@ -377,7 +384,7 @@ export function FeedbackApp() {
       ? buildTechnicalContext({ lastTarget: target, bridge })
       : undefined;
     return { ...form, technicalContext };
-  }, [form, lastTarget]);
+  }, [form, lastTarget, routeRevision]);
 
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
 
@@ -467,10 +474,18 @@ export function FeedbackApp() {
         }
       }
 
+      const bridge = readBridgeSnapshot();
+      const target =
+        lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
+      const technicalContextForSend = form.includeTechnicalContext
+        ? buildTechnicalContext({ lastTarget: target, bridge })
+        : undefined;
+      const submitPayload: CreateIssuePayload = { ...form, technicalContext: technicalContextForSend };
+
       const res = (await chrome.runtime.sendMessage({
         type: "CREATE_ISSUE",
         payload: {
-          ...payload,
+          ...submitPayload,
           ...(jiraImageAttachments?.length ? { jiraImageAttachments } : {}),
           ...(form.sendToJira && selectedJiraBoardId.trim()
             ? { jiraSoftwareBoardId: selectedJiraBoardId.trim() }
@@ -699,40 +714,50 @@ export function FeedbackApp() {
             )}
 
             <div className="qaf-body">
-              {!postSubmit &&
-              (githubTokenConfigured || jiraTokenConfigured || fullNetworkDiagnosticEnabled) ? (
+              {!postSubmit ? (
                 <div className="qaf-status-strip">
-                  <div
-                    className="qaf-status-strip-dots"
-                    role="list"
-                    aria-label="Tokens configurados nas opções"
+                  <span
+                    className="qaf-route-chip"
+                    title={`${routeInfo.pathname}${routeInfo.routeSearch || ""}`}
+                    aria-label={`Rota: ${routeInfo.routeLabel}, caminho ${routeInfo.pathname}`}
                   >
-                    {githubTokenConfigured ? (
-                      <span
-                        className="qaf-token-dot"
-                        role="listitem"
-                        title="GitHub: token configurado."
-                        aria-label="GitHub: token configurado."
-                      />
-                    ) : null}
-                    {jiraTokenConfigured ? (
-                      <span
-                        className="qaf-token-dot"
-                        role="listitem"
-                        title="Jira Cloud: token configurado."
-                        aria-label="Jira Cloud: token configurado."
-                      />
-                    ) : null}
-                  </div>
-                  {fullNetworkDiagnosticEnabled ? (
-                    <button
-                      type="button"
-                      className="qaf-info-trigger"
-                      title={NETWORK_DIAG_TOOLTIP}
-                      aria-label={NETWORK_DIAG_TOOLTIP}
-                    >
-                      <InfoCircleIcon />
-                    </button>
+                    {routeInfo.routeLabel}
+                  </span>
+                  {githubTokenConfigured || jiraTokenConfigured || fullNetworkDiagnosticEnabled ? (
+                    <div className="qaf-status-strip-trailing">
+                      <div
+                        className="qaf-status-strip-dots"
+                        role="list"
+                        aria-label="Tokens configurados nas opções"
+                      >
+                        {githubTokenConfigured ? (
+                          <span
+                            className="qaf-token-dot"
+                            role="listitem"
+                            title="GitHub: token configurado."
+                            aria-label="GitHub: token configurado."
+                          />
+                        ) : null}
+                        {jiraTokenConfigured ? (
+                          <span
+                            className="qaf-token-dot"
+                            role="listitem"
+                            title="Jira Cloud: token configurado."
+                            aria-label="Jira Cloud: token configurado."
+                          />
+                        ) : null}
+                      </div>
+                      {fullNetworkDiagnosticEnabled ? (
+                        <button
+                          type="button"
+                          className="qaf-info-trigger"
+                          title={NETWORK_DIAG_TOOLTIP}
+                          aria-label={NETWORK_DIAG_TOOLTIP}
+                        >
+                          <InfoCircleIcon />
+                        </button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : null}

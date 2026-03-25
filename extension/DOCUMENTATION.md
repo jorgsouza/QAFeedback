@@ -79,7 +79,7 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 1. Site com host permitido e permissão concedida (ou **clique no ícone** da extensão se estiver “ao clicar”).
 2. **FAB** → painel (sheet à direita); **seta** no cabeçalho recolhe o painel mantendo o rascunho; **FAB** reabre.
 3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
-4. **Faixa de estado** (topo do formulário): **bolinhas verdes** = token GitHub e/ou Jira configurado (tooltip com texto acessível). Com **modo diagnóstico completo** nas opções, aparece **ícone ℹ️** com o texto longo sobre HAR e DevTools; falhas de captura de rede seguem em **banner** separado.
+4. **Faixa de estado** (topo do formulário): à **esquerda**, **rótulo da rota** atual (`pathname` + regras para Home, Empresa, Reclamar, etc.) — atualiza em **SPA** via `popstate`, `pushState`/`replaceState`, `hashchange` e foco no separador; com **contexto técnico** ligado, a linha **Rota:** no Markdown e o envio usam sempre a URL **no instante do envio**. À **direita**, **bolinhas verdes** = tokens configurados; **ícone ℹ️** = modo diagnóstico (HAR); erros de rede em **banner**.
 5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
 6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
 7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5).
@@ -150,6 +150,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Corpo da issue | `src/shared/issue-builder.ts` |
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
 | Ditado SO (textos) | `src/shared/native-dictation-hint.ts` |
+| Rota da página (rótulo + SPA) | `src/shared/page-route-context.ts`, `location-subscription.ts` |
 | Storage / tipos | `src/shared/storage.ts`, `types.ts` |
 | Runtime da extensão | `src/shared/extension-runtime.ts` |
 | HAR / captura CDP | `src/shared/network-har.ts`, `network-har-jira-help.ts`, `src/background/network-debugger-capture.ts` |
