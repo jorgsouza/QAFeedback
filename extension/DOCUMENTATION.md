@@ -182,6 +182,8 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 - **Interceptar** **`console.error` / `warn` / `log`** e enviar um resumo via `CustomEvent` para o contexto da extensão (contexto técnico).
 - **Interceptar** **`fetch`** e **registrar** respostas **não OK**.
+- **Linha do tempo** (Phase 1): cliques, `submit`, `change` em campos, `input` com throttle (~2s por campo), teclas Enter/Tab/Escape, `popstate` e `history.pushState`/`replaceState` (SPA). Eventos dentro da UI da extensão (`#qa-feedback-extension-root`) são ignorados. Limites em `context-limits.ts`.
+- **Rede resumida** (Phase 2): cada **`fetch`** e **`XMLHttpRequest`** gera uma linha com método, URL (sanitizada na montagem do contexto), status, duração (ms), e cabeçalhos de correlação quando legíveis (`x-request-id`, `x-correlation-id`, etc.). Respostas **opacas** (CORS) podem vir com status `0` sem headers. A issue usa **`## Requisições relevantes`** (prioridade: erros, depois lentas ≥3s, depois outras; máx. 20 linhas). O HAR (CDP) continua opcional e separado.
 
 Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a stack pode incluir `page-bridge.js`; o Chrome pode mostrar isso na página **Errors** da extensão **sem** ser um bug do QAFeedback.
 

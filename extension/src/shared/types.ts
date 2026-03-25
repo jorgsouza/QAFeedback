@@ -22,6 +22,21 @@ export type FailedRequestEntry = {
   message: string;
 };
 
+/** Phase 2 — resumo de pedido HTTP (fetch/XHR) para a issue. */
+export type NetworkRequestSummaryEntryV1 = {
+  at: string;
+  method: string;
+  /** URL sanitizada (sem query/hash). */
+  url: string;
+  status: number;
+  durationMs: number;
+  aborted?: boolean;
+  statusText?: string;
+  requestId?: string;
+  correlationId?: string;
+  responseContentType?: string;
+};
+
 export type ElementContext = {
   tag: string;
   id: string;
@@ -29,6 +44,86 @@ export type ElementContext = {
   safeAttributes: string;
 };
 
+export type VisualDialogSnapshotV1 = {
+  /** Ex.: role=dialog, aria-modal=true, alertdialog */
+  type: string;
+  /** aria-label / aria-labelledby ou fallback de texto */
+  title?: string;
+};
+
+export type VisualStateSnapshotV1 = {
+  /** Até N diálogos/modalidades visíveis no momento do envio. */
+  dialogs?: VisualDialogSnapshotV1[];
+  /** Indica presença de sinalização de loading/busy no DOM. */
+  busyIndicators?: string[];
+  /** Abas ativas (role=tab com aria-selected=true) */
+  activeTabs?: string[];
+};
+
+export type TargetDomHintV1 = {
+  /** Ex.: `button[data-testid="..."]` ou `#id` */
+  selectorHint?: string;
+  role?: string;
+  ariaLabel?: string;
+  textHint?: string;
+  /** Tamanho aproximado do alvo no momento do clique/abertura. */
+  rect?: { w: number; h: number };
+};
+
+export type RuntimeErrorSnapshotV1 = {
+  at: string;
+  kind: "error" | "unhandledrejection";
+  message: string;
+  stack?: string;
+  /** Quando disponível (error event) */
+  file?: string;
+  line?: number;
+  col?: number;
+  /** Contagem agregada (dedupe por mensagem+stack no bridge). */
+  count?: number;
+  /**
+   * Correlação simples com a última ação da timeline (ms entre “erro” e “último click”).
+   * Cálculo feito no content script (quando existe click).
+   */
+  deltaToLastClickMs?: number;
+};
+
+export type PerformanceSignalsSnapshotV1 = {
+  /** Largest Contentful Paint (best-effort). */
+  lcpMs?: number;
+  lcpAt?: string;
+  /** Interaction to Next Paint (best-effort). */
+  inpMs?: number;
+  inpAt?: string;
+  /** Cumulative Layout Shift (CLS, best-effort). */
+  cls?: number;
+  /** Long tasks (best-effort). */
+  longTasks?: {
+    count?: number;
+    longestMs?: number;
+    lastAt?: string;
+  };
+};
+
+/** Phase 1 — linha do tempo de interação (MAIN world → issue). */
+export type InteractionTimelineKindV1 =
+  | "click"
+  | "submit"
+  | "input"
+  | "change"
+  | "keydown"
+  | "navigate";
+
+export type InteractionTimelineEntryV1 = {
+  at: string;
+  kind: InteractionTimelineKindV1;
+  summary: string;
+};
+
+/**
+ * Dados técnicos da página sem metadados de versão do contrato.
+ * Preferir `CapturedIssueContextV1` no payload de criação de issues.
+ */
 export type TechnicalContextPayload = {
   page: {
     url: string;
@@ -59,8 +154,32 @@ export type TechnicalContextPayload = {
     viewModeHint: string;
   };
   element?: ElementContext;
+  /**
+   * Phase 4 — heurísticas visuais e hints do DOM do alvo.
+   * Campos opcionais para manter compatibilidade com payloads capturados em versões anteriores.
+   */
+  visualState?: VisualStateSnapshotV1;
+  targetDomHint?: TargetDomHintV1;
+  /**
+   * Phase 5 — runtime errors e sinais de performance observados nesta sessão.
+   * Fields opcionais para não penalizar browsers sem APIs.
+   */
+  runtimeErrors?: RuntimeErrorSnapshotV1[];
+  performanceSignals?: PerformanceSignalsSnapshotV1;
+  /** Phase 1 — últimos eventos significativos (clique, navegação SPA, etc.) */
+  interactionTimeline?: InteractionTimelineEntryV1[];
+  /** Phase 2 — prioridade erros/lentos; ver `pickNetworkSummariesForIssue` */
+  networkRequestSummaries?: NetworkRequestSummaryEntryV1[];
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
+};
+
+/**
+ * Contrato versionado do contexto capturado (Phase 0+). Fases futuras podem acrescentar
+ * campos opcionais mantendo `version` para migração.
+ */
+export type CapturedIssueContextV1 = TechnicalContextPayload & {
+  readonly version: 1;
 };
 
 export type RepoTarget = {
@@ -122,7 +241,7 @@ export type JiraImageAttachmentPayload = {
 };
 
 export type CreateIssuePayload = IssueFormState & {
-  technicalContext?: TechnicalContextPayload;
+  capturedContext?: CapturedIssueContextV1;
   /** Só usado quando `sendToJira`; anexos via REST após POST /issue. */
   jiraImageAttachments?: JiraImageAttachmentPayload[];
   /**

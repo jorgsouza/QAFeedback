@@ -2,6 +2,7 @@ import type { CreateIssuePayload, JiraImageAttachmentPayload } from "./types";
 import { buildIssueBody, buildIssueTitle } from "./issue-builder";
 import { resolveJiraBoardFieldsForIssueCreate } from "./jira-board-filter-resolve";
 import { jiraMotivoCustomFieldApiValue, type JiraMotivoAbertura } from "./jira-motivo";
+import { markdownIssueBodyToAdf } from "./jira-markdown-adf";
 
 export type JiraError = { ok: false; message: string; status?: number };
 export type JiraIssueResult = { ok: true; htmlUrl: string; key: string; warning?: string };
@@ -773,7 +774,7 @@ export async function createJiraIssue(params: {
   const fields: Record<string, unknown> = {
     project: { key: projectKey },
     summary: summary.slice(0, 255),
-    description: plainTextToAdf(bodyText),
+    description: markdownIssueBodyToAdf(bodyText),
   };
 
   const cf = params.motivoCustomFieldId?.trim();
