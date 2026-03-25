@@ -24,7 +24,6 @@ import {
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
 import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
-import { titleFromDescription } from "../shared/title-from-description";
 import { useChromeSpeechDictation } from "./useChromeSpeechDictation";
 import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 
@@ -124,6 +123,7 @@ export function FeedbackApp() {
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const dictationPlatform = useMemo(() => detectDictationPlatform(), []);
@@ -454,11 +454,6 @@ export function FeedbackApp() {
       setForm((f) => ({ ...f, [key]: v } as IssueFormState));
     };
 
-  const handleWhatHappenedChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value;
-    setForm((f) => ({ ...f, whatHappened: v, title: titleFromDescription(v) }));
-  };
-
   const openModal = useCallback(() => {
     setOpen(true);
     setError(null);
@@ -740,7 +735,8 @@ export function FeedbackApp() {
                   ) : null}
                   {listeningField ? (
                     <div className="qaf-speech-live" role="status" aria-live="polite">
-                      A escutar na descrição… clique no microfone outra vez para parar.
+                      A escutar no {listeningField === "title" ? "título" : "campo da descrição"}… clique no microfone
+                      outra vez para parar.
                     </div>
                   ) : null}
 
@@ -831,21 +827,50 @@ export function FeedbackApp() {
                       )}
                       {(form.sendToGitHub || form.sendToJira) && (
                         <div className="qaf-field">
-                          <label className="qaf-label" htmlFor="qaf-title-ro">
+                          <label className="qaf-label" htmlFor="qaf-title">
                             Título <span className="qaf-required">*</span>
                           </label>
-                          <input
-                            id="qaf-title-ro"
-                            className="qaf-input qaf-input--readonly"
-                            readOnly
-                            tabIndex={-1}
-                            value={form.title}
-                            title="Gerado automaticamente das quatro primeiras palavras da descrição"
-                            aria-readonly="true"
-                          />
-                          <p className="qaf-img-hint" style={{ marginTop: 4 }}>
-                            Preenchido com as quatro primeiras palavras do texto abaixo (digitação ou ditado).
-                          </p>
+                          <div className="qaf-input-with-mic">
+                            <input
+                              ref={titleInputRef}
+                              id="qaf-title"
+                              className="qaf-input qaf-input-flex"
+                              value={form.title}
+                              onChange={onField("title")}
+                              placeholder="Resumo (issue no GitHub / Jira)"
+                              title={
+                                speechSupported && secureContext
+                                  ? "Voz do Chrome: microfone para falar ou parar. Também ditado do SO (ex.: Win+H)."
+                                  : "Ditado do sistema após focar o campo"
+                              }
+                            />
+                            <button
+                              type="button"
+                              className={`qaf-dictation-mic-btn qaf-dictation-mic-btn--inline ${
+                                listeningField === "title" ? "qaf-dictation-mic-btn--listening" : ""
+                              }`}
+                              aria-label={
+                                listeningField === "title"
+                                  ? "Parar reconhecimento de voz no título"
+                                  : speechSupported && secureContext
+                                    ? "Falar no título (voz do Chrome)"
+                                    : "Focar título para ditado do sistema"
+                              }
+                              aria-pressed={listeningField === "title"}
+                              title={
+                                speechSupported && secureContext
+                                  ? `Voz do Chrome (idioma: ${speechRecognitionLang}).`
+                                  : getDictationMicTooltip("title", dictationPlatform)
+                              }
+                              onClick={() => {
+                                toggleField("title");
+                                titleInputRef.current?.focus();
+                                titleInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                              }}
+                            >
+                              <MicIcon />
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div className="qaf-field">
@@ -858,7 +883,7 @@ export function FeedbackApp() {
                             id="qaf-what"
                             className="qaf-textarea qaf-textarea-flex"
                             value={form.whatHappened}
-                            onChange={handleWhatHappenedChange}
+                            onChange={onField("whatHappened")}
                             onPaste={(e) => {
                               if (!jiraTokenConfigured || !form.sendToJira) return;
                               const items = e.clipboardData?.items;
