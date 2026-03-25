@@ -40,11 +40,17 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 
 Com **Incluir contexto técnico** ativo, o relatório Markdown inclui, entre outros:
 
+- **Resumo** e **leitura rápida da sessão** (narrativa derivada do contexto), antes do bloco técnico longo.
 - URL, título da página, data/hora, **User-Agent**.
 - **Viewport** (janela) e **tela** (`screen`), **DPR**, **maxTouchPoints**, **pointer fine/coarse**.
 - **Indício automático** de vista desktop vs móvel vs **possível emulação no DevTools** (heurística — não há API oficial para o toggle de dispositivo).
+- **Linha do tempo da interação** (cliques, navegação SPA, inputs relevantes — exceto UI da extensão), via **page-bridge**.
+- **Requisições relevantes** (`fetch` e **XHR**): método, URL sanitizada, status, duração, IDs de correlação quando legíveis; prioridade erros e pedidos lentos.
+- **Estado visual** (diálogos/modais, busy, abas ativas) e **elemento relacionado** (dicas de seletor / `role`), quando detetados.
+- **Erro de runtime principal** e **sinais de performance** (LCP, CLS, long tasks, INP em browsers que suportam), quando houver dados.
 - **Elemento em foco/clicado** na página (não o botão da extensão), com tag, id, classes e atributos sanitizados.
-- **Console** (erros, avisos, logs) e **requisições `fetch` com falha** obtidas via **page-bridge** injetado na página.
+- **Console** (erros, avisos, logs). Pedidos só com falha continuam cobertos quando não há resumo completo de rede.
+- No **Jira**, a descrição pode ser enviada em **ADF** convertido a partir do mesmo Markdown (`jira-markdown-adf.ts`). Detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md).
 
 ### Modo diagnóstico completo (opções)
 
@@ -135,7 +141,9 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
 | Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts` |
-| Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts` |
+| Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts`, `context-limits.ts` |
+| Narrativa / Jira ADF | `src/shared/issue-narrative.ts`, `src/shared/jira-markdown-adf.ts` |
+| Timeline / rede (helpers) | `src/shared/interaction-timeline.ts`, `src/shared/network-summary.ts` |
 | Indício vista desktop/móvel | `src/shared/view-layout-hint.ts` |
 | page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
 | Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |

@@ -3,21 +3,23 @@
 > **Fonte:** `PRD/features.md` — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de âmbito por agora:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
 > **Objetivo:** evoluir a extensão QA Feedback de “contexto técnico básico” para um **relato estruturado e seguro**, alinhado ao PRD, sem despejar telemetria crua.
 
+**Integração na `main`:** Phases **0–5** mergeadas via [PR #6](https://github.com/jorgsouza/QAFeedback/pull/6) (março/2026). Trabalhos futuros: **Phase 6** (privacidade / toggles) e melhorias opcionais listadas no fim.
+
 ---
 
 ## Progresso (alto nível)
 
 | Phase | Tema | Estado |
 |-------|------|--------|
-| **0** | Contrato `CapturedIssueContextV1`, `capturedContext`, `context-limits.ts` | **Feito** (`feature/captured-issue-context-phase0`) |
+| **0** | Contrato `CapturedIssueContextV1`, `capturedContext`, `context-limits.ts` | **Feito** (na `main`) |
 | **1** | Linha do tempo (`interaction-timeline`, `page-bridge`) | **Feito** |
 | **2** | Rede resumida fetch + XHR, duração, IDs, secção Markdown | **Feito** |
 | **3** | Narrativa (`issue-narrative` + Markdown → ADF Jira) | **Feito** (MVP: Resumo, leitura rápida, Jira com headings/listas) |
-| **4** | Estado visual + DOM alvo | Pendente |
-| **5** | Runtime + performance | Pendente |
+| **4** | Estado visual + DOM alvo (`visualState`, `targetDomHint`, heurísticas no `context-collector`) | **Feito** |
+| **5** | Runtime + performance (`page-bridge` + `performanceSignals`, `deltaToLastClickMs`) | **Feito** |
 | **6** | Privacidade / toggles | Pendente |
 
-**Branch de trabalho:** `feature/captured-issue-context-phase0` (histórico de commits Phase 0–2).
+**Histórico Git:** branch `feature/captured-issue-context-phase0` (já mergeada); desenvolvimento contínuo a partir da **`main`**.
 
 ---
 
@@ -40,19 +42,22 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 
 ### 2.1 Modelo (`extension/src/shared/types.ts`)
 
-- **`CapturedIssueContextV1`**: `page`, `element?`, `interactionTimeline?`, **`networkRequestSummaries?`** (Phase 2), `console`, `failedRequests` (derivado dos summaries escolhidos para compatibilidade / legado).
+- **`CapturedIssueContextV1`**: `page`, `element?`, `interactionTimeline?`, **`networkRequestSummaries?`** (Phase 2), **`visualState?`**, **`targetDomHint?`** (Phase 4), **`runtimeErrors?`**, **`performanceSignals?`** (Phase 5), `console`, `failedRequests` (derivado dos summaries escolhidos para compatibilidade / legado).
 - **`NetworkRequestSummaryEntryV1`**: método, URL sanitizada, status, `durationMs`, `aborted?`, IDs de correlação, `responseContentType?`.
 - **`FailedRequestEntry`**: ainda usado quando não há `networkRequestSummaries` no payload (ex.: testes legados).
 
 ### 2.2 `page-bridge.ts` (MAIN world)
 
 - Console, **fetch** (todas as conclusões + erros rede), **XHR** (`open`/`send` + `loadend`), linha do tempo (Phase 1).
+- **Phase 5:** `window` `error` e `unhandledrejection` (mensagem, stack, ficheiro/linha quando existir, dedupe); `PerformanceObserver` para LCP, layout-shift (CLS), `longtask` e INP (best-effort, conforme o browser).
 - Emite `CustomEvent` com `networkSummaries`; bridge antigo só com `failedRequests` ainda é aceite no `context-collector` (síntese temporária).
 
 ### 2.3 `context-collector.ts` + `network-summary.ts`
 
 - `pickNetworkSummariesForIssue`: prioridade erro → lenta (≥ `networkSlowThresholdMs`) → restantes; dedupe método+URL+status.
 - `buildCapturedIssueContext` sanitiza URLs, trunca strings, preenche `networkRequestSummaries` e `failedRequests`.
+- **Phase 4:** heurísticas leves no DOM para `visualState` (diálogos, busy, abas) e `targetDomHint` a partir do elemento alvo.
+- **Phase 5:** mescla `runtimeErrors` / `performanceSignals` vindos do bridge; calcula `deltaToLastClickMs` no último erro quando há clique recente na timeline.
 
 ### 2.4 `issue-builder.ts` + `issue-narrative.ts` + `jira-markdown-adf.ts`
 
@@ -73,11 +78,11 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 |---|-----------|--------|
 | 1 | Timeline de ações | **Coberto** (Phase 1) |
 | 2 | XHR/fetch ricos | **Coberto** (Phase 2): duração, status, IDs quando legíveis; opacos → status 0 |
-| 3 | Estado visual | Pendente (Phase 4) |
-| 4 | Runtime ricos | Pendente (Phase 5) |
-| 5 | Ambiente/sessão | Pendente |
-| 6 | Performance | Pendente (Phase 5) |
-| 7 | DOM/selector | Pendente (Phase 4) |
+| 3 | Estado visual | **Coberto** (Phase 4): diálogos, busy, abas ativas; secção Markdown quando há dados |
+| 4 | Runtime ricos | **Coberto** (Phase 5): `error` / `unhandledrejection`, dedupe, `deltaToLastClickMs` |
+| 5 | Ambiente/sessão | Pendente (ampliar convenções / documentação) |
+| 6 | Performance | **Coberto** (Phase 5, best-effort): LCP, CLS, long tasks, INP quando suportado |
+| 7 | DOM/selector | **Coberto** (Phase 4): `targetDomHint`, `## Elemento relacionado` |
 | 8 | Privacidade | Pendente (Phase 6) |
 | — | Narrativa | **MVP** (Phase 3): secções Resumo + Leitura rápida; Jira via `markdownIssueBodyToAdf` |
 
@@ -87,7 +92,7 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 
 Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/DOM → runtime+performance → privacy hardening**.
 
-**Próximo passo sugerido:** **Phase 3 — Narrativa** (`IssueNarrativeBuilder` ou refactor de `issue-builder`).
+**Próximo passo sugerido:** **Phase 6 — Privacidade e toggles** (`applyPrivacyPolicy`, opções na UI, testes de redação).
 
 ---
 
@@ -170,6 +175,8 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 **Cobre:** PRD §3 e §7 + Etapa 4.
 
+**Estado:** **concluído** na `main` — heurísticas em `context-collector.ts`, tipos em `types.ts`, secções `## Estado visual no momento do bug` e `## Elemento relacionado` em `issue-builder.ts`.
+
 ### O que construir
 
 - **Heurísticas leves** no content script ou snapshot no momento do envio: `[role="dialog"][open]`, `[aria-modal="true"]`, presença de elementos com `aria-busy="true"` ou classes comuns de spinner (lista conservadora para evitar falsos positivos).
@@ -192,6 +199,8 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 ## Phase 5: Runtime enriquecido + performance contextual
 
 **Cobre:** PRD §4 e §6 + Etapa 5.
+
+**Estado:** **concluído** na `main` — listeners e `PerformanceObserver` em `page-bridge.ts`; secções `## Erro de runtime principal` e `## Sinais de performance` em `issue-builder.ts`; `deltaToLastClickMs` no collector.
 
 ### O que construir
 
@@ -266,8 +275,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ## 8. Próximo passo operacional
 
-1. ~~**Phase 3** — narrativa + ADF Jira~~ **Feito (MVP).** Melhorias opcionais: narrativa “observado/esperado”, snapshot visual do Markdown.  
-2. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
-3. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão.
-
-Se quiseres, no passo seguinte posso transformar **Phase 3** em `tasks.md` com tarefas TDD.
+1. **Phase 6** — pipeline de privacidade + toggles nas opções (ver critérios de aceite acima).  
+2. Opcional: narrativa “observado/esperado” no `issue-narrative`; snapshot visual do Markdown no preview.  
+3. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
+4. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão.

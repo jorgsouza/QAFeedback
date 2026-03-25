@@ -82,7 +82,7 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 4. **Faixa de estado** (topo do formulário): à **esquerda**, chip com **slug + pathname** (ex.: `ra-notifications /minha-conta/notificacoes`) — ver `page-route-context.ts`; paths sem regra explícita geram slug `ra-…` a partir dos segmentos. Atualiza em **SPA**. Tooltip repete slug+path e acrescenta **query** se existir. Com **contexto técnico**, o Markdown inclui **Rota técnica** + rótulo PT + path. À **direita**, bolinhas / ícone ℹ️ / banner de rede.
 5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
 6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
-7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5).
+7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5). Com **Incluir contexto técnico**, o Markdown reflete também **Resumo** / leitura rápida, linha do tempo, requisições relevantes, estado visual, elemento relacionado, erro de runtime e sinais de performance **quando houver dados** (ver [page-bridge](#page-bridge-e-erros-da-extensão)).
 
 ---
 
@@ -148,6 +148,10 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts`, `jira-motivo.ts` (`jiraMotivoCustomFieldApiValue`: array `[{ value }]` para multi-select/checkboxes no Jira Cloud) |
 | Imagens Jira | `src/shared/feedback-image-utils.ts` |
 | Corpo da issue | `src/shared/issue-builder.ts` |
+| Narrativa (Resumo / leitura rápida) | `src/shared/issue-narrative.ts` |
+| Jira: Markdown → ADF | `src/shared/jira-markdown-adf.ts` |
+| Limites de captura (buffers, caps) | `src/shared/context-limits.ts` |
+| Linha do tempo / rede (helpers) | `src/shared/interaction-timeline.ts`, `src/shared/network-summary.ts` |
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
 | Ditado SO (textos) | `src/shared/native-dictation-hint.ts` |
 | Rota da página (rótulo + SPA) | `src/shared/page-route-context.ts`, `location-subscription.ts` |
@@ -184,6 +188,8 @@ Token ou escopos Issues (fine-grained) incorretos.
 - **Interceptar** **`fetch`** e **registrar** respostas **não OK**.
 - **Linha do tempo** (Phase 1): cliques, `submit`, `change` em campos, `input` com throttle (~2s por campo), teclas Enter/Tab/Escape, `popstate` e `history.pushState`/`replaceState` (SPA). Eventos dentro da UI da extensão (`#qa-feedback-extension-root`) são ignorados. Limites em `context-limits.ts`.
 - **Rede resumida** (Phase 2): cada **`fetch`** e **`XMLHttpRequest`** gera uma linha com método, URL (sanitizada na montagem do contexto), status, duração (ms), e cabeçalhos de correlação quando legíveis (`x-request-id`, `x-correlation-id`, etc.). Respostas **opacas** (CORS) podem vir com status `0` sem headers. A issue usa **`## Requisições relevantes`** (prioridade: erros, depois lentas ≥3s, depois outras; máx. 20 linhas). O HAR (CDP) continua opcional e separado.
+- **Runtime e performance** (Phase 5): `window` **`error`** e **`unhandledrejection`** (mensagem, stack, ficheiro/linha quando existir, dedupe por chave); **`PerformanceObserver`** para LCP, layout-shift (CLS), `longtask` e INP (best-effort). O **`context-collector`** pode preencher **`deltaToLastClickMs`** no último erro face ao último clique da timeline. No corpo da issue: **`## Erro de runtime principal`** e **`## Sinais de performance`** quando há dados.
+- **Estado visual e DOM alvo** (Phase 4): obtidos no **`context-collector`** no momento do envio (heurísticas no DOM: diálogos/modais, busy, abas ativas; dicas de seletor / `role` / texto para o alvo), não no bridge. Secções **`## Estado visual no momento do bug`** e **`## Elemento relacionado`** quando aplicável.
 
 Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a stack pode incluir `page-bridge.js`; o Chrome pode mostrar isso na página **Errors** da extensão **sem** ser um bug do QAFeedback.
 

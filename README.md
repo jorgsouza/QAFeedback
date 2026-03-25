@@ -23,7 +23,7 @@ Extensão para **Google Chrome** que ajuda equipes de **QA**, desenvolvimento e 
 
 - **Título** e **O que aconteceu** (descrição).
 - **Voz:** microfone nos campos (reconhecimento de voz do **Chrome**, **português do Brasil** por **padrão**, com HTTPS) ou **ditado do sistema** (atalhos do Windows / macOS / Linux — dicas no formulário).
-- **Contexto técnico opcional:** URL, viewport, **tela e DPR**, indício **desktop / móvel / possível emulação no DevTools**, elemento em que você clicou, resumo do **console** e **requisições com falha** na rede (via bridge na página).
+- **Contexto técnico opcional:** URL, viewport, **tela e DPR**, indício **desktop / móvel / possível emulação no DevTools**, **linha do tempo** de interação, **requisições relevantes** (fetch/XHR), **estado visual** e **dicas de DOM** quando detetados, **erros de runtime** e **sinais de performance** (best-effort), narrativa (**Resumo** / leitura rápida), elemento em que você clicou, resumo do **console** — via **page-bridge** e montagem no `context-collector` (ver [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md)).
 - **Prints no Jira:** arquivos, **colar imagem (Ctrl+V)** na descrição, ou **capturar uma área** da tela (retângulo sobre o que está visível na **aba**).
 - **Modo diagnóstico completo** (nas **opções**): ao enviar para o Jira, pode anexar um **arquivo `.har`** com o tráfego HTTP da aba (para o dev importar no DevTools), com cabeçalhos sensíveis redigidos. No formulário, o texto explicativo aparece num **ícone de informação** (tooltip); **bolinhas verdes** indicam token GitHub/Jira configurado.
 
@@ -76,6 +76,6 @@ Carregue a pasta **`extension/dist`** em **chrome://extensions** (modo desenvolv
 | [extension/README.md](extension/README.md) | Funcionalidades completas, build, permissões, estrutura do código |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico detalhado, page-bridge, mensagens do SW |
 | [PRD/](PRD/) | Especificação e imagens de referência |
-| [plans/](plans/) | Planos de funcionalidades (HAR, captura por região, painel + board Jira, layout Figma) — vários com secção *Estado da implementação* |
+| [plans/](plans/) | Planos de funcionalidades (ex.: [contexto rico para issues](plans/prd-features-context-capture.md), HAR, captura por região, rota SPA, layout Figma) — vários com secção *Estado da implementação* |
 
 No Cursor: [`.cursor/skills/`](.cursor/skills/).
