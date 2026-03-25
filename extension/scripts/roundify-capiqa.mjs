@@ -1,6 +1,7 @@
 /**
- * Aplica máscara circular (alpha) ao capiQA.png para remover cantos quadrados /
- * artefatos tipo “quadriculado” e gera public/qa.png + public/icons/icon*.png
+ * Lê PRD/capiQA.png: remove margens transparentes, preenche um quadrado com fit cover
+ * (mascote o maior possível dentro do círculo do manifest — Chrome não aumenta o slot da toolbar)
+ * e gera public/qa.png (64×64) + icons/icon*.png
  */
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,7 +17,14 @@ const icons = join(pub, "icons");
 
 mkdirSync(icons, { recursive: true });
 
-const meta = await sharp(src).metadata();
+/** Recorta alpha baixo e encolhe canvas ao conteúdo (arte ocupa mais pixels no ícone final). */
+const trimmedBuf = await sharp(src)
+  .ensureAlpha()
+  .trim({ threshold: 2 })
+  .png()
+  .toBuffer();
+
+const meta = await sharp(trimmedBuf).metadata();
 const w = meta.width ?? 0;
 const h = meta.height ?? 0;
 if (!w || !h) {
@@ -24,20 +32,29 @@ if (!w || !h) {
   process.exit(1);
 }
 
-const cx = w / 2;
-const cy = h / 2;
-/** Inscrita no retângulo; meio pixel para borda antialiased */
-const r = Math.min(w, h) / 2 - 0.5;
+/** Quadrado: cover preenche o quadrado; a máscara circular corta só os cantos (máximo tamanho aparente). */
+const side = Math.max(w, h);
+
+const squared = await sharp(trimmedBuf)
+  .resize(side, side, { fit: "cover", position: "centre" })
+  .png()
+  .toBuffer();
+
+const cx = side / 2;
+const cy = side / 2;
+const r = side / 2 - 0.5;
 
 const svgMask = Buffer.from(
-  `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  `<svg width="${side}" height="${side}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffffff"/>
   </svg>`,
 );
 
-const rounded = await sharp(src).ensureAlpha().composite([{ input: svgMask, blend: "dest-in" }]).png().toBuffer();
+const rounded = await sharp(squared).composite([{ input: svgMask, blend: "dest-in" }]).png().toBuffer();
 
-await sharp(rounded).resize(256, 256, { fit: "cover" }).png().toFile(join(pub, "qa.png"));
+/** Arte alinhada ao Figma (64×64); na UI o CSS mostra a 40×40. */
+const QA_PX = 64;
+await sharp(rounded).resize(QA_PX, QA_PX, { fit: "cover" }).png().toFile(join(pub, "qa.png"));
 
 for (const z of [16, 32, 48, 128]) {
   await sharp(rounded).resize(z, z, { fit: "cover" }).png().toFile(join(icons, `icon${z}.png`));

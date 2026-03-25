@@ -133,7 +133,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Opções | `src/options/OptionsApp.tsx`, `options.html` |
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
-| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-motivo.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-motivo.ts` (`jiraMotivoCustomFieldApiValue`: array `[{ value }]` para multi-select/checkboxes no Jira Cloud) |
 | Imagens Jira | `src/shared/feedback-image-utils.ts` |
 | Corpo da issue | `src/shared/issue-builder.ts` |
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
@@ -151,9 +151,9 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 | Tipo | Uso |
 |------|-----|
-| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**. |
+| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`** filtrados pela allowlist de build, ou **`jiraBoardsError`**. |
 | `OPEN_OPTIONS` | Abre a página de opções. |
-| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). |
+| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). Opcional **`jiraSoftwareBoardId`**: quadro usado só nesse envio (validado face à lista filtrada). |
 | `START_NETWORK_DIAGNOSTIC` | Com opção ativa: anexa CDP à aba do remetente e inicia `Network.enable`. |
 | `STOP_NETWORK_DIAGNOSTIC` | Desliga o depurador na aba do remetente (cancelar/fechar modal). |
 | `CAPTURE_VISIBLE_TAB` | Devolve `dataUrl` PNG do viewport (`chrome.tabs.captureVisibleTab(windowId, …)` — usa `sender.tab.windowId`, não `tabId`). |

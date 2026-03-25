@@ -30,6 +30,18 @@ import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 type Tab = "form" | "preview";
 
 type RepoOption = { owner: string; repo: string; label: string };
+type JiraBoardOption = { id: number; name: string; type?: string };
+
+function CollapseSheetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+      />
+    </svg>
+  );
+}
 
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
@@ -64,7 +76,22 @@ function MicIcon() {
   );
 }
 
-/** Ícone do FAB: `public/qa.png` (`npm run icons` — máscara circular sobre `PRD/capiQA.png`). */
+/** Texto do modo diagnóstico (tooltip / aria no ícone ℹ️). */
+const NETWORK_DIAG_TOOLTIP =
+  "Modo diagnóstico: a registar pedidos HTTP desta aba; ao enviar ao Jira pode anexar-se um arquivo HAR. Se isto falhar, feche o DevTools nesta aba e reabra o feedback.";
+
+function InfoCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+      />
+    </svg>
+  );
+}
+
+/** Ícone do FAB: `public/qa.png` 64×64; botão icon-only 64×64 (Figma). */
 function FeedbackFabIcon() {
   if (!FEEDBACK_ICON_URL) {
     return (
@@ -97,6 +124,8 @@ const initialForm = (): IssueFormState => destinationDefaults(false, false);
 
 export function FeedbackApp() {
   const [minimized, setMinimized] = useState(false);
+  /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("form");
   const [form, setForm] = useState<IssueFormState>(initialForm);
@@ -117,6 +146,9 @@ export function FeedbackApp() {
   const [jiraTokenConfigured, setJiraTokenConfigured] = useState(false);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
+  const [jiraBoardsForModal, setJiraBoardsForModal] = useState<JiraBoardOption[]>([]);
+  const [selectedJiraBoardId, setSelectedJiraBoardId] = useState("");
+  const [jiraBoardsListError, setJiraBoardsListError] = useState<string | null>(null);
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
@@ -137,7 +169,7 @@ export function FeedbackApp() {
     toggleField,
     speechError,
     clearSpeechError,
-  } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open });
+  } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open && !sheetCollapsed });
 
   useEffect(() => {
     ensurePageBridgeInjected();
@@ -215,6 +247,9 @@ export function FeedbackApp() {
         jiraTokenConfigured?: boolean;
         fullNetworkDiagnostic?: boolean;
         loadFailed?: boolean;
+        jiraBoards?: JiraBoardOption[];
+        jiraDefaultBoardId?: string;
+        jiraBoardsError?: string;
       };
       if (r && "loadFailed" in r && r.loadFailed) {
         setRepoTargets([]);
@@ -222,6 +257,9 @@ export function FeedbackApp() {
         setGithubTokenConfigured(false);
         setJiraTokenConfigured(false);
         setFullNetworkDiagnosticEnabled(false);
+        setJiraBoardsForModal([]);
+        setSelectedJiraBoardId("");
+        setJiraBoardsListError(null);
         setRepoListIssue("loadFailed");
         return;
       }
@@ -255,12 +293,26 @@ export function FeedbackApp() {
       });
       setRepoTargets(list);
       setRepoIndex(0);
+
+      const jiraBoards = Array.isArray(r?.jiraBoards) ? r.jiraBoards : [];
+      const jiraDefRaw = typeof r?.jiraDefaultBoardId === "string" ? r.jiraDefaultBoardId.trim() : "";
+      const jbErr = typeof r?.jiraBoardsError === "string" ? r.jiraBoardsError : null;
+      setJiraBoardsForModal(jiraBoards);
+      setJiraBoardsListError(jbErr);
+      setSelectedJiraBoardId((prev) => {
+        if (prev && jiraBoards.some((b) => String(b.id) === prev)) return prev;
+        if (jiraDefRaw && jiraBoards.some((b) => String(b.id) === jiraDefRaw)) return jiraDefRaw;
+        return jiraBoards[0] ? String(jiraBoards[0].id) : "";
+      });
     } catch (e) {
       setRepoTargets([]);
       setRepoIndex(0);
       setGithubTokenConfigured(false);
       setJiraTokenConfigured(false);
       setFullNetworkDiagnosticEnabled(false);
+      setJiraBoardsForModal([]);
+      setSelectedJiraBoardId("");
+      setJiraBoardsListError(null);
       setRepoListIssue(isExtensionContextInvalidatedError(e) ? "context" : "other");
     }
   }, []);
@@ -341,6 +393,11 @@ export function FeedbackApp() {
     if (form.sendToGitHub && !selectedRepo) return false;
     if (form.sendToJira) {
       if (!isJiraMotivoAbertura(form.jiraMotivoAbertura)) return false;
+      if (jiraTokenConfigured) {
+        if (jiraBoardsListError) return false;
+        if (jiraBoardsForModal.length === 0) return false;
+        if (!selectedJiraBoardId.trim()) return false;
+      }
     }
     return true;
   })();
@@ -376,6 +433,7 @@ export function FeedbackApp() {
 
   const closeModal = () => {
     setOpen(false);
+    setSheetCollapsed(false);
     resetFlow();
   };
 
@@ -414,6 +472,9 @@ export function FeedbackApp() {
         payload: {
           ...payload,
           ...(jiraImageAttachments?.length ? { jiraImageAttachments } : {}),
+          ...(form.sendToJira && selectedJiraBoardId.trim()
+            ? { jiraSoftwareBoardId: selectedJiraBoardId.trim() }
+            : {}),
         },
         owner: selectedRepo?.owner,
         repo: selectedRepo?.repo,
@@ -456,10 +517,19 @@ export function FeedbackApp() {
 
   const openModal = useCallback(() => {
     setOpen(true);
+    setSheetCollapsed(false);
     setError(null);
     setPostSubmit(null);
     setTab("form");
   }, []);
+
+  const openOrExpandFeedback = useCallback(() => {
+    if (open && sheetCollapsed) {
+      setSheetCollapsed(false);
+      return;
+    }
+    openModal();
+  }, [open, sheetCollapsed, openModal]);
 
   return (
     <>
@@ -470,7 +540,7 @@ export function FeedbackApp() {
             <button
               type="button"
               className="qaf-fab qaf-fab-icon-only"
-              onClick={openModal}
+              onClick={openOrExpandFeedback}
               aria-label="Abrir feedback"
             >
               <FeedbackFabIcon />
@@ -494,10 +564,20 @@ export function FeedbackApp() {
         )}
       </div>
 
-      {open && (
+      {open && !sheetCollapsed && (
         <>
-          <button type="button" className="qaf-backdrop" aria-label="Fechar" onClick={closeModal} />
-          <div className="qaf-modal" role="dialog" aria-modal="true" aria-labelledby="qaf-dlg-title">
+          <button
+            type="button"
+            className="qaf-backdrop qaf-backdrop--sheet"
+            aria-label="Fechar"
+            onClick={closeModal}
+          />
+          <div
+            className="qaf-modal qaf-modal--dock"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qaf-dlg-title"
+          >
             <div className="qaf-modal-header">
               <div className="qaf-modal-header-brand">
                 <div className="qaf-modal-avatar">
@@ -514,27 +594,22 @@ export function FeedbackApp() {
                         enviar o relatório por API.
                       </>
                     ) : (
-                      <>
-                        Ferramenta de QA do Reclame AQUI — envie para{" "}
-                        {githubTokenConfigured && jiraTokenConfigured ? (
-                          <>
-                            <strong>GitHub</strong>, <strong>Jira</strong> ou ambos
-                          </>
-                        ) : githubTokenConfigured ? (
-                          <strong>GitHub</strong>
-                        ) : (
-                          <strong>Jira</strong>
-                        )}
-                        .
-                      </>
+                      <>Ferramenta de QA do Reclame AQUI</>
                     )}
                   </p>
-                  <button type="button" className="qaf-modal-settings-link" onClick={openOptions}>
-                    Configurações
-                  </button>
                 </div>
               </div>
               <div className="qaf-modal-header-actions">
+                <button
+                  type="button"
+                  className="qaf-modal-icon-btn"
+                  onClick={() => setSheetCollapsed(true)}
+                  aria-label="Recolher painel"
+                  aria-expanded={true}
+                  title="Recolher painel — o formulário mantém-se; clique na capivara para reabrir"
+                >
+                  <CollapseSheetIcon />
+                </button>
                 <button
                   type="button"
                   className="qaf-modal-icon-btn"
@@ -544,7 +619,13 @@ export function FeedbackApp() {
                 >
                   ⚙
                 </button>
-                <button type="button" className="qaf-modal-close" onClick={closeModal} aria-label="Fechar">
+                <button
+                  type="button"
+                  className="qaf-modal-close"
+                  onClick={closeModal}
+                  aria-label="Fechar e limpar"
+                  title="Fechar e limpar"
+                >
                   ×
                 </button>
               </div>
@@ -618,18 +699,47 @@ export function FeedbackApp() {
             )}
 
             <div className="qaf-body">
-              {fullNetworkDiagnosticEnabled && !postSubmit ? (
-                networkDiagError ? (
-                  <div className="qaf-network-diag qaf-network-diag--error" role="alert">
-                    <strong>Captura de rede:</strong> {networkDiagError}
+              {!postSubmit &&
+              (githubTokenConfigured || jiraTokenConfigured || fullNetworkDiagnosticEnabled) ? (
+                <div className="qaf-status-strip">
+                  <div
+                    className="qaf-status-strip-dots"
+                    role="list"
+                    aria-label="Tokens configurados nas opções"
+                  >
+                    {githubTokenConfigured ? (
+                      <span
+                        className="qaf-token-dot"
+                        role="listitem"
+                        title="GitHub: token configurado."
+                        aria-label="GitHub: token configurado."
+                      />
+                    ) : null}
+                    {jiraTokenConfigured ? (
+                      <span
+                        className="qaf-token-dot"
+                        role="listitem"
+                        title="Jira Cloud: token configurado."
+                        aria-label="Jira Cloud: token configurado."
+                      />
+                    ) : null}
                   </div>
-                ) : (
-                  <div className="qaf-network-diag" role="status">
-                    <strong>Modo diagnóstico:</strong> a registar pedidos HTTP desta aba; ao enviar ao{" "}
-                    <strong>Jira</strong> pode anexar-se um arquivo HAR. Se isto falhar, feche o{" "}
-                    <strong>DevTools nesta aba</strong> e reabra o feedback.
-                  </div>
-                )
+                  {fullNetworkDiagnosticEnabled ? (
+                    <button
+                      type="button"
+                      className="qaf-info-trigger"
+                      title={NETWORK_DIAG_TOOLTIP}
+                      aria-label={NETWORK_DIAG_TOOLTIP}
+                    >
+                      <InfoCircleIcon />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {fullNetworkDiagnosticEnabled && !postSubmit && networkDiagError ? (
+                <div className="qaf-network-diag qaf-network-diag--error" role="alert">
+                  <strong>Captura de rede:</strong> {networkDiagError}
+                </div>
               ) : null}
               {postSubmit ? (
                 <div className="qaf-success">
@@ -795,17 +905,47 @@ export function FeedbackApp() {
                             </button>
                           </div>
                         </div>
-                      ) : githubTokenConfigured ? (
-                        <p className="qaf-dest-hint">
-                          Destino: <strong>GitHub</strong> (token configurado).
-                        </p>
-                      ) : (
-                        <p className="qaf-dest-hint">
-                          Destino: <strong>Jira Cloud</strong> (token configurado).
-                        </p>
-                      )}
+                      ) : null}
+                      {form.sendToJira && jiraTokenConfigured ? (
+                        <div className="qaf-field">
+                          <label className="qaf-label" htmlFor="qaf-jira-board">
+                            Board do Jira para vincular <span className="qaf-required">*</span>
+                          </label>
+                          {jiraBoardsListError ? (
+                            <div className="qaf-error">
+                              Não foi possível carregar os quadros: {jiraBoardsListError}{" "}
+                              <button type="button" className="qaf-link" onClick={() => void loadRepoTargets()}>
+                                Tentar novamente
+                              </button>
+                            </div>
+                          ) : jiraBoardsForModal.length === 0 ? (
+                            <div className="qaf-error qaf-error-warn">
+                              Nenhum quadro disponível. Confirme o token Jira e o ID do quadro nas opções, ou ajuste{" "}
+                              <strong>BOARD_ID</strong> ou <strong>VITE_JIRA_BOARD_ALLOWLIST</strong> no{" "}
+                              <code>.env</code> antes do <code>npm run build</code>.
+                            </div>
+                          ) : (
+                            <select
+                              id="qaf-jira-board"
+                              className="qaf-select"
+                              value={selectedJiraBoardId}
+                              onChange={(e) => setSelectedJiraBoardId(e.target.value)}
+                            >
+                              {jiraBoardsForModal.map((b) => (
+                                <option key={b.id} value={String(b.id)}>
+                                  {b.name} ({b.type ?? "?"}) — ID {b.id}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ) : null}
                       {form.sendToJira && (
-                        <div className="qaf-field" role="radiogroup" aria-labelledby="qaf-motivo-label">
+                        <div
+                          className="qaf-field qaf-field--motivo-abertura"
+                          role="radiogroup"
+                          aria-labelledby="qaf-motivo-label"
+                        >
                           <span className="qaf-label" id="qaf-motivo-label">
                             Motivo de abertura <span className="qaf-required">*</span>
                           </span>
@@ -976,7 +1116,7 @@ export function FeedbackApp() {
                             <div className="qaf-img-btn-row">
                               <button
                                 type="button"
-                                className="qaf-btn-ghost"
+                                className="qaf-btn-ghost qaf-btn-ghost--dashed"
                                 onClick={() => fileInputRef.current?.click()}
                               >
                                 Selecionar imagem
@@ -1034,13 +1174,8 @@ export function FeedbackApp() {
                       </label>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button
-                            type="button"
-                            className="qaf-btn qaf-btn-submit"
-                            disabled={!canSubmit || busy}
-                            onClick={submit}
-                          >
-                            {busy ? "Enviando…" : "Enviar"}
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
+                            Cancelar
                           </button>
                           <button
                             type="button"
@@ -1049,8 +1184,13 @@ export function FeedbackApp() {
                           >
                             <CopyIcon /> Copiar
                           </button>
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
-                            Cancelar
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-submit"
+                            disabled={!canSubmit || busy}
+                            onClick={submit}
+                          >
+                            {busy ? "Enviando…" : "Enviar"}
                           </button>
                         </div>
                       </div>
@@ -1060,13 +1200,8 @@ export function FeedbackApp() {
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button
-                            type="button"
-                            className="qaf-btn qaf-btn-submit"
-                            disabled={!canSubmit || busy}
-                            onClick={submit}
-                          >
-                            {busy ? "Enviando…" : "Enviar"}
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
+                            Cancelar
                           </button>
                           <button
                             type="button"
@@ -1075,8 +1210,13 @@ export function FeedbackApp() {
                           >
                             <CopyIcon /> Copiar
                           </button>
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
-                            Cancelar
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-submit"
+                            disabled={!canSubmit || busy}
+                            onClick={submit}
+                          >
+                            {busy ? "Enviando…" : "Enviar"}
                           </button>
                         </div>
                       </div>

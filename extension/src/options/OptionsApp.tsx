@@ -18,6 +18,13 @@ import {
 } from "../shared/repo-targets";
 import { resolveJiraCloudBaseUrl } from "../shared/jira-client";
 import type { ResolveJiraBoardFilterResult } from "../shared/jira-board-filter-resolve";
+import { builtInJiraBoardAllowlistIds, filterJiraBoardsByAllowlist } from "../shared/jira-board-allowlist";
+import { sortJiraBoardsByName } from "../shared/jira-boards-list-for-feedback";
+
+/** Quadros mostrados no menu das opções: mesma allowlist que o painel (BOARD_ID / VITE_… no .env → build). */
+function boardsForOptionsMenu(raw: { id: number; name: string; type: string }[]) {
+  return filterJiraBoardsByAllowlist(raw, builtInJiraBoardAllowlistIds());
+}
 
 function hostsToText(hosts: string[]): string {
   return hosts.join("\n");
@@ -206,7 +213,11 @@ export function OptionsApp() {
         boards: { id: number; name: string; type: string }[];
         boardFilterPreview?: ResolveJiraBoardFilterResult;
       },
-      opts: { boardIdChosen?: string } = {},
+      opts: {
+        boardIdChosen?: string;
+        boardsListedInUi?: number;
+        jiraIssueTypeName?: string;
+      } = {},
     ) => {
       const lines: string[] = [];
       lines.push(`Jira: ligação OK (${res.displayName}).`);
@@ -217,7 +228,8 @@ export function OptionsApp() {
       if (res.boards.length === 0) {
         lines.push("Nenhum quadro na lista — confira o token ou o acesso à API Jira Software.");
       } else if (!opts.boardIdChosen) {
-        lines.push(`${res.boards.length} quadro(s) listado(s).`);
+        const n = opts.boardsListedInUi ?? res.boards.length;
+        lines.push(`${n} quadro(s) no menu.`);
       }
 
       const preview = res.boardFilterPreview;
@@ -232,6 +244,12 @@ export function OptionsApp() {
           }
           if (preview.unresolved.length > 0) {
             lines.push(`Não mapeado no createmeta: ${preview.unresolved.join("; ")} — override em Avançado se precisar.`);
+          }
+          const reqT = opts.jiraIssueTypeName?.trim();
+          if (reqT && preview.effectiveIssueTypeName.trim().toLowerCase() !== reqT.toLowerCase()) {
+            lines.push(
+              `Tipo na criação neste quadro: ${preview.effectiveIssueTypeName} (nas opções: ${reqT}).`,
+            );
           }
         } else {
           lines.push(`Filtro do quadro: ${preview.message}`);
@@ -275,18 +293,31 @@ export function OptionsApp() {
             setJiraBoards([]);
             return;
           }
-          setJiraBoards(res.boards);
+          const rawBoards = res.boards;
+          const filtered = sortJiraBoardsByName(boardsForOptionsMenu(rawBoards));
+          setJiraBoards(filtered);
           setSettings((prev) => {
             const next = { ...prev };
             if (res.resolvedSiteUrl) next.jiraSiteUrl = res.resolvedSiteUrl;
             void saveSettings(next);
             return next;
           });
-          setStatus(
-            res.boards.length > 0
-              ? `Jira: ligação OK (${res.displayName}). ${res.boards.length} quadro(s) listados — escolha o backlog destino no menu.`
-              : `Jira: ligação OK (${res.displayName}), mas a API não devolveu quadros (confira o token e o Jira Software).`,
-          );
+          const allowN = builtInJiraBoardAllowlistIds().length;
+          if (filtered.length > 0) {
+            setStatus(
+              allowN > 0
+                ? `Jira: ligação OK (${res.displayName}). Menu com ${filtered.length} quadro(s) permitidos por BOARD_ID no build (${rawBoards.length} no total na API) — escolha o backlog destino.`
+                : `Jira: ligação OK (${res.displayName}). ${filtered.length} quadro(s) listados — escolha o backlog destino no menu.`,
+            );
+          } else if (rawBoards.length > 0 && allowN > 0) {
+            setStatus(
+              `Jira: ligação OK (${res.displayName}), mas nenhum quadro coincide com os IDs em BOARD_ID / VITE_JIRA_BOARD_ALLOWLIST (${rawBoards.length} na API). Ajuste o .env e execute npm run build.`,
+            );
+          } else {
+            setStatus(
+              `Jira: ligação OK (${res.displayName}), mas a API não devolveu quadros (confira o token e o Jira Software).`,
+            );
+          }
         } catch {
           if (reqId !== jiraListRequestId.current) return;
           setStatus("Erro ao comunicar com o service worker.");
@@ -330,7 +361,35 @@ export function OptionsApp() {
           setStatus(res.message ?? "Falha ao aplicar o quadro escolhido.");
           return;
         }
-        setJiraBoards(res.boards);
+        /** Resposta com boardId ≠ lista completa: só o quadro do projeto. Recarregar lista global sem perder o menu. */
+        const fullRes = await sendJiraTestAndListBoards("");
+        if (fullRes.ok) {
+          const listed = sortJiraBoardsByName(boardsForOptionsMenu(fullRes.boards));
+          setJiraBoards(listed);
+          if (fullRes.boards.length > 0 && listed.length === 0 && builtInJiraBoardAllowlistIds().length > 0) {
+            setStatus(
+              `${buildJiraOkStatusLines(res, {
+                boardIdChosen: boardId,
+                jiraIssueTypeName: settingsRef.current.jiraIssueTypeName,
+              })} · Atenção: nenhum ID do BOARD_ID no build aparece na API (${fullRes.boards.length} quadros).`,
+            );
+          } else {
+            setStatus(
+              buildJiraOkStatusLines(res, {
+                boardIdChosen: boardId,
+                boardsListedInUi: listed.length,
+                jiraIssueTypeName: settingsRef.current.jiraIssueTypeName,
+              }),
+            );
+          }
+        } else {
+          setStatus(
+            `${buildJiraOkStatusLines(res, {
+              boardIdChosen: boardId,
+              jiraIssueTypeName: settingsRef.current.jiraIssueTypeName,
+            })} · Não foi possível recarregar a lista completa de quadros: ${fullRes.message ?? "erro"}. Recarregue esta página de opções.`,
+          );
+        }
         const preview = res.boardFilterPreview;
         setSettings((prev) => {
           const next = { ...prev, jiraSoftwareBoardId: boardId };
@@ -342,7 +401,6 @@ export function OptionsApp() {
           void saveSettings(next);
           return next;
         });
-        setStatus(buildJiraOkStatusLines(res, { boardIdChosen: boardId }));
       } catch {
         setStatus("Erro ao comunicar com o service worker.");
       } finally {
@@ -650,6 +708,15 @@ export function OptionsApp() {
           <strong>chave do projeto</strong> e o <strong>filtro do quadro</strong> (Squad, etc.) e guardamos — não é
           preciso botão de teste. O motivo da abertura continua na descrição ao criar issues.
         </p>
+        {builtInJiraBoardAllowlistIds().length > 0 ? (
+          <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
+            O menu acima mostra só quadros cujos IDs estão em{" "}
+            <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>BOARD_ID</code> ou{" "}
+            <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>VITE_JIRA_BOARD_ALLOWLIST</code>{" "}
+            no <code>.env</code> (definido em tempo de <code>npm run build</code>). Para alterar a lista, edite o{" "}
+            <code>.env</code> na raiz ou em <code>extension/</code> e reconstrua a extensão.
+          </p>
+        ) : null}
         {(settings.jiraProjectKey ?? "").trim() ? (
           <p
             style={{

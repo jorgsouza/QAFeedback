@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   inferJiraCloudSiteUrlFromEmail,
+  isJiraBoardWithoutBacklogError,
+  isJiraIssueTypeCreateError,
   isJiraSprintBoardMoveError,
   jiraBoardWebUrlFromUserInput,
   jiraResolvedBoardWebUrl,
@@ -157,6 +159,40 @@ describe("isJiraSprintBoardMoveError", () => {
 
   it("returns false for unrelated errors", () => {
     expect(isJiraSprintBoardMoveError("403: Forbidden")).toBe(false);
+  });
+});
+
+describe("isJiraBoardWithoutBacklogError", () => {
+  it("detects Kanban / no-backlog board rejection from API", () => {
+    expect(
+      isJiraBoardWithoutBacklogError(
+        "400: Tried to move to backlog on board without backlog",
+      ),
+    ).toBe(true);
+  });
+
+  it("detects alternate wording without a backlog", () => {
+    expect(isJiraBoardWithoutBacklogError("400: Board without a backlog")).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isJiraBoardWithoutBacklogError("403: Forbidden")).toBe(false);
+    expect(
+      isJiraBoardWithoutBacklogError(
+        "400: Tried to move to board on board with sprints use sprint/{sprintid}/issues instead",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isJiraIssueTypeCreateError", () => {
+  it("detects issuetype-related messages", () => {
+    expect(isJiraIssueTypeCreateError('400: Specify a valid issue type')).toBe(true);
+    expect(isJiraIssueTypeCreateError("Issuetype is required")).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isJiraIssueTypeCreateError("403: Forbidden")).toBe(false);
   });
 });
 

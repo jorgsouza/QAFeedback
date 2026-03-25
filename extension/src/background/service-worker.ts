@@ -20,6 +20,11 @@ import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/h
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
 import { loadSettings } from "../shared/storage";
 import { normalizeGitHubRepoRef } from "../shared/github-repo-normalize";
+import {
+  coerceJiraBoardIdRequest,
+  listFilteredJiraBoardsForFeedback,
+  resolveJiraBoardIdForCreate,
+} from "../shared/jira-boards-list-for-feedback";
 
 const SCRIPT_ID = "qa-feedback-content";
 
@@ -142,6 +147,8 @@ type CreateIssueMessage = {
   payload: import("../shared/types").CreateIssuePayload;
   owner?: string;
   repo?: string;
+  /** Quadro escolhido no modal (validado no SW face à lista filtrada). */
+  jiraSoftwareBoardId?: string;
 };
 
 type TestGitHubMessage = {
@@ -200,12 +207,24 @@ chrome.runtime.onMessage.addListener(
       void (async () => {
         try {
           const s = await loadSettings();
-          sendResponse({
+          const jiraTokenConfigured = Boolean(s.jiraApiToken?.trim());
+          const base: Record<string, unknown> = {
             repos: repoTargetsForUi(s),
             githubTokenConfigured: Boolean(s.githubToken?.trim()),
-            jiraTokenConfigured: Boolean(s.jiraApiToken?.trim()),
+            jiraTokenConfigured,
             fullNetworkDiagnostic: Boolean(s.fullNetworkDiagnostic),
-          });
+          };
+          if (jiraTokenConfigured) {
+            const jb = await listFilteredJiraBoardsForFeedback(s);
+            if (jb.ok) {
+              base.jiraBoards = jb.boards;
+              if (jb.defaultBoardId) base.jiraDefaultBoardId = jb.defaultBoardId;
+            } else {
+              base.jiraBoards = [];
+              base.jiraBoardsError = jb.message;
+            }
+          }
+          sendResponse(base);
         } catch (err) {
           console.error("[QA Feedback] LIST_REPO_TARGETS:", err);
           sendResponse({
@@ -483,6 +502,23 @@ chrome.runtime.onMessage.addListener(
             return;
           }
 
+          const createMsg = message as CreateIssueMessage;
+          /** ID no `payload` (modal) tem prioridade; top-level mantém compatibilidade. */
+          const requestedBoardId =
+            coerceJiraBoardIdRequest(p.jiraSoftwareBoardId) ||
+            coerceJiraBoardIdRequest(createMsg.jiraSoftwareBoardId) ||
+            undefined;
+          const boardPick = await resolveJiraBoardIdForCreate(s, requestedBoardId);
+          if (!boardPick.ok) {
+            sendResponse({ ok: false, message: boardPick.message });
+            return;
+          }
+          const effectiveJiraBoardId = boardPick.boardIdStr;
+          /** Overrides de filtro guardados nas opções só fazem sentido para o quadro «padrão»; outro quadro no modal evita sobrescrever o JQL certo. */
+          const storageBoardId = (s.jiraSoftwareBoardId ?? "").trim();
+          const boardMatchesSavedOptions =
+            !storageBoardId || effectiveJiraBoardId === storageBoardId;
+
           let appendHarHelp: string | undefined;
           const jiraAttachments = [...(p.jiraImageAttachments ?? [])];
           if (s.fullNetworkDiagnostic && tabId != null) {
@@ -512,10 +548,14 @@ chrome.runtime.onMessage.addListener(
             payload: p,
             motivoAbertura: p.jiraMotivoAbertura,
             motivoCustomFieldId: s.jiraMotivoCustomFieldId,
-            jiraSoftwareBoardId: s.jiraSoftwareBoardId,
-            jiraBoardAutoFields: s.jiraBoardAutoFields,
-            jiraBoardFilterSelectFieldId: s.jiraBoardFilterSelectFieldId,
-            jiraBoardFilterSelectValue: s.jiraBoardFilterSelectValue,
+            jiraSoftwareBoardId: effectiveJiraBoardId,
+            jiraBoardAutoFields: boardMatchesSavedOptions ? s.jiraBoardAutoFields : undefined,
+            jiraBoardFilterSelectFieldId: boardMatchesSavedOptions
+              ? s.jiraBoardFilterSelectFieldId
+              : undefined,
+            jiraBoardFilterSelectValue: boardMatchesSavedOptions
+              ? s.jiraBoardFilterSelectValue
+              : undefined,
             appendDescriptionMarkdown: appendHarHelp,
           });
           if (jr.ok) {
@@ -537,7 +577,7 @@ chrome.runtime.onMessage.addListener(
             const boardLink = jiraResolvedBoardWebUrl({
               siteUrl: jiraBase,
               projectKey: issueProjectKey,
-              jiraSoftwareBoardId: s.jiraSoftwareBoardId,
+              jiraSoftwareBoardId: effectiveJiraBoardId,
               selectedIssueKey: jr.key,
             });
             jiraUrl = boardLink ?? browse;

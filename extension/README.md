@@ -12,7 +12,7 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 
 - **Botão flutuante (FAB)** com ícone de QA nos domínios que você configurar nas opções; dá para **minimizar** o controle.
 - Se o Chrome estiver em modo **“só ao clicar no ícone”**, use o **ícone da extensão** na barra para injetar o FAB nessa aba.
-- **Modal** com abas **Formulário** e **Preview** (Markdown antes de enviar).
+- **Painel** (sheet à direita) com abas **Formulário** e **Preview** (Markdown antes de enviar); **recolher** com a seta no cabeçalho mantém o rascunho — o **FAB** volta a abrir o painel.
 - Link **Configurações** para abrir a página de opções da extensão.
 
 ### Destinos do envio
@@ -89,6 +89,8 @@ npm run build
 O `build` **executa** **`npm run icons`** primeiro (`../PRD/capiQA.png` → `public/qa.png` + `public/icons/`).
 
 Saída: **`dist/`**. Carregue **`extension/dist`** em **chrome://extensions** (modo desenvolvedor).
+
+**Allowlist de quadros Jira (opcional, só build):** em `extension/.env` ou na **raiz do repo** use `BOARD_ID=455,451,...` **ou** `VITE_JIRA_BOARD_ALLOWLIST=…` antes de `npm run build` (o Vite lê ambos). Lista vazia = sem filtro. Reconstrua e recarregue a extensão após mudar o `.env`. Não inclua **API tokens** no `.env` empacotado.
 
 ## Erro “Extension context invalidated”
 

@@ -16,6 +16,8 @@ export type ResolveJiraBoardFilterResult =
       fields: JiraBoardResolvedField[];
       /** Cláusulas do filtro que não foram mapeadas para campos de criação. */
       unresolved: string[];
+      /** Tipo efetivo no POST /issue (ex.: Task quando Bug era inválido no filtro). */
+      effectiveIssueTypeName: string;
     }
   | { ok: false; message: string };
 
@@ -45,6 +47,98 @@ export function normalizeJqlFieldLabel(raw: string): string {
     .replace(/\[[^\]]*]/g, "")
     .trim()
     .toLowerCase();
+}
+
+/**
+ * Extrai valores de `type IN (A, "B", C)` ou `issuetype IN (...)`.
+ * Necessário para quadros cujo filtro não usa `type = X` (ex.: Lane de Inovação / board 2700).
+ */
+export function parseJqlIssueTypeInList(jql: string): string[] {
+  const s = stripJqlOrderBy(jql);
+  const re = /\b(?:issue\s*type|issuetype|type)\s+IN\s*\(([\s\S]*?)\)/i;
+  const m = s.match(re);
+  if (!m?.[1]) return [];
+  return splitJqlCommaListTokens(m[1]);
+}
+
+function splitJqlCommaListTokens(inner: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let depth = 0;
+  let inQ = false;
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i]!;
+    if (c === '"') {
+      inQ = !inQ;
+      cur += c;
+      continue;
+    }
+    if (!inQ && c === "(") {
+      depth++;
+      cur += c;
+      continue;
+    }
+    if (!inQ && c === ")") {
+      depth--;
+      cur += c;
+      continue;
+    }
+    if (!inQ && depth === 0 && c === ",") {
+      const t = trimJqlListAtom(cur);
+      if (t) out.push(t);
+      cur = "";
+      continue;
+    }
+    cur += c;
+  }
+  const last = trimJqlListAtom(cur);
+  if (last) out.push(last);
+  return out;
+}
+
+function trimJqlListAtom(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith('"') && t.endsWith('"') && t.length >= 2) return t.slice(1, -1).trim();
+  return t;
+}
+
+function issueTypeAllowedByInList(chosen: string, allowed: string[]): boolean {
+  const c = chosen.trim().toLowerCase();
+  if (!c) return false;
+  return allowed.some((a) => a.trim().toLowerCase() === c);
+}
+
+/**
+ * `issuetype = Task` ou `type = "Story"` (um único tipo). Complementa `type IN (...)`.
+ */
+export function parseJqlIssueTypeSingleEquals(jql: string): string | null {
+  const s = stripJqlOrderBy(jql);
+  const re =
+    /\b(?:issue\s*type|issuetype|type)\s*=\s*(?:"([^"]+)"|([A-Za-z][A-Za-z0-9_-]*))/i;
+  const m = s.match(re);
+  if (!m) return null;
+  const raw = (m[1] ?? m[2] ?? "").trim();
+  return raw || null;
+}
+
+/** Tipos permitidos pelo JQL do quadro: `type IN (...)` ou igualdade única. */
+export function allowedIssueTypesFromBoardJql(jql: string): string[] {
+  const fromIn = parseJqlIssueTypeInList(jql);
+  if (fromIn.length > 0) return fromIn;
+  const single = parseJqlIssueTypeSingleEquals(jql);
+  return single ? [single] : [];
+}
+
+/**
+ * Se nas opções está Bug mas o filtro do quadro não aceita Bug e aceita Task, usa Task (ex.: quadro só com Tasks).
+ */
+export function coerceBugToTaskForBoardFilter(requested: string, allowedTypes: string[]): string {
+  const req = requested.trim() || "Bug";
+  if (allowedTypes.length === 0) return req;
+  if (issueTypeAllowedByInList(req, allowedTypes)) return req;
+  if (!/^bug$/i.test(req)) return req;
+  const taskHit = allowedTypes.find((a) => a.trim().toLowerCase() === "task");
+  return taskHit != null ? taskHit.trim() : req;
 }
 
 /** Extrai igualdades "campo" = "valor" e cf[ID] = "valor". */
@@ -234,14 +328,30 @@ export async function resolveJiraBoardFieldsForIssueCreate(params: {
     return { ok: false, message: "Filtro do quadro sem JQL." };
   }
 
+  const typeInList = allowedIssueTypesFromBoardJql(jql);
+  const requestedType = issueTypeName.trim() || "Bug";
+  const itn = coerceBugToTaskForBoardFilter(requestedType, typeInList);
+  const issueTypeUnresolved: string[] = [];
+  if (typeInList.length > 0 && !issueTypeAllowedByInList(itn, typeInList)) {
+    issueTypeUnresolved.push(
+      `tipo de issue: o filtro do quadro exige um destes: ${typeInList.join(", ")} (nas opções: ${requestedType})`,
+    );
+  }
+
   const rawConstraints = parseJqlEqualityConstraints(jql);
   const constraints = filterConstraintsForCreateIssue(rawConstraints);
   if (constraints.length === 0) {
-    return { ok: true, jql, fields: [], unresolved: [] };
+    return {
+      ok: true,
+      jql,
+      fields: [],
+      unresolved: issueTypeUnresolved,
+      effectiveIssueTypeName: itn,
+    };
   }
 
   const pk = encodeURIComponent(projectKey.trim());
-  const it = encodeURIComponent(issueTypeName.trim() || "Bug");
+  const it = encodeURIComponent(itn);
   const metaUrl = `${baseUrl}/rest/api/3/issue/createmeta?projectKeys=${pk}&issuetypeNames=${it}&expand=projects.issuetypes.fields`;
   const metaRes = await fetch(metaUrl, { headers });
   if (!metaRes.ok) {
@@ -261,5 +371,11 @@ export async function resolveJiraBoardFieldsForIssueCreate(params: {
   }
 
   const { fields, unresolved } = matchConstraintsToCreateMeta(constraints, issueFields);
-  return { ok: true, jql, fields, unresolved };
+  return {
+    ok: true,
+    jql,
+    fields,
+    unresolved: [...unresolved, ...issueTypeUnresolved],
+    effectiveIssueTypeName: itn,
+  };
 }

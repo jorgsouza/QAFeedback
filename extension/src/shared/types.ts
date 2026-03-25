@@ -115,4 +115,9 @@ export type CreateIssuePayload = IssueFormState & {
   technicalContext?: TechnicalContextPayload;
   /** Só usado quando `sendToJira`; anexos via REST após POST /issue. */
   jiraImageAttachments?: JiraImageAttachmentPayload[];
+  /**
+   * Quadro escolhido no modal de feedback (tem prioridade sobre `jiraSoftwareBoardId` nas opções).
+   * Deve ir dentro do payload para o Chrome entregar de forma fiável ao service worker.
+   */
+  jiraSoftwareBoardId?: string;
 };

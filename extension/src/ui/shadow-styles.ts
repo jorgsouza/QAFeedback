@@ -48,11 +48,18 @@ export const shadowCss = `
 }
 
 .qaf-fab-icon-only {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border-radius: 50%;
   overflow: hidden;
+  flex-shrink: 0;
+  /* Só o mascote (PNG 64×64); sem halo nem fundo extra */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .qaf-fab-icon-wrap {
@@ -62,6 +69,8 @@ export const shadowCss = `
   background: transparent;
   border-radius: 50%;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 .qaf-fab-icon-wrap img {
@@ -72,6 +81,17 @@ export const shadowCss = `
   object-fit: contain;
   display: block;
   pointer-events: none;
+}
+
+/* Imagem 64×64 a preencher todo o FAB (Figma); sem drop-shadow (evita “anel” cinza/azul). */
+.qaf-fab-icon-only .qaf-fab-icon-wrap img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .qaf-fab-fallback {
@@ -85,14 +105,35 @@ export const shadowCss = `
   line-height: 1;
 }
 
+.qaf-fab-icon-only .qaf-fab-fallback {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .qaf-fab:hover {
   background: rgba(30, 41, 59, 0.98);
   transform: translateY(-2px);
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
 }
 
+.qaf-fab-icon-only:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(-2px) scale(1.03);
+}
+
 .qaf-fab:active {
   transform: translateY(0);
+}
+
+.qaf-fab-icon-only:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .qaf-mini-actions {
@@ -119,6 +160,10 @@ export const shadowCss = `
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   z-index: 2147483645;
+}
+
+.qaf-backdrop--sheet {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .qaf-modal {
@@ -151,13 +196,31 @@ export const shadowCss = `
   overflow: hidden;
 }
 
+/* Largura do frame _SheetContent no Figma QA Automation — plugin (≈454px). */
+.qaf-modal--dock {
+  left: auto;
+  right: 0;
+  top: max(12px, 5vh);
+  bottom: max(12px, 5vh);
+  transform: none;
+  width: min(454px, calc(100vw - 20px));
+  max-height: min(90vh, 867px);
+  border-radius: 12px 0 0 12px;
+  border: none;
+  border-left: 1px solid #e2e8f0;
+  box-shadow:
+    0 4px 6px -2px rgba(98, 116, 142, 0.08),
+    0 10px 16px -3px rgba(98, 116, 142, 0.12);
+}
+
+/* Sheet Figma 11:5116: padding 24; sem separador pesado entre cabeçalho e corpo. */
 .qaf-modal-header {
-  padding: 24px 24px 16px;
+  padding: 24px 24px 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--qaf-m-border);
+  border-bottom: none;
 }
 
 .qaf-modal-header-brand {
@@ -174,14 +237,15 @@ export const shadowCss = `
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f1f5f9;
-  border: 1px solid var(--qaf-m-border);
+  background: transparent;
+  border: none;
 }
 
 .qaf-modal-avatar img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border-radius: 50%;
   display: block;
 }
 
@@ -199,7 +263,7 @@ export const shadowCss = `
 }
 
 .qaf-modal-subtitle {
-  margin: 0 0 10px 0;
+  margin: 0;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.43;
@@ -278,9 +342,9 @@ export const shadowCss = `
 }
 
 .qaf-repo-bar {
-  padding: 14px 24px 4px;
+  padding: 16px 24px 0;
   margin-bottom: 0;
-  border-bottom: 1px solid var(--qaf-m-border);
+  border-bottom: none;
 }
 
 .qaf-repo-bar.qaf-field {
@@ -290,7 +354,8 @@ export const shadowCss = `
 .qaf-tabs {
   display: flex;
   border-bottom: 1px solid var(--qaf-m-border);
-  padding: 0 8px;
+  margin-top: 16px;
+  padding: 0 24px;
   background: var(--qaf-m-bg);
 }
 
@@ -317,8 +382,9 @@ export const shadowCss = `
   border-bottom-color: var(--qaf-m-primary);
 }
 
+/* Corpo: gap 20px entre blocos (layout_LT7N9T Figma); padding lateral 24. */
 .qaf-body {
-  padding: 18px 24px 20px;
+  padding: 16px 24px 24px;
   overflow: auto;
   flex: 1;
   background: var(--qaf-m-bg);
@@ -327,14 +393,21 @@ export const shadowCss = `
 .qaf-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 4px;
+  margin-bottom: 20px;
 }
 
+/* text-sm/medium (Figma): Inter Tight 14 / medium */
 .qaf-label {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.04em;
   color: var(--qaf-m-text);
+}
+
+/* Label + chips: gap 14px no Figma (layout_66AZMO). */
+.qaf-field--motivo-abertura {
+  gap: 14px;
 }
 
 .qaf-required { color: #f87171; }
@@ -414,8 +487,14 @@ export const shadowCss = `
   height: 36px;
 }
 
+/* Textarea + mic: trigger 32×32 (Figma I11:5123;4:681). */
 .qaf-dictation-mic-btn--textarea {
-  margin-top: 6px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  margin-top: 0;
+  align-self: flex-end;
 }
 
 .qaf-dictation-mic-btn:hover {
@@ -472,7 +551,10 @@ export const shadowCss = `
 }
 
 .qaf-img-field {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .qaf-img-actions {
@@ -486,7 +568,7 @@ export const shadowCss = `
 .qaf-img-btn-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 16px;
   width: 100%;
   align-items: center;
 }
@@ -509,6 +591,23 @@ export const shadowCss = `
 
 .qaf-btn-ghost:hover {
   background: #f8fafc;
+}
+
+/* «Selecionar imagem»: contorno tracejado (Figma stroke_K4U0RO). */
+.qaf-btn-ghost--dashed {
+  border-style: dashed;
+  border-width: 1px;
+  flex: 1;
+  min-height: 48px;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.qaf-img-btn-row .qaf-btn-ghost:not(.qaf-btn-ghost--dashed) {
+  flex: 1;
+  min-height: 48px;
+  padding: 8px 16px;
+  font-weight: 500;
 }
 
 .qaf-btn-ghost:disabled {
@@ -621,14 +720,55 @@ export const shadowCss = `
   box-shadow: 0 0 0 1px var(--qaf-m-border) inset;
 }
 
-.qaf-dest-hint {
-  font-size: 13px;
+.qaf-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 24px;
+  margin: 0 0 10px;
+}
+
+.qaf-status-strip-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qaf-token-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+}
+
+.qaf-info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin: 0;
+  border: none;
+  background: transparent;
   color: var(--qaf-m-muted);
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--qaf-m-border);
-  background: var(--qaf-m-input);
+  cursor: help;
+  border-radius: 6px;
+  line-height: 0;
+}
+
+.qaf-info-trigger:hover {
+  color: var(--qaf-m-primary);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.qaf-info-trigger:focus-visible {
+  outline: 2px solid var(--qaf-m-primary);
+  outline-offset: 2px;
 }
 
 .qaf-config-missing {
@@ -777,22 +917,19 @@ export const shadowCss = `
 .qaf-network-diag {
   font-size: 12px;
   line-height: 1.5;
-  color: #0369a1;
-  background: #e0f2fe;
-  border: 1px solid #7dd3fc;
   border-radius: 8px;
   padding: 10px 12px;
   margin: 0 0 14px;
 }
 
 .qaf-network-diag strong {
-  color: #0c4a6e;
+  font-weight: 600;
 }
 
 .qaf-network-diag--error {
   color: #991b1b;
   background: #fef2f2;
-  border-color: #fecaca;
+  border: 1px solid #fecaca;
 }
 
 .qaf-network-diag--error strong {
@@ -915,7 +1052,8 @@ export const shadowCss = `
 
 .qaf-footer-eq-row {
   display: flex;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 16px;
   width: 100%;
 }
 
@@ -923,41 +1061,57 @@ export const shadowCss = `
   flex: 1;
   justify-content: center;
   border-radius: 12px;
-  padding: 8px 12px;
+  min-height: 48px;
+  padding: 8px 16px;
   font-weight: 500;
   font-size: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.qaf-chip-group {
-  display: flex;
-  flex-wrap: wrap;
   gap: 8px;
 }
 
-.qaf-chip {
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-input);
+/* Cancelar: variante Ghost do Figma (sem borda). */
+.qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel {
+  border: none;
+  background: transparent;
   color: var(--qaf-m-text);
-  border-radius: 8px;
-  padding: 8px 14px;
+}
+
+.qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel:hover {
+  background: #f8fafc;
+}
+
+/* Chips Trust-DS–like: fill #F1F5F9, radius 16px, gap 10px, altura 32px (componente «Chips» Figma). */
+.qaf-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.qaf-chip {
+  border: none;
+  background: #f1f5f9;
+  color: #0f172b;
+  border-radius: 16px;
+  min-height: 32px;
+  padding: 0 12px;
   font: inherit;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.33;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .qaf-chip:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: #e2e8f0;
 }
 
 .qaf-chip--selected {
   background: #e6f1eb;
-  border-color: var(--qaf-m-primary);
+  box-shadow: 0 0 0 1px var(--qaf-m-primary);
   color: var(--qaf-m-primary);
 }
 

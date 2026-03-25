@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  allowedIssueTypesFromBoardJql,
+  coerceBugToTaskForBoardFilter,
   coerceJiraBoardFilterId,
   filterConstraintsForCreateIssue,
   matchConstraintsToCreateMeta,
   normalizeJqlFieldLabel,
   parseJqlEqualityConstraints,
+  parseJqlIssueTypeInList,
+  parseJqlIssueTypeSingleEquals,
   stripJqlOrderBy,
 } from "./jira-board-filter-resolve";
 
@@ -25,6 +29,57 @@ describe("coerceJiraBoardFilterId", () => {
 describe("stripJqlOrderBy", () => {
   it("removes ORDER BY tail", () => {
     expect(stripJqlOrderBy('project = REC ORDER BY Rank ASC')).toBe("project = REC");
+  });
+});
+
+describe("parseJqlIssueTypeInList", () => {
+  it("parses type IN with quoted and bare identifiers (Lane de Inovação / CNS)", () => {
+    const jql =
+      'project IN (14726) AND type IN (Iniciativa, "Atividade Especializada", Experimento)\nORDER BY Rank ASC';
+    expect(parseJqlIssueTypeInList(jql)).toEqual([
+      "Iniciativa",
+      "Atividade Especializada",
+      "Experimento",
+    ]);
+  });
+
+  it("returns empty when there is no type IN clause", () => {
+    expect(parseJqlIssueTypeInList('project = REC AND "squad" = "A"')).toEqual([]);
+  });
+});
+
+describe("parseJqlIssueTypeSingleEquals", () => {
+  it("reads issuetype = Task", () => {
+    expect(parseJqlIssueTypeSingleEquals('project = REC AND issuetype = Task')).toBe("Task");
+  });
+
+  it("reads quoted issue type", () => {
+    expect(parseJqlIssueTypeSingleEquals('project = REC AND issuetype = "Sub-task"')).toBe("Sub-task");
+  });
+});
+
+describe("allowedIssueTypesFromBoardJql", () => {
+  it("prefers type IN over single equals", () => {
+    const jql = "project = X AND type IN (Task, Story) AND issuetype = Bug";
+    expect(allowedIssueTypesFromBoardJql(jql)).toEqual(["Task", "Story"]);
+  });
+
+  it("uses single equals when there is no IN list", () => {
+    expect(allowedIssueTypesFromBoardJql("project = REC AND issuetype = Task")).toEqual(["Task"]);
+  });
+});
+
+describe("coerceBugToTaskForBoardFilter", () => {
+  it("switches Bug to Task when Task is allowed and Bug is not", () => {
+    expect(coerceBugToTaskForBoardFilter("Bug", ["Task", "Story"])).toBe("Task");
+  });
+
+  it("keeps Bug when Bug is in the list", () => {
+    expect(coerceBugToTaskForBoardFilter("Bug", ["Bug", "Task"])).toBe("Bug");
+  });
+
+  it("preserves casing of Task from JQL", () => {
+    expect(coerceBugToTaskForBoardFilter("bug", ["task", "story"])).toBe("task");
   });
 });
 
