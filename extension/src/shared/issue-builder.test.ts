@@ -71,6 +71,7 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Ecrã (screen):");
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
+    expect(md).toContain("Schema de contexto (extensão): **v1**");
   });
 
   it("does not add elemento afetado for the extension root host id", () => {

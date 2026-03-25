@@ -48,7 +48,8 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Navegador: ${truncate(p.userAgent, 300)}\n`;
     md += `- Viewport (janela): ${p.viewport}\n`;
     md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
-    md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n\n`;
+    md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
+    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 0 (base para timeline, rede resumida, etc.)\n\n`;
 
     if (ctx.element && shouldIncludeElementSection(ctx.element)) {
       const e = ctx.element;
