@@ -79,7 +79,7 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 1. Site com host permitido e permissão concedida (ou **clique no ícone** da extensão se estiver “ao clicar”).
 2. **FAB** → painel (sheet à direita); **seta** no cabeçalho recolhe o painel mantendo o rascunho; **FAB** reabre.
 3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
-4. **Faixa de estado** (topo do formulário): à **esquerda**, **slug técnico** da rota (ex.: `ra-notifications`, `ra-home`) — ver `page-route-context.ts`; paths sem regra explícita viram `ra-…` a partir do pathname. Atualiza em **SPA** (`popstate`, `pushState`/`replaceState`, `hashchange`, foco no separador). Com **contexto técnico**, o Markdown inclui **Rota técnica** + rótulo PT + path. À **direita**, bolinhas / ícone ℹ️ / banner de rede.
+4. **Faixa de estado** (topo do formulário): à **esquerda**, chip com **slug + pathname** (ex.: `ra-notifications /minha-conta/notificacoes`) — ver `page-route-context.ts`; paths sem regra explícita geram slug `ra-…` a partir dos segmentos. Atualiza em **SPA**. Tooltip repete slug+path e acrescenta **query** se existir. Com **contexto técnico**, o Markdown inclui **Rota técnica** + rótulo PT + path. À **direita**, bolinhas / ícone ℹ️ / banner de rede.
 5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
 6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
 7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5).
