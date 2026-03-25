@@ -1,126 +1,175 @@
-# Plano: layout Figma “QA Automation — plugin” + alinhamento PDF / Trust DS
+# Plano: layout Figma «QA Automation — plugin» + Trust DS + PDF
 
-> Objetivo: validar vi técnica de reproduzir o fluxo e a hierarquia visual do PDF **QA Automation — plugin** (referência Reclame AQUI / RA Inspector) e do frame Figma indicado, aplicando **Trust DS** onde fizer sentido na extensão Chrome (Shadow DOM).
-
-## 1. Resultado da validação (viabilidade)
-
-**Conclusão: é viável implementar a experiência descrita no PDF com a stack atual (React + content script + modal em Shadow DOM + Jira/GitHub).** O código já cobre a maior parte dos comportamentos; o trabalho principal é **redesign de UI/UX** (layout, componentes visuais, escolha de board no modal) e **adesão visual aos tokens/padrões Trust DS** (com ou sem pacote `@trust/ds`).
-
-### 1.1 Figma MCP — bloqueio atual
-
-Ao consultar o arquivo via MCP (`fileKey` `6hLsb9blQzsbJglPIKwDci`, nó `11:3550`), a API respondeu **403 Forbidden**.
-
-**Interpretação:** o token/usuário usado pelo servidor Figma não tem permissão de leitura nesse arquivo (privado, time errado, ou token sem escopo `file_read`).
-
-**Para validar o layout pixel-a-pixel com o Figma:**
-
-1. Garantir que a conta do token Figma tenha acesso de **viewer** (ou superior) ao arquivo.
-2. Regenerar/configurar o **Personal Access Token** com escopos adequados (leitura de files).
-3. Alternativa sem API: exportar **frames** ou **especificação** (Inspect) e anexar ao repositório ou colar medidas/tokens manualmente neste plano.
-
-Até o 403 ser resolvido, a **fonte de verdade visual** para este plano fica: **PDF exportado** + **código atual** + **Trust DS (RAG)**.
-
-### 1.2 PDF vs implementação atual (matriz rápida)
-
-| Elemento no PDF | Estado atual na extensão | Gap principal |
-|-----------------|-------------------------|---------------|
-| Cabeçalho (“RA Inspector” / subtítulo produto) | Título genérico de feedback | Textos/branding configuráveis ou alinhados ao produto |
-| **Board do Jira para vincular** (dropdown no formulário) | Board escolhido só em **Opções** | **Seleção de board no modal** (lista via API já usada em Options) |
-| **Motivo de abertura** (chips: Desenvolvimento, Design, …) | `<select>` com as **mesmas 7 strings** (`jira-motivo.ts`) | Trocar **select → grupo de chips** (mesmo valor enviado ao Jira) |
-| Descrição + ditado / voz | Já existe (Chrome + dicas de ditado SO) | Ajuste de copy e hierarquia visual |
-| Prints (opcional) 0/8, Selecionar imagem, Capturar tela | Já existe (limite e fluxos) | Labels e disposição como no PDF/Figma |
-| Ações: Enviar, Copiar, Cancelar | Existe (ordem pode diferir) | Unificar ordem com design (ex.: Cancelar · Copiar · Enviar) |
-| Pós-envio: Evidência criada, links Board/Issue, Copiar, Acessar, Criar novo, Fechar | `postSubmit` com links GitHub/Jira | Enriquecer **telas de sucesso** (copy “Evidência criada”, botões nomeados como no PDF) |
-
-**Jira:** os valores de “Motivo da abertura” no código já coincidem com o PDF — **nenhuma mudança de contrato** se apenas a UI mudar de `<select>` para chips.
-
-### 1.3 Trust DS (RAG) — o que usar no projeto
-
-Do **trust-ds-rag**, para este tipo de interface:
-
-- **Dialog** (`@trust/ds/dialog`): modal com `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, botões primário/secundário.
-- **Tokens:** `import '@trust/ds/global.css'` (ou `theme.css` / `trust-theme.css`); uso via **Tailwind** (`bg-primary-700`, etc.) ou **CSS variables** (`var(--primary-700)`).
-- **Shadow DOM:** a base de conhecimento indica tratar **modo escuro** aplicando classe `dark` no elemento raiz **dentro** do shadow root (não só no `document.documentElement`).
-
-**Restrição da extensão hoje:** `package.json` da extensão **não** inclui `@trust/ds` nem Tailwind; estilos estão em `shadow-styles.ts` (string CSS). Há dois caminhos realistas:
-
-| Abordagem | Prós | Contras |
-|-----------|------|--------|
-| **A — Adotar `@trust/ds` + Tailwind no bundle Vite** | Paridade com produtos internos, componentes acessíveis (Radix) | Tamanho do bundle MV3, config de build, garantir estilos **escopados ao shadow root** |
-| **B — “DS lite”: espelhar tokens Trust em CSS variables** | Bundle menor, controle total no shadow | Manutenção manual se tokens DS mudarem; sem Radix pronto |
-| **C — Híbrida** | Componentes críticos do DS onde couber; resto CSS próprio | Mais decisões de fronteira |
-
-**Recomendação para a primeira entrega do novo layout:** **B ou C** — mapear do Figma/Inspect as variáveis (cores, radius, spacing, tipografia) para `shadow-styles.ts` e, numa fase 2, avaliar `@trust/ds` se o time exigir 100% dos primitivos React.
+> **Arquivo Figma:** [QA Automation — plugin](https://www.figma.com/design/6hLsb9blQzsbJglPIKwDci/QA-Automation---plugin)  
+> **Nó analisado (MCP):** `11:3550` (SECTION — artboard de documentação com variantes Mobile/Desktop, fluxo principal e sucesso).  
+> **Objetivo:** implementar na extensão Chrome a mesma hierarquia de informação do design e do PDF *QA Automation — plugin*, com aderência aos padrões **Trust DS** (componentes ou tokens espelhados no Shadow DOM).
 
 ---
 
-## 2. Branch e escopo do PR
+## 1. Conexão Figma (MCP) — OK
 
-- **Branch sugerida:** `feature/qa-automation-layout-trust-ds` (ou `feature/figma-qa-plugin-ui`).
-- **Escopo:** apenas **UI/UX do modal de feedback** (+ telas pós-envio) e **seleção de board Jira no modal**; sem mudar regras de API GitHub/Jira além do necessário para listar/trocar board.
+A API do Figma respondeu com sucesso após atualização da chave. O nó `11:3550` é uma **SECTION** que agrega:
 
----
+- Cabeçalho promocional gigante «RA Inspector» com **pills** de contexto (ex.: «QA & Tech», «Em validação») e cores da **Brand system** Reclame AQUI (`cor-ra01`, `cor-ra14`, `cor-ra20`).
+- Marcadores **Mobile** / **Desktop** e screenshots de referência.
+- Frames de produto usáveis para implementação:
+  - **Mobile:** `_SheetContent` (~**377×867** px), comportamento de **painel lateral / sheet** com borda esquerda.
+  - Instância **`body_dialog`** (`componentId: 1:903`) — corpo do formulário.
+  - Instância **`body_dialog_imagem`** — variante com contagem de prints (ex.: `6/8`).
+  - **`body_sucess`** (`11:772`) — estado pós-envio «Evidência criada».
 
-## 3. Fases de implementação
-
-### Fase 0 — Destravar Figma e especificação
-
-- [ ] Resolver **403** do Figma ou importar PNG/spec do frame `11-3550`.
-- [ ] Checklist de medidas: largura máxima do modal, grid de chips, espaçamentos, ordem da footer, estados hover/disabled/loading.
-- [ ] Decisão explícita: **A**, **B** ou **C** (Trust DS pacote vs tokens only).
-
-### Fase 1 — Arquitetura de estado (board no modal)
-
-- [ ] Definir se a lista de boards vem de **mesma mensagem** que Options (`sendJiraTestAndListBoards` / equivalente) ou endpoint dedicado no SW.
-- [ ] Persistência: ao escolher board no modal, decidir entre **só sessão**, **gravar em `chrome.storage`** como “último board usado”, ou **substituir** o board global das opções (decisão de produto).
-- [ ] Testes: fluxo “Jira OK + múltiplos boards” sem regressão ao enviar issue.
-
-### Fase 2 — Redesign visual (paridade PDF/Figma)
-
-- [ ] Novo **header** (título + subtítulo) conforme design.
-- [ ] **Select** de board no formulário (acessível, teclado).
-- [ ] **Chips** de motivo (single-select), mantendo strings exatas de `JIRA_MOTIVO_ABERTURA_OPTIONS`.
-- [ ] Seção descrição: label, textarea, microfones/ditado com hierarquia visual alinhada.
-- [ ] Bloco anexos: contador `x/8`, botões “Selecionar imagem” / “Capturar tela”.
-- [ ] **Footer:** botões Cancelar / Copiar / Enviar (habilitação e ordem conforme design).
-- [ ] Tema claro/escuro: se o PDF/Figma prever, aplicar estratégia **dark no shadow root** (Trust DS).
-
-### Fase 3 — Tela de sucesso
-
-- [ ] Layout “Evidência criada” com links **Board** e **Issue**, ações **Copiar** / **Acessar**.
-- [ ] “Criar novo” limpa formulário e volta ao passo 1; “Fechar” fecha modal.
-
-### Fase 4 — Qualidade
-
-- [ ] `npm run check` e `npm test` verdes.
-- [ ] Testes manuais: só Jira, só GitHub, ambos; board trocado no modal; motivo obrigatório; limite de imagens.
-- [ ] Atualizar `extension/README.md` / `DOCUMENTATION.md` se fluxo de board mudar para o utilizador.
+> **Nota de escala:** medidas no arquivo incluem arte de marketing em tamanho enorme (section ~12053×8139); para CSS da extensão use como referência os frames **Mobile 377px** e tokens relativos (padding, gap, tipografia), não o poster.
 
 ---
 
-## 4. Riscos e mitigação
+## 2. Inventário do design (extraído do Figma)
+
+### 2.1 Hierarquia do painel (Mobile / sheet)
+
+| Bloco | Conteúdo Figma | Comentário |
+|-------|----------------|------------|
+| Área do sheet | `padding: 24px`, `gap: 16px`, fundo `#FFFFFF`, borda esquerda `#E2E8F0` | Espelhar como container do modal/sidebar na extensão |
+| Avatar + header | Imagem 40×40, **RA Inspector** (`text-lg/semibold`, Inter Tight 600, 18px), subtítulo **Ferramenta de QA do Reclame AQUI** (description tertiary, `#62748E`) | Alinhar copy ao produto |
+| **Board** | `Select`: label «Board do Jira para vincular», placeholder «Selecione um board», trigger `8px 12px`, `border-radius: 12px`, borda `#CAD5E2` | Hoje o board só está em Opções → **trazer para o modal** |
+| **Motivo** | Label «Motivo de abertura» + **Chips** (component set `Chips` / `1:182`): Desenvolvimento, Design, Requisito, Integração, Segurança, Em análise, Auto resolvido/Orientação | **Coincide** com `JIRA_MOTIVO_ABERTURA_OPTIONS` no código |
+| **Descrição** | «Descreva o problema» + textarea com placeholder «Aqui você pode relatar…» + **mic** em botão **Secondary**, **sm**, **icon** (`4:595`) | Já existe lógica de ditado; ajustar layout |
+| **Prints** | Label «Prints do problema (opcional) - 0/8» + dois botões **Secondary** com ícones **Upload** / **Camera**, `border-radius: 12px` | Igual ao PDF; variante `body_dialog_imagem` com `6/8` |
+| **Rodapé ações** | Três botões em linha (`layout_ELJWV8`, `gap: 8px`, fill horizontal): **Enviar** (variant Default, fill `#004D37`, texto `#F8FAFC`), **Copiar** (Secondary + ícone Copy), **Cancelar** (Ghost) | Ordem no Figma: **Enviar → Copiar → Cancelar** |
+| Chrome | Ícones `setting-2`, `PanelLeftClose` posicionados no topo direito | Mapear: configurações / recolher painel (decisão de produto) |
+
+### 2.2 Tela de sucesso (`body_sucess`)
+
+- Ílustr **check_positivo** + título **Evidência criada** (`Typography/title secondary`, preto no spec).
+- **Dois cards** (`border-radius: 12px`, borda `stroke_FEL9VW`):
+  - **Jira Board:** linha com ícone `LayoutDashboard` + texto; ações **Copiar** + **Acessar** (botões Secondary **sm**, `border-radius: 8px`).
+  - **Jira Issue:** ícone `task`; mesma dupla **Copiar** + **Acessar**.
+- Rodapé: **Criar novo** (Default `#004D37`, ícone `add`) + **Fechar** (Secondary outline).
+
+### 2.3 Tokens úteis (CSS / Trust DS)
+
+| Uso | Valor Figma |
+|-----|-------------|
+| Fundo sheet | `#FFFFFF` |
+| Texto principal | `#0F172B` |
+| Texto secundário / descrição | `#62748E` |
+| Borda input / card leve | `#CAD5E2` — `#E2E8F0` |
+| **Primário (Enviar)** | `#004D37` |
+| Texto sobre primário | `#F8FAFC` |
+| **Brand RA** (header marketing) | `#F0F5E0`, `#5CA77E`, `#003330` |
+| Tipografia UI | **Inter Tight** 500/600; labels **14px** (`text-sm/medium`); título sheet **18px semibold** |
+| Raio botões principais | **12px**; ações sm nos cards **8px** |
+| Sombra | `shadow/sm`: `0 2px 2px rgba(98, 116, 142, 0.08)` |
+
+**Trust DS (RAG):** variantes de botão **default** (primário verde), **secondary** (outline), **ghost**; componente **Chip** com `selected`; **Dialog** / **Sheet** para modal; tokens via `@trust/ds/global.css` ou classes `ds-button`. O Figma usa paleta próxima do verde institucional (`#004D37` vs `bg-primary-700` no DS) — validar com design se deve haver **match exato RA** ou **token Trust** por tema.
+
+---
+
+## 3. PDF vs Figma vs código
+
+- O **PDF** e o **Figma** descrevem o **mesmo fluxo** (board, chips de motivo com os sete valores, descrição, prints, três ações, sucesso com links).
+- O **repositório** já implementa envio Jira/GitHub, anexos, captura, motivos em `jira-motivo.ts` (**sem divergência de strings**).
+- **Gaps** permanecem: board no modal, chips em vez de `<select>`, copy/branding «RA Inspector», rodapé e tela de sucesso conforme frames `body_sucess`, eventual **Sheet** direito 377px vs modal central atual.
+
+---
+
+## 4. Viabilidade
+
+**Sim.** Não há bloqueio técnico: Shadow DOM aceita os mesmos tokens (incl. classe `dark` no host interno, conforme Trust DS). A decisão principal é **arquitetura visual**:
+
+| Abordagem | Quando usar |
+|-----------|-------------|
+| **A — `@trust/ds` + Tailwind** bundle na extensão | Time exige componentes DS oficiais e aceita custo de bundle/config |
+| **B — Tokens espelhados** em `shadow-styles.ts` | Paridade visual rápida com Figma (cores/raios acima) e bundle menor |
+| **C — Híbrido** | DS para Button/Chip/Dialog; RA brand só no header |
+
+**Recomendação:** começar por **B ou C**, usando os valores da sec §2.3; migrar para **A** se o design system interno for obrigatório no backlog.
+
+---
+
+## 5. Branch e escopo
+
+- **Branch:** `feature/qa-automation-layout-trust-ds` (já utilizada no repo).
+- **Escopo:** UI do painel de feedback + seleção de board + estado de sucesso; integrações Jira/GitHub existentes, salvo mensagens novas no SW para listar boards no modal.
+
+---
+
+## 6. Fases de implementação
+
+### Fase 0 — Alinhamento
+
+- [ ] Confirmar com UX se o deploy alvo é **sheet lateral fixo ~377px** (Figma Mobile) ou **modal centrado** no desktop com os mesmos tokens.
+- [ ] Decidir **A / B / C** (Trust DS pacote vs CSS).
+- [ ] Exportar ou anotar **fontes** (Inter Tight): fallback da extensão se não embeddar webfont.
+
+### Fase 1 — Board Jira no modal
+
+- [ ] Reutilizar lógica de listagem de quadros do SW (equivalente ao fluxo de Opções).
+- [ ] Estado: último board / board da sessão / persistir em `chrome.storage` (decisão de produto).
+- [ ] Testes Vitest onde houver lógica pura; teste manual multi-board.
+
+### Fase 2 — Shell do painel
+
+- [ ] Container com padding **24px**, gaps **16px** / **20px** (body), borda/sombra conforme Figma.
+- [ ] Header: avatar opcional (asset ou iniciais), título e subtítulo fixos ou i18n.
+- [ ] Ícones settings / fechar painel (atalhos para opções e minimizar).
+
+### Fase 3 — Formulário
+
+- [ ] **Select** de board (acessível, teclado, estilo trigger 12px).
+- [ ] **Chips** single-select para motivo (`Chip` Trust DS ou botões com `aria-pressed`).
+- [ ] Textarea + mic **Secondary sm** alinhado ao frame.
+- [ ] Bloco prints: label dinâmica `x/8`, botões com ícones upload/câmera.
+
+### Fase 4 — Rodapé
+
+- [ ] Ordem **Enviar | Copiar | Cancelar**; estados disabled/loading com opacidade como no Figma (0.6 onde aplicável).
+- [ ] Copiar: markdown ou URL (comportamento atual documentado).
+
+### Fase 5 — Sucesso
+
+- [ ] Layout «Evidência criada» + dois cards (Board / Issue) com **Copiar** e **Acessar**.
+- [ ] **Criar novo** (limpa + volta ao form); **Fechar** fecha painel.
+
+### Fase 6 — Responsividade
+
+- [ ] Em viewport estreito: largura máxima ~100% com `max-width: 377px` ou full-bleed sheet.
+- [ ] Garantir FAB/modal não quebre scroll da página.
+
+### Fase 7 — Tema escuro (opcional)
+
+- [ ] Aplicar `.dark` no host do shadow root + tokens DS invertidos, se produto pedir.
+
+### Fase 8 — Qualidade
+
+- [ ] `npm run check` e `npm test`.
+- [ ] Atualizar `extension/README.md` / `DOCUMENTATION.md` (board no modal).
+- [ ] Checklist visual lado a lado com frame Figma Mobile `11:834` ou equivalente.
+
+---
+
+## 7. Riscos
 
 | Risco | Mitigação |
 |-------|-----------|
-| Bundle grande com `@trust/ds` | Medir `dist/` antes/depois; tree-shaking; começar por tokens-only |
-| Estilos DS não “entram” no Shadow DOM | Injetar CSS do DS dentro do shadow root; evitar depender só do `<head>` da página |
-| Listagem de boards lenta no modal | Cache em storage; loading skeleton; reutilizar lógica já estável em Options |
-| Figma desatualizado vs PDF | Product owner aponta **uma** fonte; diffs anotados no PR |
+| `@trust/ds` aumenta muito o `dist/` | Medir antes/depois; preferir B inicialmente |
+| Webfont (Inter Tight) | `font-face` embutido ou fallback system |
+| Board list assíncrona | Skeleton + cache; erro amigável |
+| Figma «Mobile» ≠ uso real desktop | Segunda variante de layout ou breakpoints no mesmo componente |
 
 ---
 
-## 5. Critérios de aceite (macro)
+## 8. Critérios de aceite
 
-- [ ] Utilizador consegue **escolher o board Jira no modal** (quando há mais de um contexto válido) e enviar issue com **motivo** correto no custom field.
-- [ ] UI reflete **chips** de motivo e hierarquia do **PDF** (e do Figma, após acesso).
-- [ ] Estilos seguem **Trust DS** na abordagem acordada (pacote ou tokens espelhados), com contraste aceitável.
-- [ ] Pós-envio com ações **Copiar/Acessar/Criar novo/Fechar** alinhadas ao fluxo desejado.
-- [ ] Nenhuma regressão nos fluxos GitHub e anexos existentes.
+- [ ] Strings de **motivo** enviadas ao Jira **idênticas** às atuais.
+- [ ] Utilizador escolhe **board** no painel quando aplicável.
+- [ ] Visual reproduz hierarquia e tokens principais do Figma (§2.3) e textos do PDF.
+- [ ] Pós-envio com **Evidência criada**, cards Board/Issue, **Copiar/Acessar/Criar novo/Fechar**.
+- [ ] Sem regressão em GitHub, anexos, HAR opcional, captura por região.
 
 ---
 
-## 6. Próximo passo imediato recomendado
+## 9. Próximo passo
 
-1. Abrir o Figma com uma conta que o **MCP/token** consiga ler **ou** exportar o frame `11-3550` para imagem + anotar tokens.
-2. Criar a branch `feature/qa-automation-layout-trust-ds` a partir de `main`.
-3. Implementar **Fase 1** (board no modal) antes do polish visual — reduz risco de integração Jira.
+1. Implementar **Fase 1** na branch `feature/qa-automation-layout-trust-ds`.  
+2. Em paralelo, definir **sheet vs modal** para desktop.  
+3. Revisar com design se `#004D37` deve substituir totalmente `primary-700` Trust ou se há tema «RA» separado.
