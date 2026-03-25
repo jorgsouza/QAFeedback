@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { IssueFormState } from "../shared/types";
+import { titleFromDescription } from "../shared/title-from-description";
 import {
   getSpeechRecognitionConstructor,
   isChromeSpeechRecognitionSupported,
@@ -112,7 +113,9 @@ export function useChromeSpeechDictation(
         );
         accumulatedRef.current = accumulatedFinal;
         setForm((f) =>
-          field === "title" ? { ...f, title: display } : { ...f, whatHappened: display },
+          field === "title"
+            ? { ...f, title: display }
+            : { ...f, whatHappened: display, title: titleFromDescription(display) },
         );
       };
 

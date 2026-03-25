@@ -24,6 +24,7 @@ import {
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
 import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
+import { titleFromDescription } from "../shared/title-from-description";
 import { useChromeSpeechDictation } from "./useChromeSpeechDictation";
 import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 
@@ -34,6 +35,17 @@ type RepoOption = { owner: string; repo: string; label: string };
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+
+function CopyIcon() {
+  return (
+    <svg className="qaf-dictation-mic-svg" viewBox="0 0 24 24" width={16} height={16} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+      />
+    </svg>
+  );
+}
 
 function MicIcon() {
   return (
@@ -112,7 +124,6 @@ export function FeedbackApp() {
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
   const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const dictationPlatform = useMemo(() => detectDictationPlatform(), []);
@@ -385,7 +396,7 @@ export function FeedbackApp() {
         jiraImageAttachments = [];
         for (const { file } of pendingImages) {
           if (file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
-            setError(`Imagem demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB por ficheiro).`);
+            setError(`Imagem demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB por arquivo).`);
             setBusy(false);
             return;
           }
@@ -443,6 +454,11 @@ export function FeedbackApp() {
       setForm((f) => ({ ...f, [key]: v } as IssueFormState));
     };
 
+  const handleWhatHappenedChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value;
+    setForm((f) => ({ ...f, whatHappened: v, title: titleFromDescription(v) }));
+  };
+
   const openModal = useCallback(() => {
     setOpen(true);
     setError(null);
@@ -488,39 +504,55 @@ export function FeedbackApp() {
           <button type="button" className="qaf-backdrop" aria-label="Fechar" onClick={closeModal} />
           <div className="qaf-modal" role="dialog" aria-modal="true" aria-labelledby="qaf-dlg-title">
             <div className="qaf-modal-header">
-              <div className="qaf-modal-header-text">
-                <h2 className="qaf-modal-title" id="qaf-dlg-title">
-                  Enviar feedback
-                </h2>
-                <p className="qaf-modal-subtitle">
-                  {!hasAnyDestination ? (
-                    <>
-                      Configure o token do <strong>GitHub</strong> e/ou do <strong>Jira</strong> nas opções para enviar o
-                      relatório por API.
-                    </>
-                  ) : (
-                    <>
-                      Envie para{" "}
-                      {githubTokenConfigured && jiraTokenConfigured ? (
-                        <>
-                          <strong>GitHub</strong>, <strong>Jira</strong> ou ambos
-                        </>
-                      ) : githubTokenConfigured ? (
-                        <strong>GitHub</strong>
-                      ) : (
-                        <strong>Jira</strong>
-                      )}
-                      . Escolha o destino e preencha o que aconteceu.
-                    </>
-                  )}
-                </p>
-                <button type="button" className="qaf-modal-settings-link" onClick={openOptions}>
-                  Configurações
+              <div className="qaf-modal-header-brand">
+                <div className="qaf-modal-avatar">
+                  <FeedbackFabIcon />
+                </div>
+                <div className="qaf-modal-header-text">
+                  <h2 className="qaf-modal-title" id="qaf-dlg-title">
+                    RA Inspector
+                  </h2>
+                  <p className="qaf-modal-subtitle">
+                    {!hasAnyDestination ? (
+                      <>
+                        Configure o token do <strong>GitHub</strong> e/ou do <strong>Jira</strong> nas opções para
+                        enviar o relatório por API.
+                      </>
+                    ) : (
+                      <>
+                        Ferramenta de QA do Reclame AQUI — envie para{" "}
+                        {githubTokenConfigured && jiraTokenConfigured ? (
+                          <>
+                            <strong>GitHub</strong>, <strong>Jira</strong> ou ambos
+                          </>
+                        ) : githubTokenConfigured ? (
+                          <strong>GitHub</strong>
+                        ) : (
+                          <strong>Jira</strong>
+                        )}
+                        .
+                      </>
+                    )}
+                  </p>
+                  <button type="button" className="qaf-modal-settings-link" onClick={openOptions}>
+                    Configurações
+                  </button>
+                </div>
+              </div>
+              <div className="qaf-modal-header-actions">
+                <button
+                  type="button"
+                  className="qaf-modal-icon-btn"
+                  onClick={openOptions}
+                  aria-label="Abrir configurações"
+                  title="Configurações"
+                >
+                  ⚙
+                </button>
+                <button type="button" className="qaf-modal-close" onClick={closeModal} aria-label="Fechar">
+                  ×
                 </button>
               </div>
-              <button type="button" className="qaf-modal-close" onClick={closeModal} aria-label="Fechar">
-                ×
-              </button>
             </div>
 
             {!postSubmit && githubTokenConfigured && form.sendToGitHub && (
@@ -599,35 +631,87 @@ export function FeedbackApp() {
                 ) : (
                   <div className="qaf-network-diag" role="status">
                     <strong>Modo diagnóstico:</strong> a registar pedidos HTTP desta aba; ao enviar ao{" "}
-                    <strong>Jira</strong> pode anexar-se um ficheiro HAR. Se isto falhar, feche o{" "}
+                    <strong>Jira</strong> pode anexar-se um arquivo HAR. Se isto falhar, feche o{" "}
                     <strong>DevTools nesta aba</strong> e reabra o feedback.
                   </div>
                 )
               ) : null}
               {postSubmit ? (
                 <div className="qaf-success">
-                  <div>Envio concluído.</div>
-                  {postSubmit.github && (
-                    <p>
-                      <a href={postSubmit.github} target="_blank" rel="noreferrer">
-                        Abrir issue no GitHub
-                      </a>
-                    </p>
-                  )}
-                  {postSubmit.jira && (
-                    <p>
-                      <a href={postSubmit.jira} target="_blank" rel="noreferrer">
-                        {postSubmit.jiraIssueBrowse ? "Abrir no quadro Jira" : "Abrir issue no Jira"}
-                      </a>
-                    </p>
-                  )}
-                  {postSubmit.jiraIssueBrowse ? (
-                    <p>
-                      <a href={postSubmit.jiraIssueBrowse} target="_blank" rel="noreferrer">
-                        Abrir issue no Jira (detalhe)
-                      </a>
-                    </p>
-                  ) : null}
+                  <div className="qaf-success-hero">
+                    <div className="qaf-success-check" aria-hidden>
+                      ✓
+                    </div>
+                    <h3 className="qaf-success-title">Evidência criada</h3>
+                  </div>
+                  <div className="qaf-success-cards">
+                    {postSubmit.github ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">GitHub</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.github!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.github}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                    {postSubmit.jira ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">Jira Board</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.jira!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.jira}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                    {postSubmit.jiraIssueBrowse ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">Jira Issue</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.jiraIssueBrowse}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                   {postSubmit.warnings?.length ? (
                     <div className="qaf-error qaf-error-warn">
                       {postSubmit.warnings.map((w) => (
@@ -635,42 +719,13 @@ export function FeedbackApp() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="qaf-actions-row qaf-success-actions">
-                    <div className="qaf-actions-left">
-                      {postSubmit.github ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.github!)}
-                        >
-                          Copiar URL GitHub
-                        </button>
-                      ) : null}
-                      {postSubmit.jira ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.jira!)}
-                        >
-                          {postSubmit.jiraIssueBrowse ? "Copiar URL do quadro" : "Copiar URL Jira"}
-                        </button>
-                      ) : null}
-                      {postSubmit.jiraIssueBrowse ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
-                        >
-                          Copiar URL da issue
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="qaf-actions-right">
+                  <div className="qaf-footer-eq">
+                    <div className="qaf-footer-eq-row">
+                      <button type="button" className="qaf-btn qaf-btn-submit" onClick={resetFlow}>
+                        Criar novo
+                      </button>
                       <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
                         Fechar
-                      </button>
-                      <button type="button" className="qaf-btn qaf-btn-submit" onClick={resetFlow}>
-                        Novo feedback
                       </button>
                     </div>
                   </div>
@@ -685,8 +740,7 @@ export function FeedbackApp() {
                   ) : null}
                   {listeningField ? (
                     <div className="qaf-speech-live" role="status" aria-live="polite">
-                      A escutar no {listeningField === "title" ? "título" : "campo «O que aconteceu»"}… clique no
-                      microfone outra vez para parar.
+                      A escutar na descrição… clique no microfone outra vez para parar.
                     </div>
                   ) : null}
 
@@ -755,76 +809,48 @@ export function FeedbackApp() {
                         </p>
                       )}
                       {form.sendToJira && (
-                        <div className="qaf-field">
-                          <label className="qaf-label" htmlFor="qaf-motivo">
-                            Motivo da abertura do Bug/Sub-Bug <span className="qaf-required">*</span>
-                          </label>
-                          <select
-                            id="qaf-motivo"
-                            className="qaf-select"
-                            value={form.jiraMotivoAbertura}
-                            onChange={(e) => setForm((f) => ({ ...f, jiraMotivoAbertura: e.target.value }))}
-                          >
-                            <option value="">Selecionar…</option>
+                        <div className="qaf-field" role="radiogroup" aria-labelledby="qaf-motivo-label">
+                          <span className="qaf-label" id="qaf-motivo-label">
+                            Motivo de abertura <span className="qaf-required">*</span>
+                          </span>
+                          <div className="qaf-chip-group">
                             {JIRA_MOTIVO_ABERTURA_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
+                              <button
+                                key={opt}
+                                type="button"
+                                role="radio"
+                                aria-checked={form.jiraMotivoAbertura === opt}
+                                className={`qaf-chip ${form.jiraMotivoAbertura === opt ? "qaf-chip--selected" : ""}`}
+                                onClick={() => setForm((f) => ({ ...f, jiraMotivoAbertura: opt }))}
+                              >
                                 {opt}
-                              </option>
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
                       )}
                       {(form.sendToGitHub || form.sendToJira) && (
                         <div className="qaf-field">
-                          <label className="qaf-label" htmlFor="qaf-title">
+                          <label className="qaf-label" htmlFor="qaf-title-ro">
                             Título <span className="qaf-required">*</span>
                           </label>
-                          <div className="qaf-input-with-mic">
-                            <input
-                              ref={titleInputRef}
-                              id="qaf-title"
-                              className="qaf-input qaf-input-flex"
-                              value={form.title}
-                              onChange={onField("title")}
-                              placeholder="Resumo curto (título no GitHub / resumo no Jira)"
-                              title={
-                                speechSupported && secureContext
-                                  ? "Voz do Chrome: clique no microfone para falar ou parar. Também pode usar ditado do SO (ex.: Win+H)."
-                                  : "Microfone: ditado do sistema (ex.: Win+H no Windows) após focar o campo"
-                              }
-                            />
-                            <button
-                              type="button"
-                              className={`qaf-dictation-mic-btn qaf-dictation-mic-btn--inline ${
-                                listeningField === "title" ? "qaf-dictation-mic-btn--listening" : ""
-                              }`}
-                              aria-label={
-                                listeningField === "title"
-                                  ? "Parar reconhecimento de voz no título"
-                                  : speechSupported && secureContext
-                                    ? "Falar no título (reconhecimento de voz do Chrome)"
-                                    : "Focar título para ditado do sistema"
-                              }
-                              aria-pressed={listeningField === "title"}
-                              title={
-                                speechSupported && secureContext
-                                  ? `Voz do Chrome (idioma: ${speechRecognitionLang}). Clique para falar ou parar; o áudio é processado pelo serviço do Google.`
-                                  : getDictationMicTooltip("title", dictationPlatform)
-                              }
-                              onClick={() => {
-                                toggleField("title");
-                                titleInputRef.current?.focus();
-                                titleInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                              }}
-                            >
-                              <MicIcon />
-                            </button>
-                          </div>
+                          <input
+                            id="qaf-title-ro"
+                            className="qaf-input qaf-input--readonly"
+                            readOnly
+                            tabIndex={-1}
+                            value={form.title}
+                            title="Gerado automaticamente das quatro primeiras palavras da descrição"
+                            aria-readonly="true"
+                          />
+                          <p className="qaf-img-hint" style={{ marginTop: 4 }}>
+                            Preenchido com as quatro primeiras palavras do texto abaixo (digitação ou ditado).
+                          </p>
                         </div>
                       )}
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">
-                          O que aconteceu <span className="qaf-required">*</span>
+                          Descreva o problema <span className="qaf-required">*</span>
                         </label>
                         <div className="qaf-textarea-with-mic">
                           <textarea
@@ -832,7 +858,7 @@ export function FeedbackApp() {
                             id="qaf-what"
                             className="qaf-textarea qaf-textarea-flex"
                             value={form.whatHappened}
-                            onChange={onField("whatHappened")}
+                            onChange={handleWhatHappenedChange}
                             onPaste={(e) => {
                               if (!jiraTokenConfigured || !form.sendToJira) return;
                               const items = e.clipboardData?.items;
@@ -857,7 +883,7 @@ export function FeedbackApp() {
                               setError(null);
                               addImageFiles(files);
                             }}
-                            placeholder="Descreva o comportamento observado (pode colar prints com Ctrl+V se enviar ao Jira)"
+                            placeholder="Aqui você pode relatar o comportamento observado (pode colar prints ou simplesmente descrever)"
                             title={
                               speechSupported && secureContext
                                 ? "Voz do Chrome no microfone ao lado; pode colar imagens com Ctrl+V (Jira)."
@@ -894,7 +920,9 @@ export function FeedbackApp() {
                       </div>
                       {jiraTokenConfigured && form.sendToJira ? (
                         <div className="qaf-img-field">
-                          <span className="qaf-label">Prints para o Jira (opcional)</span>
+                          <span className="qaf-label">
+                            Prints do problema (opcional) - {pendingImages.length}/{JIRA_FEEDBACK_MAX_IMAGES}
+                          </span>
                           <div className="qaf-img-actions">
                             <input
                               ref={fileInputRef}
@@ -926,7 +954,7 @@ export function FeedbackApp() {
                                 className="qaf-btn-ghost"
                                 onClick={() => fileInputRef.current?.click()}
                               >
-                                Adicionar imagens…
+                                Selecionar imagem
                               </button>
                               <button
                                 type="button"
@@ -937,7 +965,7 @@ export function FeedbackApp() {
                                 }
                                 onClick={() => void onRegionScreenshot()}
                               >
-                                {regionScreenshotBusy ? "A capturar…" : "Capturar área da página…"}
+                                {regionScreenshotBusy ? "A capturar…" : "Capturar tela"}
                               </button>
                             </div>
                             <p className="qaf-img-hint">
@@ -974,21 +1002,13 @@ export function FeedbackApp() {
                         <span className="qaf-check-text">
                           <span className="qaf-check-title">Incluir contexto técnico</span>
                           <span className="qaf-check-hint">
-                            URL, viewport e ecrã (screen), indício desktop/móvel/emulação DevTools, último clique na
+                            URL, viewport e tela (screen), indício desktop/móvel/emulação DevTools, último clique na
                             página (não no botão), console e requests com falha.
                           </span>
                         </span>
                       </label>
-                      <div className="qaf-actions-row">
-                        <div className="qaf-actions-left">
-                          <button type="button" className="qaf-btn qaf-btn-text" onClick={() => copyText(previewMd)}>
-                            Copiar markdown
-                          </button>
-                        </div>
-                        <div className="qaf-actions-right">
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
-                            Cancelar
-                          </button>
+                      <div className="qaf-footer-eq">
+                        <div className="qaf-footer-eq-row">
                           <button
                             type="button"
                             className="qaf-btn qaf-btn-submit"
@@ -996,6 +1016,16 @@ export function FeedbackApp() {
                             onClick={submit}
                           >
                             {busy ? "Enviando…" : "Enviar"}
+                          </button>
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary"
+                            onClick={() => copyText(previewMd)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
+                            Cancelar
                           </button>
                         </div>
                       </div>
@@ -1003,16 +1033,8 @@ export function FeedbackApp() {
                   ) : (
                     <>
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
-                      <div className="qaf-actions-row">
-                        <div className="qaf-actions-left">
-                          <button type="button" className="qaf-btn qaf-btn-text" onClick={() => copyText(previewMd)}>
-                            Copiar markdown
-                          </button>
-                        </div>
-                        <div className="qaf-actions-right">
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
-                            Cancelar
-                          </button>
+                      <div className="qaf-footer-eq">
+                        <div className="qaf-footer-eq-row">
                           <button
                             type="button"
                             className="qaf-btn qaf-btn-submit"
@@ -1020,6 +1042,16 @@ export function FeedbackApp() {
                             onClick={submit}
                           >
                             {busy ? "Enviando…" : "Enviar"}
+                          </button>
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary"
+                            onClick={() => copyText(previewMd)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
+                            Cancelar
                           </button>
                         </div>
                       </div>
