@@ -5,6 +5,10 @@ import type { CreateIssuePayload } from "./types";
 
 const pageCtx = {
   url: "https://exemplo.test/foo",
+  pathname: "/foo",
+  routeSearch: "",
+  routeLabel: "Outra",
+  routeKey: "other",
   title: "Página",
   userAgent: "UA",
   timestamp: "2025-01-01T00:00:00.000Z",
@@ -59,6 +63,8 @@ describe("buildIssueBody", () => {
     );
     expect(md).toContain("## Contexto técnico");
     expect(md).toContain("https://exemplo.test/foo");
+    expect(md).toContain("- Rota:");
+    expect(md).toContain("/foo");
     expect(md).toContain("Ecrã (screen):");
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
@@ -71,6 +77,10 @@ describe("buildIssueBody", () => {
         technicalContext: {
           page: {
             url: "https://x.test/",
+            pathname: "/",
+            routeSearch: "",
+            routeLabel: "Início",
+            routeKey: "root",
             title: "t",
             userAgent: "u",
             timestamp: "t",
@@ -102,6 +112,10 @@ describe("buildIssueBody", () => {
         technicalContext: {
           page: {
             url: "https://x.test/",
+            pathname: "/",
+            routeSearch: "",
+            routeLabel: "Início",
+            routeKey: "root",
             title: "t",
             userAgent: "u",
             timestamp: "t",
