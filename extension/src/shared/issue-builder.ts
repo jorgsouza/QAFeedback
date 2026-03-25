@@ -3,6 +3,8 @@ import type {
   ElementContext,
   InteractionTimelineKindV1,
   NetworkRequestSummaryEntryV1,
+  TargetDomHintV1,
+  VisualStateSnapshotV1,
 } from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
 import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
@@ -20,6 +22,41 @@ function omitEmptySection(title: string, body: string | undefined): string {
   const b = body?.trim();
   if (!b) return "";
   return `## ${title}\n${b}\n\n`;
+}
+
+function formatVisualState(state: VisualStateSnapshotV1): string {
+  const lines: string[] = [];
+  if (state.dialogs?.length) {
+    const ds = state.dialogs
+      .map((d) => (d.title ? `${d.type} (\"${truncate(d.title, 90)}\")` : d.type))
+      .slice(0, 3)
+      .join(", ");
+    lines.push(`- Diálogo(s)/modal aberto(s): ${ds}`);
+  }
+  if (state.busyIndicators?.length) {
+    const bs = state.busyIndicators
+      .slice(0, 3)
+      .map((b) => `"${truncate(b, 90)}"`)
+      .join(", ");
+    lines.push(`- Indicadores de loading/busy: ${bs}`);
+  }
+  if (state.activeTabs?.length) {
+    const ts = state.activeTabs.slice(0, 3).map((t) => `"${truncate(t, 90)}"`).join(", ");
+    lines.push(`- Aba(s) ativa(s): ${ts}`);
+  }
+  return lines.join("\n");
+}
+
+function formatTargetDomHint(h: TargetDomHintV1): string {
+  const lines: string[] = [];
+  if (h.selectorHint) lines.push(`- Seletor sugerido: \`${truncate(h.selectorHint, 180)}\``);
+  if (h.role) lines.push(`- role: \`${truncate(h.role, 80)}\``);
+  if (h.ariaLabel) lines.push(`- aria-label: "${truncate(h.ariaLabel, 200)}"`);
+  if (h.textHint) lines.push(`- Texto (hint): "${truncate(h.textHint, 200)}"`);
+  if (h.rect && Number.isFinite(h.rect.w) && Number.isFinite(h.rect.h)) {
+    lines.push(`- Dimensão aproximada: ${h.rect.w}x${h.rect.h}px`);
+  }
+  return lines.join("\n");
 }
 
 function formatConsole(entries: { level: string; message: string }[]): string {
@@ -128,6 +165,21 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     if (tl) {
       md += "## Linha do tempo da interação\n";
       md += `${tl}\n\n`;
+    }
+
+    if (
+      ctx.visualState &&
+      (ctx.visualState.dialogs?.length ||
+        ctx.visualState.busyIndicators?.length ||
+        ctx.visualState.activeTabs?.length)
+    ) {
+      md += "## Estado visual no momento do bug\n";
+      md += `${formatVisualState(ctx.visualState)}\n\n`;
+    }
+
+    if (ctx.targetDomHint && (ctx.targetDomHint.selectorHint || ctx.targetDomHint.role || ctx.targetDomHint.textHint)) {
+      md += "## Elemento relacionado\n";
+      md += `${formatTargetDomHint(ctx.targetDomHint)}\n\n`;
     }
 
     if (ctx.element && shouldIncludeElementSection(ctx.element)) {

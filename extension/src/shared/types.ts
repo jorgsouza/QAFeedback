@@ -44,6 +44,32 @@ export type ElementContext = {
   safeAttributes: string;
 };
 
+export type VisualDialogSnapshotV1 = {
+  /** Ex.: role=dialog, aria-modal=true, alertdialog */
+  type: string;
+  /** aria-label / aria-labelledby ou fallback de texto */
+  title?: string;
+};
+
+export type VisualStateSnapshotV1 = {
+  /** Até N diálogos/modalidades visíveis no momento do envio. */
+  dialogs?: VisualDialogSnapshotV1[];
+  /** Indica presença de sinalização de loading/busy no DOM. */
+  busyIndicators?: string[];
+  /** Abas ativas (role=tab com aria-selected=true) */
+  activeTabs?: string[];
+};
+
+export type TargetDomHintV1 = {
+  /** Ex.: `button[data-testid="..."]` ou `#id` */
+  selectorHint?: string;
+  role?: string;
+  ariaLabel?: string;
+  textHint?: string;
+  /** Tamanho aproximado do alvo no momento do clique/abertura. */
+  rect?: { w: number; h: number };
+};
+
 /** Phase 1 — linha do tempo de interação (MAIN world → issue). */
 export type InteractionTimelineKindV1 =
   | "click"
@@ -93,6 +119,12 @@ export type TechnicalContextPayload = {
     viewModeHint: string;
   };
   element?: ElementContext;
+  /**
+   * Phase 4 — heurísticas visuais e hints do DOM do alvo.
+   * Campos opcionais para manter compatibilidade com payloads capturados em versões anteriores.
+   */
+  visualState?: VisualStateSnapshotV1;
+  targetDomHint?: TargetDomHintV1;
   /** Phase 1 — últimos eventos significativos (clique, navegação SPA, etc.) */
   interactionTimeline?: InteractionTimelineEntryV1[];
   /** Phase 2 — prioridade erros/lentos; ver `pickNetworkSummariesForIssue` */

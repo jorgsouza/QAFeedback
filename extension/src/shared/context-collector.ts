@@ -1,10 +1,17 @@
-import type { CapturedIssueContextV1, ElementContext, InteractionTimelineEntryV1 } from "./types";
+import type {
+  CapturedIssueContextV1,
+  ElementContext,
+  InteractionTimelineEntryV1,
+  TargetDomHintV1,
+  VisualStateSnapshotV1,
+} from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
 import { pickNetworkSummariesForIssue, summariesToFailedRequests } from "./network-summary";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
 import { buildViewModeHint } from "./view-layout-hint";
+import { elementIsInsideExtensionUi } from "./extension-constants";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
 
@@ -125,6 +132,154 @@ export function captureElementContext(el: Element | null): ElementContext | unde
   };
 }
 
+function isElementVisible(el: Element): boolean {
+  try {
+    if (!(el instanceof HTMLElement)) return true;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return false;
+    const cs = window.getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeText(el: Element, max = 120): string | undefined {
+  try {
+    const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+    if (!t) return undefined;
+    return truncate(t, max);
+  } catch {
+    return undefined;
+  }
+}
+
+function findAriaLabelForBy(el: Element): string | undefined {
+  const labelId = (el as Element).getAttribute("aria-labelledby");
+  if (!labelId) return undefined;
+  const id = labelId.split(/\s+/g)[0]?.trim();
+  if (!id) return undefined;
+  const ref = document.getElementById(id);
+  if (!ref) return undefined;
+  return safeText(ref, 140);
+}
+
+function captureDialogSnapshots(maxDialogs = 3): VisualStateSnapshotV1["dialogs"] | undefined {
+  try {
+    const selectors = [
+      '[role="dialog"][aria-modal="true"]',
+      '[aria-modal="true"]',
+      '[role="alertdialog"]',
+    ].join(",");
+    const nodes = Array.from(document.querySelectorAll(selectors)).filter(
+      (n) => n instanceof Element && isElementVisible(n) && !elementIsInsideExtensionUi(n),
+    );
+    if (!nodes.length) return undefined;
+    const out = nodes.slice(0, maxDialogs).map((d) => {
+      const aLabel = (d as HTMLElement).getAttribute("aria-label") || undefined;
+      const byLabel = findAriaLabelForBy(d);
+      const title = aLabel ?? byLabel ?? safeText(d, 80);
+      const type = (d.getAttribute("role") || d.getAttribute("aria-modal") || "dialog").toString();
+      return { type, title: title ? truncate(title, 90) : undefined };
+    });
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
+function captureBusyIndicators(max = 3): VisualStateSnapshotV1["busyIndicators"] | undefined {
+  try {
+    const busyNodes = Array.from(document.querySelectorAll('[aria-busy="true"]')).filter(
+      (n) => n instanceof Element && isElementVisible(n) && !elementIsInsideExtensionUi(n),
+    );
+    const out: string[] = [];
+    for (const n of busyNodes) {
+      const lbl =
+        (n as HTMLElement).getAttribute("aria-label") ||
+        safeText(n, 60) ||
+        (n as HTMLElement).getAttribute("role") ||
+        n.tagName.toLowerCase();
+      out.push(truncate(String(lbl), 80));
+      if (out.length >= max) break;
+    }
+    return out.length ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function captureActiveTabs(max = 3): VisualStateSnapshotV1["activeTabs"] | undefined {
+  try {
+    const nodes = Array.from(
+      document.querySelectorAll('[role="tab"][aria-selected="true"]'),
+    ).filter((n) => n instanceof Element && isElementVisible(n) && !elementIsInsideExtensionUi(n));
+    if (!nodes.length) return undefined;
+    const out: string[] = [];
+    for (const n of nodes) {
+      const lbl = (n as HTMLElement).getAttribute("aria-label") || safeText(n, 90);
+      const fallback = (n as HTMLElement).id ? `#${(n as HTMLElement).id}` : n.tagName.toLowerCase();
+      out.push(truncate(lbl || fallback, 120));
+      if (out.length >= max) break;
+    }
+    return out.length ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function captureTargetDomHint(el: Element | null): TargetDomHintV1 | undefined {
+  if (!el || !(el instanceof Element)) return undefined;
+  if (elementIsInsideExtensionUi(el)) return undefined;
+
+  const tag = el.tagName.toLowerCase();
+  const role = (el as HTMLElement).getAttribute("role") || undefined;
+  const ariaLabel = (el as HTMLElement).getAttribute("aria-label") || undefined;
+  const dataTestId =
+    (el as HTMLElement).getAttribute("data-testid") ||
+    (el as HTMLElement).getAttribute("data-qa") ||
+    undefined;
+  const id = el.id || undefined;
+  const textHint = safeText(el, 110);
+
+  let selectorHint: string | undefined;
+  if (dataTestId) selectorHint = `${tag}[data-testid="${truncate(dataTestId, 60)}"]`;
+  else if (id) selectorHint = `${tag}#${truncate(id, 60)}`;
+  else {
+    const cls = (el as HTMLElement).className;
+    if (typeof cls === "string" && cls.trim()) {
+      const parts = cls.split(/\s+/g).filter(Boolean).slice(0, 2);
+      if (parts.length) selectorHint = `${tag}.${parts.map((p) => truncate(p, 30)).join(".")}`;
+    }
+  }
+
+  let rect: TargetDomHintV1["rect"] | undefined;
+  try {
+    if (el instanceof HTMLElement) {
+      const r = el.getBoundingClientRect();
+      rect = { w: Math.round(r.width), h: Math.round(r.height) };
+      if (rect.w <= 0 || rect.h <= 0) rect = undefined;
+    }
+  } catch {
+    rect = undefined;
+  }
+
+  const any =
+    selectorHint || role || ariaLabel || textHint || rect
+      ? true
+      : false;
+  if (!any) return undefined;
+
+  return {
+    selectorHint,
+    role,
+    ariaLabel,
+    textHint,
+    rect,
+  };
+}
+
 export function buildCapturedIssueContext(params: {
   lastTarget: Element | null;
   bridge: BridgeSnapshot;
@@ -192,6 +347,16 @@ export function buildCapturedIssueContext(params: {
       }),
     },
     element: captureElementContext(lastTarget),
+    visualState:
+      // Só calcula se existir um alvo; ajuda a evitar queries em caso de envio “vazio”.
+      lastTarget
+        ? {
+            dialogs: captureDialogSnapshots(3),
+            busyIndicators: captureBusyIndicators(3),
+            activeTabs: captureActiveTabs(3),
+          }
+        : undefined,
+    targetDomHint: captureTargetDomHint(lastTarget),
     console: bridge.console.map((c) => ({
       level: c.level,
       message: truncate(c.message, 400),

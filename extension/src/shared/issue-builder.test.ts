@@ -224,4 +224,35 @@ describe("buildIssueBody", () => {
     expect(md).toContain("## Console");
     expect(md).toContain("(error) boom");
   });
+
+  it("includes visual state and target hint when present", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          visualState: {
+            dialogs: [{ type: "dialog", title: "Modal X" }],
+            busyIndicators: ["spinner"],
+            activeTabs: ["Tab A"],
+          },
+          targetDomHint: {
+            selectorHint: 'button[data-testid="qaf-send"]',
+            role: "button",
+            ariaLabel: "Enviar",
+            textHint: "Enviar feedback",
+            rect: { w: 120, h: 32 },
+          },
+        },
+      }),
+    );
+    expect(md).toContain("## Estado visual no momento do bug");
+    expect(md).toContain("Diálogo(s)/modal aberto(s)");
+    expect(md).toContain("## Elemento relacionado");
+    expect(md).toContain("Seletor sugerido");
+    expect(md).toContain("aria-label");
+  });
 });

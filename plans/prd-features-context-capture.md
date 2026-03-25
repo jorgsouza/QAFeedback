@@ -179,9 +179,9 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [ ] Nova secção `## Estado visual no momento do bug` (só quando houver dados não vazios).
-- [ ] `## Elemento relacionado` com seletor sugerido quando houver testid/role útil.
-- [ ] Não executar queries pesadas em DOM gigante — timeout ou limite de nós.
+- [x] Nova secção `## Estado visual no momento do bug` (só quando houver dados não vazios).
+- [x] `## Elemento relacionado` com seletor sugerido quando houver testid/role útil.
+- [x] Não executar queries pesadas em DOM gigante — heurísticas limitadas (max dialogs/tabs/busy).
 
 ### Riscos
 
