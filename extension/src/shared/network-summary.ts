@@ -1,5 +1,10 @@
 import type { FailedRequestEntry, NetworkRequestSummaryEntryV1 } from "./types";
 
+/** Pedidos para recursos da própria extensão — não entram no resumo da issue. */
+export function isBrowserExtensionSchemeUrl(url: string): boolean {
+  return /^(chrome-extension|moz-extension|ms-browser-extension|safari-web-extension):/i.test(url);
+}
+
 /**
  * Ordena e limita entradas para a issue: erros primeiro, depois lentas, depois restantes;
  * dedupe por método + URL + status (mantém a de maior prioridade).
@@ -9,9 +14,10 @@ export function pickNetworkSummariesForIssue(
   max: number,
   slowThresholdMs: number,
 ): NetworkRequestSummaryEntryV1[] {
-  if (!entries.length || max <= 0) return [];
+  const filtered = entries.filter((e) => !isBrowserExtensionSchemeUrl(e.url));
+  if (!filtered.length || max <= 0) return [];
 
-  const scored = entries.map((e) => {
+  const scored = filtered.map((e) => {
     const isError = e.status >= 400 || e.status === 0;
     const isSlow = e.durationMs >= slowThresholdMs;
     const priority = isError ? 0 : isSlow ? 1 : 2;

@@ -25,8 +25,17 @@ import {
   listFilteredJiraBoardsForFeedback,
   resolveJiraBoardIdForCreate,
 } from "../shared/jira-boards-list-for-feedback";
+import { parseTabSnapshotFromStoredValue } from "../shared/feedback-ui-session";
 
 const SCRIPT_ID = "qa-feedback-content";
+
+function qafTabUiStorageKey(tabId: number): string {
+  return `qafTabUiV1_${tabId}`;
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void chrome.storage.session.remove(qafTabUiStorageKey(tabId));
+});
 
 async function filterGrantedPatterns(patterns: string[]): Promise<string[]> {
   const out: string[] = [];
@@ -167,6 +176,8 @@ type JiraTestAndListBoardsMessage = {
 };
 
 type ListRepoTargetsMessage = { type: "LIST_REPO_TARGETS" };
+type QafLoadTabUiMessage = { type: "QAF_LOAD_TAB_UI" };
+type QafPersistTabUiMessage = { type: "QAF_PERSIST_TAB_UI"; payload: unknown };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
@@ -178,6 +189,8 @@ type Messages =
   | TestJiraMessage
   | JiraTestAndListBoardsMessage
   | ListRepoTargetsMessage
+  | QafLoadTabUiMessage
+  | QafPersistTabUiMessage
   | OpenOptionsMessage
   | StartNetworkDiagnosticMessage
   | StopNetworkDiagnosticMessage
@@ -185,6 +198,42 @@ type Messages =
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
+    if (message.type === "QAF_LOAD_TAB_UI") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: true as const, state: null });
+          return;
+        }
+        const key = qafTabUiStorageKey(tabId);
+        const bag = await chrome.storage.session.get(key);
+        const state = parseTabSnapshotFromStoredValue(bag[key]);
+        sendResponse({ ok: true as const, state });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_PERSIST_TAB_UI") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false });
+          return;
+        }
+        const m = message as QafPersistTabUiMessage;
+        const parsed = parseTabSnapshotFromStoredValue(m.payload);
+        if (!parsed) {
+          sendResponse({ ok: false });
+          return;
+        }
+        await chrome.storage.session.set({
+          [qafTabUiStorageKey(tabId)]: parsed,
+        });
+        sendResponse({ ok: true });
+      })();
+      return true;
+    }
+
     if (message.type === "OPEN_OPTIONS") {
       try {
         chrome.runtime.openOptionsPage(() => {

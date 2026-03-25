@@ -154,6 +154,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 - [ ] GitHub e Jira recebem o mesmo corpo base (ou flags mínimas se Jira tiver limite).
 - [ ] Secção técnica antiga ou fundida de forma documentada (evitar duplicar URL 3 vezes).
 - [ ] Testes snapshot do Markdown para 2–3 cenários (com/sem timeline, com/sem rede).
+- [ ] Melhorar formatação ao salvar no JIRA pois esta sendo salvo como markdown e o Jira nao suporta isso, aparentemente.
 
 ### Riscos
 

@@ -1,6 +1,7 @@
+import { EXTENSION_REGION_PICKER_OVERLAY_ID } from "../shared/extension-constants";
 import type { ViewportRect } from "../shared/region-screenshot-crop";
 
-const OVERLAY_ID = "qa-feedback-region-picker-overlay";
+const OVERLAY_ID = EXTENSION_REGION_PICKER_OVERLAY_ID;
 const MIN_W = 24;
 const MIN_H = 24;
 

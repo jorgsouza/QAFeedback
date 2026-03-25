@@ -11,6 +11,7 @@ import {
   summarizeKeydownTimeline,
   summarizeSubmitTarget,
 } from "../shared/interaction-timeline";
+import { isBrowserExtensionSchemeUrl } from "../shared/network-summary";
 import type { InteractionTimelineEntryV1, InteractionTimelineKindV1 } from "../shared/types";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
@@ -79,6 +80,7 @@ function init(): void {
   const lastInputAtByField = new Map<string, number>();
 
   function pushNetworkEntry(row: NetworkBridgeRow): void {
+    if (isBrowserExtensionSchemeUrl(row.url)) return;
     state.networkSummaries = cap(
       [...state.networkSummaries, row],
       CAPTURE_LIMITS.bridgeNetworkBuffer,

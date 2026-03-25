@@ -26,6 +26,13 @@ import {
   tryGetExtensionResourceUrl,
 } from "../shared/extension-runtime";
 import { JIRA_MOTIVO_ABERTURA_OPTIONS, isJiraMotivoAbertura } from "../shared/jira-motivo";
+import {
+  buildTabSnapshotV2,
+  loadTabSnapshotFromExtensionTab,
+  persistTabSnapshotToExtensionTab,
+  readTabSnapshotFromSession,
+  writeTabSnapshotToSession,
+} from "../shared/feedback-ui-session";
 import { useChromeSpeechDictation } from "./useChromeSpeechDictation";
 import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 
@@ -124,13 +131,42 @@ function destinationDefaults(githubOk: boolean, jiraOk: boolean): IssueFormState
 
 const initialForm = (): IssueFormState => destinationDefaults(false, false);
 
+function readInitialUiState(): { minimized: boolean; sheetCollapsed: boolean; open: boolean } {
+  const s = readTabSnapshotFromSession();
+  if (!s) return { minimized: false, sheetCollapsed: false, open: false };
+  return {
+    minimized: s.minimized,
+    sheetCollapsed: s.sheetCollapsed,
+    open: s.open,
+  };
+}
+
+function initialFormFromSnapshot(): IssueFormState {
+  const s = readTabSnapshotFromSession();
+  const base = initialForm();
+  if (!s) return base;
+  return {
+    ...base,
+    title: s.title ?? base.title,
+    whatHappened: s.whatHappened ?? base.whatHappened,
+    includeTechnicalContext: s.includeTechnicalContext ?? base.includeTechnicalContext,
+    sendToGitHub: s.sendToGitHub ?? base.sendToGitHub,
+    sendToJira: s.sendToJira ?? base.sendToJira,
+    jiraMotivoAbertura: s.jiraMotivoAbertura ?? base.jiraMotivoAbertura,
+  };
+}
+
 export function FeedbackApp() {
-  const [minimized, setMinimized] = useState(false);
+  const [initialUi] = useState(readInitialUiState);
+  const [minimized, setMinimized] = useState(initialUi.minimized);
   /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
-  const [sheetCollapsed, setSheetCollapsed] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("form");
-  const [form, setForm] = useState<IssueFormState>(initialForm);
+  const [sheetCollapsed, setSheetCollapsed] = useState(initialUi.sheetCollapsed);
+  const [open, setOpen] = useState(initialUi.open);
+  const [tab, setTab] = useState<Tab>(() => {
+    const p = readTabSnapshotFromSession()?.panelTab;
+    return p === "preview" ? "preview" : "form";
+  });
+  const [form, setForm] = useState<IssueFormState>(initialFormFromSnapshot);
   const [lastTarget, setLastTarget] = useState<Element | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,14 +178,19 @@ export function FeedbackApp() {
     warnings?: string[];
   } | null>(null);
   const [repoTargets, setRepoTargets] = useState<RepoOption[]>([]);
-  const [repoIndex, setRepoIndex] = useState(0);
+  const [repoIndex, setRepoIndex] = useState(() => {
+    const ri = readTabSnapshotFromSession()?.repoIndex;
+    return ri != null && ri >= 0 ? ri : 0;
+  });
   /** Tokens guardados nas opções: controlam destinos visíveis no modal. */
   const [githubTokenConfigured, setGithubTokenConfigured] = useState(false);
   const [jiraTokenConfigured, setJiraTokenConfigured] = useState(false);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
   const [jiraBoardsForModal, setJiraBoardsForModal] = useState<JiraBoardOption[]>([]);
-  const [selectedJiraBoardId, setSelectedJiraBoardId] = useState("");
+  const [selectedJiraBoardId, setSelectedJiraBoardId] = useState(
+    () => readTabSnapshotFromSession()?.selectedJiraBoardId ?? "",
+  );
   const [jiraBoardsListError, setJiraBoardsListError] = useState<string | null>(null);
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
@@ -176,6 +217,77 @@ export function FeedbackApp() {
   useEffect(() => {
     ensurePageBridgeInjected();
   }, []);
+
+  /** Evita gravar `open: false` na extensão antes de ler `chrome.storage.session` (corrida ao trocar de URL). */
+  const [tabUiHydrated, setTabUiHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fromExt = await loadTabSnapshotFromExtensionTab();
+        if (cancelled) return;
+        if (fromExt) {
+          const sess = readTabSnapshotFromSession();
+          if (fromExt.open && (!sess || !sess.open)) {
+            setOpen(true);
+            setSheetCollapsed(fromExt.sheetCollapsed);
+            setMinimized(fromExt.minimized);
+          } else if (!sess) {
+            setOpen(fromExt.open);
+            setSheetCollapsed(fromExt.sheetCollapsed);
+            setMinimized(fromExt.minimized);
+          }
+          const sessDraftEmpty =
+            !sess || (!(sess.title ?? "").trim() && !(sess.whatHappened ?? "").trim());
+          const extHasDraft =
+            (fromExt.title != null && fromExt.title.length > 0) ||
+            (fromExt.whatHappened != null && fromExt.whatHappened.length > 0);
+          if (extHasDraft && sessDraftEmpty) {
+            setForm((f) => ({
+              ...f,
+              title: fromExt.title ?? f.title,
+              whatHappened: fromExt.whatHappened ?? f.whatHappened,
+              includeTechnicalContext: fromExt.includeTechnicalContext ?? f.includeTechnicalContext,
+              sendToGitHub: fromExt.sendToGitHub ?? f.sendToGitHub,
+              sendToJira: fromExt.sendToJira ?? f.sendToJira,
+              jiraMotivoAbertura: fromExt.jiraMotivoAbertura ?? f.jiraMotivoAbertura,
+            }));
+          }
+          if (!sess) {
+            if (fromExt.repoIndex != null && Number.isFinite(fromExt.repoIndex) && fromExt.repoIndex >= 0) {
+              setRepoIndex(fromExt.repoIndex);
+            }
+            if (fromExt.selectedJiraBoardId) setSelectedJiraBoardId(fromExt.selectedJiraBoardId);
+            if (fromExt.panelTab === "preview" || fromExt.panelTab === "form") setTab(fromExt.panelTab);
+          }
+        }
+      } finally {
+        if (!cancelled) setTabUiHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tabUiHydrated) return;
+    const snap = buildTabSnapshotV2({
+      open,
+      sheetCollapsed,
+      minimized,
+      repoIndex,
+      selectedJiraBoardId,
+      panelTab: tab,
+      form,
+    });
+    const h = window.setTimeout(() => {
+      writeTabSnapshotToSession(snap);
+      persistTabSnapshotToExtensionTab(snap);
+    }, 250);
+    return () => clearTimeout(h);
+  }, [open, sheetCollapsed, minimized, repoIndex, selectedJiraBoardId, tab, form, tabUiHydrated]);
 
   const [routeRevision, setRouteRevision] = useState(0);
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
@@ -297,7 +409,10 @@ export function FeedbackApp() {
         return { ...f, sendToGitHub, sendToJira };
       });
       setRepoTargets(list);
-      setRepoIndex(0);
+      setRepoIndex((prev) => {
+        if (list.length === 0) return 0;
+        return Math.min(Math.max(0, prev), list.length - 1);
+      });
 
       const jiraBoards = Array.isArray(r?.jiraBoards) ? r.jiraBoards : [];
       const jiraDefRaw = typeof r?.jiraDefaultBoardId === "string" ? r.jiraDefaultBoardId.trim() : "";

@@ -1,11 +1,12 @@
 import { truncate } from "./sanitizer";
-import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
+import { EXTENSION_ROOT_HOST_ID, eventPathTouchesExtensionUi } from "./extension-constants";
 
 /** Alinhado a `EXTENSION_ROOT_HOST_ID` — usado no page-bridge (bundle separado). */
 export const TIMELINE_IGNORE_HOST_ID = EXTENSION_ROOT_HOST_ID;
 
+/** Mesma regra que `eventPathTouchesExtensionUi` (host + overlay de região). */
 export function eventPathTouchesQaExtensionHost(ev: Event): boolean {
-  return ev.composedPath().some((n) => n instanceof HTMLElement && n.id === TIMELINE_IGNORE_HOST_ID);
+  return eventPathTouchesExtensionUi(ev);
 }
 
 export function eventTargetElement(ev: Event): Element | null {

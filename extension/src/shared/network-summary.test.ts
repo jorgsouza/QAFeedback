@@ -37,6 +37,16 @@ describe("pickNetworkSummariesForIssue", () => {
     expect(out).toHaveLength(1);
     expect(out[0].durationMs).toBe(20);
   });
+
+  it("drops browser extension scheme URLs", () => {
+    const list = [
+      e({ method: "GET", url: "chrome-extension://abc/favicon.ico", status: 0, durationMs: 10 }),
+      e({ method: "GET", url: "https://a.test/x", status: 200, durationMs: 100 }),
+    ];
+    const out = pickNetworkSummariesForIssue(list, 10, 3000);
+    expect(out).toHaveLength(1);
+    expect(out[0].url).toContain("a.test");
+  });
 });
 
 describe("summariesToFailedRequests", () => {
