@@ -33,7 +33,7 @@ function formatFailed(reqs: { method: string; url: string; status: number; messa
 }
 
 export function buildIssueBody(payload: CreateIssuePayload): string {
-  const { title: _t, includeTechnicalContext: _i, technicalContext: ctx, ...form } = payload;
+  const { title: _t, includeTechnicalContext: _i, capturedContext: ctx, ...form } = payload;
   let md = "";
   md += omitEmptySection("O que aconteceu", form.whatHappened);
 

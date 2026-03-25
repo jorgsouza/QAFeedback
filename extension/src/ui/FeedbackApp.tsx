@@ -10,7 +10,7 @@ import { pickSpeechRecognitionLang } from "../shared/chrome-speech-dictation";
 import { detectDictationPlatform, getDictationMicTooltip } from "../shared/native-dictation-hint";
 import { buildIssueBody } from "../shared/issue-builder";
 import {
-  buildTechnicalContext,
+  buildCapturedIssueContext,
   ensurePageBridgeInjected,
   readBridgeSnapshot,
 } from "../shared/context-collector";
@@ -380,10 +380,10 @@ export function FeedbackApp() {
     const bridge = readBridgeSnapshot();
     const target =
       lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
-    const technicalContext = form.includeTechnicalContext
-      ? buildTechnicalContext({ lastTarget: target, bridge })
+    const capturedContext = form.includeTechnicalContext
+      ? buildCapturedIssueContext({ lastTarget: target, bridge })
       : undefined;
-    return { ...form, technicalContext };
+    return { ...form, capturedContext };
   }, [form, lastTarget, routeRevision]);
 
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
@@ -477,10 +477,10 @@ export function FeedbackApp() {
       const bridge = readBridgeSnapshot();
       const target =
         lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
-      const technicalContextForSend = form.includeTechnicalContext
-        ? buildTechnicalContext({ lastTarget: target, bridge })
+      const capturedContextForSend = form.includeTechnicalContext
+        ? buildCapturedIssueContext({ lastTarget: target, bridge })
         : undefined;
-      const submitPayload: CreateIssuePayload = { ...form, technicalContext: technicalContextForSend };
+      const submitPayload: CreateIssuePayload = { ...form, capturedContext: capturedContextForSend };
 
       const res = (await chrome.runtime.sendMessage({
         type: "CREATE_ISSUE",

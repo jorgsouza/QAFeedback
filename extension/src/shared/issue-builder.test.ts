@@ -55,7 +55,8 @@ describe("buildIssueBody", () => {
     const md = buildIssueBody(
       payload({
         includeTechnicalContext: true,
-        technicalContext: {
+        capturedContext: {
+          version: 1,
           page: { ...pageCtx },
           console: [],
           failedRequests: [],
@@ -76,7 +77,8 @@ describe("buildIssueBody", () => {
     const md = buildIssueBody(
       payload({
         includeTechnicalContext: true,
-        technicalContext: {
+        capturedContext: {
+          version: 1,
           page: {
             url: "https://x.test/",
             pathname: "/",
@@ -112,7 +114,8 @@ describe("buildIssueBody", () => {
     const md = buildIssueBody(
       payload({
         includeTechnicalContext: true,
-        technicalContext: {
+        capturedContext: {
+          version: 1,
           page: {
             url: "https://x.test/",
             pathname: "/",

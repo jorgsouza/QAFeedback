@@ -1,11 +1,10 @@
-import type { ElementContext, TechnicalContextPayload } from "./types";
+import type { CapturedIssueContextV1, ElementContext } from "./types";
+import { CAPTURE_LIMITS } from "./context-limits";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
 import { buildViewModeHint } from "./view-layout-hint";
 
-const MAX_CONSOLE = 8;
-const MAX_FAILED = 5;
 const SNAP_EVENT = "qa-feedback:snapshot";
 
 export type BridgeSnapshot = {
@@ -20,8 +19,8 @@ function onSnap(ev: Event): void {
   const e = ev as CustomEvent<BridgeSnapshot>;
   if (!e.detail) return;
   latestBridge = {
-    console: (e.detail.console ?? []).slice(-MAX_CONSOLE),
-    failedRequests: (e.detail.failedRequests ?? []).slice(-MAX_FAILED),
+    console: (e.detail.console ?? []).slice(-CAPTURE_LIMITS.issueConsoleEntries),
+    failedRequests: (e.detail.failedRequests ?? []).slice(-CAPTURE_LIMITS.issueFailedRequests),
   };
 }
 
@@ -66,8 +65,8 @@ export function readBridgeSnapshot(): BridgeSnapshot {
     /* ex.: contexto invalidado durante injeção */
   }
   return {
-    console: latestBridge.console.slice(-MAX_CONSOLE),
-    failedRequests: latestBridge.failedRequests.slice(-MAX_FAILED),
+    console: latestBridge.console.slice(-CAPTURE_LIMITS.issueConsoleEntries),
+    failedRequests: latestBridge.failedRequests.slice(-CAPTURE_LIMITS.issueFailedRequests),
   };
 }
 
@@ -81,10 +80,10 @@ export function captureElementContext(el: Element | null): ElementContext | unde
   };
 }
 
-export function buildTechnicalContext(params: {
+export function buildCapturedIssueContext(params: {
   lastTarget: Element | null;
   bridge: BridgeSnapshot;
-}): TechnicalContextPayload {
+}): CapturedIssueContextV1 {
   const { lastTarget, bridge } = params;
   const url = sanitizeUrl(window.location.href);
   const route = resolvePageRouteInfo(window.location);
@@ -100,6 +99,7 @@ export function buildTechnicalContext(params: {
   const ih = window.innerHeight;
 
   return {
+    version: 1 as const,
     page: {
       url,
       pathname: route.pathname,

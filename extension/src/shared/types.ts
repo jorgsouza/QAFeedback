@@ -29,6 +29,10 @@ export type ElementContext = {
   safeAttributes: string;
 };
 
+/**
+ * Dados técnicos da página sem metadados de versão do contrato.
+ * Preferir `CapturedIssueContextV1` no payload de criação de issues.
+ */
 export type TechnicalContextPayload = {
   page: {
     url: string;
@@ -61,6 +65,14 @@ export type TechnicalContextPayload = {
   element?: ElementContext;
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
+};
+
+/**
+ * Contrato versionado do contexto capturado (Phase 0+). Fases futuras podem acrescentar
+ * campos opcionais mantendo `version` para migração.
+ */
+export type CapturedIssueContextV1 = TechnicalContextPayload & {
+  readonly version: 1;
 };
 
 export type RepoTarget = {
@@ -122,7 +134,7 @@ export type JiraImageAttachmentPayload = {
 };
 
 export type CreateIssuePayload = IssueFormState & {
-  technicalContext?: TechnicalContextPayload;
+  capturedContext?: CapturedIssueContextV1;
   /** Só usado quando `sendToJira`; anexos via REST após POST /issue. */
   jiraImageAttachments?: JiraImageAttachmentPayload[];
   /**

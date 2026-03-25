@@ -2,6 +2,8 @@
  * Roda no MAIN world (via <script src="chrome-extension://.../page-bridge.js">).
  * Evita CSP `script-src` contra inline; o host costuma permitir extensão em script-src.
  */
+import { CAPTURE_LIMITS } from "../shared/context-limits";
+
 const SNAP_EVENT = "qa-feedback:snapshot";
 
 function cap<T>(arr: T[], n: number): T[] {
@@ -20,8 +22,12 @@ function init(): void {
 
   function emit(): void {
     const detail = {
-      console: cap(state.console, 32).slice(-8),
-      failedRequests: cap(state.failedRequests, 12).slice(-5),
+      console: cap(state.console, CAPTURE_LIMITS.bridgeConsoleBuffer).slice(
+        -CAPTURE_LIMITS.issueConsoleEntries,
+      ),
+      failedRequests: cap(state.failedRequests, CAPTURE_LIMITS.bridgeFailedRequestsBuffer).slice(
+        -CAPTURE_LIMITS.issueFailedRequests,
+      ),
     };
     document.dispatchEvent(new CustomEvent(SNAP_EVENT, { bubbles: true, detail }));
   }
@@ -31,7 +37,7 @@ function init(): void {
     console[level] = (...args: unknown[]) => {
       try {
         const message = args.map((a) => String(a)).join(" ");
-        state.console = cap([...state.console, { level, message }], 20);
+        state.console = cap([...state.console, { level, message }], CAPTURE_LIMITS.bridgeConsoleBuffer);
         emit();
       } catch {
         /* ignore */
@@ -63,7 +69,7 @@ function init(): void {
               message: res.statusText || "",
             },
           ],
-          20,
+          CAPTURE_LIMITS.bridgeFailedRequestsBuffer,
         );
         emit();
       }
