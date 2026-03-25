@@ -390,6 +390,15 @@ export const shadowCss = `
   background: var(--qaf-m-bg);
 }
 
+/* Estado «Evidência criada» (Figma QA Automation — plugin / Trust-DS: superfície 24px, fluxo vertical). */
+.qaf-body--post-submit {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 24px 24px;
+}
+
 .qaf-field {
   display: flex;
   flex-direction: column;
@@ -980,12 +989,20 @@ export const shadowCss = `
 }
 
 .qaf-success {
+  --qaf-success-ring: #bbf7d0;
+  --qaf-success-fill: #ecfdf5;
+  --qaf-success-icon: #166534;
+
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: transparent;
   color: var(--qaf-m-text);
   border: none;
   border-radius: 0;
-  padding: 8px 0 0;
-  margin-bottom: 0;
+  padding: 0;
+  margin: 0;
   font-size: 14px;
 }
 
@@ -993,27 +1010,31 @@ export const shadowCss = `
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin: 0 0 20px;
+  flex-shrink: 0;
 }
 
 .qaf-success-check {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--qaf-success-fill);
+  box-shadow: 0 0 0 1px var(--qaf-success-ring) inset;
+  color: var(--qaf-success-icon);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   font-weight: 700;
+  line-height: 1;
   flex-shrink: 0;
 }
 
 .qaf-success-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--qaf-m-text);
 }
 
@@ -1021,7 +1042,8 @@ export const shadowCss = `
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
+  margin: 0 0 8px;
+  flex-shrink: 0;
 }
 
 .qaf-success-card {
@@ -1045,6 +1067,7 @@ export const shadowCss = `
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 .qaf-success-card-actions a.qaf-btn {
@@ -1052,11 +1075,32 @@ export const shadowCss = `
   box-sizing: border-box;
 }
 
+/* «Acessar»: texto primário (verde #004d37) sobre contorno neutro — alinhado ao frame Figma. */
+.qaf-btn-access {
+  border: 1px solid var(--qaf-m-input-border);
+  background: var(--qaf-m-bg);
+  color: var(--qaf-m-primary);
+  font-weight: 600;
+}
+
+.qaf-btn-access:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: var(--qaf-m-primary);
+}
+
 .qaf-btn-sm {
   padding: 6px 12px;
   font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
+}
+
+.qaf-success-card-actions .qaf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .qaf-footer-eq {
@@ -1068,11 +1112,22 @@ export const shadowCss = `
   border-top: 1px solid var(--qaf-m-border);
 }
 
+.qaf-success-footer {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
 .qaf-footer-eq-row {
   display: flex;
   align-items: flex-end;
   gap: 16px;
   width: 100%;
+}
+
+.qaf-footer-eq-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
 }
 
 .qaf-footer-eq-row .qaf-btn {
@@ -1086,6 +1141,11 @@ export const shadowCss = `
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.qaf-footer-eq-row--stack .qaf-btn {
+  flex: none;
+  width: 100%;
 }
 
 /* Cancelar: variante Ghost do Figma (sem borda). */
@@ -1138,12 +1198,12 @@ export const shadowCss = `
   outline-offset: 2px;
 }
 
-.qaf-success a {
+.qaf-success a:not(.qaf-btn) {
   color: var(--qaf-m-primary);
   font-weight: 600;
 }
 
-.qaf-success a:hover {
+.qaf-success a:not(.qaf-btn):hover {
   text-decoration: underline;
 }
 `;

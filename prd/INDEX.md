@@ -12,7 +12,8 @@ Documentação de produto e planos de implementação vivem em **`prd/`**, numer
 | **PRD-006** | Modo diagnóstico HAR + anexo Jira | [plan.md](PRD-006-network-har-diagnostic/plan.md) | Implementado (CDP + anexo; ver código e `DOCUMENTATION.md`) |
 | **PRD-007** | Layout Figma / Trust DS / título 4 palavras | [plan.md](PRD-007-figma-layout-qa-automation-trust-ds/plan.md) | UI em evolução; validar critérios de aceite no doc |
 | **PRD-008** | Captura por região (viewport) → Jira | [plan.md](PRD-008-region-capture-jira/plan.md) | Implementado no código; atualizar checkboxes do plano se QA validar |
-| **PRD-009** | Maturidade do produto — debug interno, segurança pragmática (OWASP-aware) | [plan.md](PRD-009-maturidade-produto/plan.md) | Plano ativo; Etapas 1–8 por executar; detecção de achados alinhada a riscos web críticos ([OWASP](https://owasp.org/)) |
+| **PRD-009** | UX da página de opções / configuração | [prd.md](PRD-009-options-config-ux/prd.md), [plan.md](PRD-009-options-config-ux/plan.md) | Em curso — branch `feature/options-config-ux-refactor`; PRD + plano de implementação (Fases 1–3) |
+| **PRD-010** | Maturidade do produto — debug interno, segurança pragmática (OWASP-aware) | [plan.md](PRD-010-maturidade-produto/plan.md) | Plano ativo; Etapas 1–8 por executar após PRD-009; [OWASP](https://owasp.org/) |
 
 ## Recursos partilhados
 

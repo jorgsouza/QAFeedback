@@ -828,7 +828,7 @@ export function FeedbackApp() {
               </div>
             )}
 
-            <div className="qaf-body">
+            <div className={postSubmit ? "qaf-body qaf-body--post-submit" : "qaf-body"}>
               {!postSubmit ? (
                 <div className="qaf-status-strip">
                   <span
@@ -902,7 +902,7 @@ export function FeedbackApp() {
                             <CopyIcon /> Copiar
                           </button>
                           <a
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            className="qaf-btn qaf-btn-sm qaf-btn-access"
                             href={postSubmit.github}
                             target="_blank"
                             rel="noreferrer"
@@ -924,7 +924,7 @@ export function FeedbackApp() {
                             <CopyIcon /> Copiar
                           </button>
                           <a
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            className="qaf-btn qaf-btn-sm qaf-btn-access"
                             href={postSubmit.jira}
                             target="_blank"
                             rel="noreferrer"
@@ -946,7 +946,7 @@ export function FeedbackApp() {
                             <CopyIcon /> Copiar
                           </button>
                           <a
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            className="qaf-btn qaf-btn-sm qaf-btn-access"
                             href={postSubmit.jiraIssueBrowse}
                             target="_blank"
                             rel="noreferrer"
@@ -964,8 +964,8 @@ export function FeedbackApp() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="qaf-footer-eq">
-                    <div className="qaf-footer-eq-row">
+                  <div className="qaf-footer-eq qaf-success-footer">
+                    <div className="qaf-footer-eq-row qaf-footer-eq-row--stack">
                       <button type="button" className="qaf-btn qaf-btn-submit" onClick={resetFlow}>
                         Criar novo
                       </button>

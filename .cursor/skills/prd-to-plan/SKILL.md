@@ -9,7 +9,7 @@ description: >-
 
 # PRD to Plan
 
-Break a PRD into a phased implementation plan using vertical slices (tracer bullets). Output is a Markdown file under `./prd/` — use the next free **PRD-NNN** folder (see `prd/INDEX.md`), e.g. `./prd/PRD-009-my-feature/plan.md`, then add a row to `prd/INDEX.md`.
+Break a PRD into a phased implementation plan using vertical slices (tracer bullets). Output is a Markdown file under `./prd/` — use the next free **PRD-NNN** folder (see `prd/INDEX.md`), e.g. `./prd/PRD-011-my-feature/plan.md`, then add a row to `prd/INDEX.md`.
 
 ## Process
 

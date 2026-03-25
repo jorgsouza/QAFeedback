@@ -1,6 +1,6 @@
 # QAFeedback — Plano revisado para debug interno, segurança pragmática e evolução do produto
 
-> **PRD-009** — maturidade do produto. Índice: [`prd/INDEX.md`](../INDEX.md).
+> **PRD-010** — maturidade do produto. Índice: [`prd/INDEX.md`](../INDEX.md).
 
 > Este plano revisa o plano anterior com base em:
 > - o estado atual do código do QAFeedback;
@@ -693,7 +693,7 @@ Princípios obrigatórios:
    - descreva riscos;
    - explique como validar manualmente.
 
-Comece pela Etapa 1 deste plano (**PRD-009**).
+Comece pela Etapa 1 deste plano (**PRD-010**).
 
 ---
 
