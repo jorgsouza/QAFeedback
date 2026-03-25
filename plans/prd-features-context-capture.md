@@ -3,7 +3,7 @@
 > **Fonte:** `PRD/features.md` — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de âmbito por agora:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
 > **Objetivo:** evoluir a extensão QA Feedback de “contexto técnico básico” para um **relato estruturado e seguro**, alinhado ao PRD, sem despejar telemetria crua.
 
-**Integração na `main`:** Phases **0–5** mergeadas via [PR #6](https://github.com/jorgsouza/QAFeedback/pull/6) (março/2026). Trabalhos futuros: **Phase 6** (privacidade / toggles) e melhorias opcionais listadas no fim.
+**Integração na `main`:** Phases **0–5** mergeadas via [PR #6](https://github.com/jorgsouza/QAFeedback/pull/6) (março/2026). **Phase 6** (privacidade / toggles) é opcional e independente de **documentar** ambiente/convenções do host (ver §3 e §8).
 
 ---
 
@@ -80,10 +80,10 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 | 2 | XHR/fetch ricos | **Coberto** (Phase 2): duração, status, IDs quando legíveis; opacos → status 0 |
 | 3 | Estado visual | **Coberto** (Phase 4): diálogos, busy, abas ativas; secção Markdown quando há dados |
 | 4 | Runtime ricos | **Coberto** (Phase 5): `error` / `unhandledrejection`, dedupe, `deltaToLastClickMs` |
-| 5 | Ambiente/sessão | Pendente (ampliar convenções / documentação) |
+| 5 | Ambiente/sessão | **Só documentação** (opcional): descrever no PRD / `DOCUMENTATION.md` como o *host* pode expor convenções (ex. `data-*`, meta) — **não depende da Phase 6** nem exige toggles de privacidade |
 | 6 | Performance | **Coberto** (Phase 5, best-effort): LCP, CLS, long tasks, INP quando suportado |
 | 7 | DOM/selector | **Coberto** (Phase 4): `targetDomHint`, `## Elemento relacionado` |
-| 8 | Privacidade | Pendente (Phase 6) |
+| 8 | Privacidade | Pendente (**só Phase 6**): pipeline + toggles |
 | — | Narrativa | **MVP** (Phase 3): secções Resumo + Leitura rápida; Jira via `markdownIssueBodyToAdf` |
 
 ---
@@ -92,7 +92,9 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 
 Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/DOM → runtime+performance → privacy hardening**.
 
-**Próximo passo sugerido:** **Phase 6 — Privacidade e toggles** (`applyPrivacyPolicy`, opções na UI, testes de redação).
+**Phase 6 (privacidade / toggles)** fica **para quando for prioridade** — não bloqueia outras melhorias.
+
+**Documentar “ambiente via convenções do host”** (matriz #5 / checklist §7) é **trabalho só de escrita** em PRD ou `extension/DOCUMENTATION.md`: pode fazer-se **a qualquer momento**, **sem** implementar Phase 6.
 
 ---
 
@@ -266,7 +268,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 - [x] Rede: fetch + XHR, duração, IDs, lentas, erros  
 - [x] Estado visual + DOM rico do alvo  
 - [x] Runtime: erro + promise rejection com stack  
-- [ ] Ambiente: extensível via convenções do host (documentar)  
+- [ ] Ambiente: extensível via convenções do host (**só documentar**; independente da Phase 6)  
 - [x] Performance: Web Vitals (best-effort) + long tasks quando possível  
 - [ ] Privacidade: pipeline + toggles  
 - [x] Issue: narrativa estruturada (Phase 3 MVP), não só dumps  
@@ -275,7 +277,8 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ## 8. Próximo passo operacional
 
-1. **Phase 6** — pipeline de privacidade + toggles nas opções (ver critérios de aceite acima).  
-2. Opcional: narrativa “observado/esperado” no `issue-narrative`; snapshot visual do Markdown no preview.  
-3. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
-4. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão.
+1. **Phase 6** (quando quiseres): pipeline de privacidade + toggles nas opções — **não é obrigatória** para fechar o checklist “ambiente / convenções do host” (isso é só doc).  
+2. Opcional **sem Phase 6:** secção em PRD ou `DOCUMENTATION.md` sobre convenções do *host* para ambiente/sessão (o que a app pode expor; o que a extensão já lê hoje).  
+3. Opcional: narrativa “observado/esperado” no `issue-narrative`; snapshot visual do Markdown no preview.  
+4. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
+5. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão (podem ser parte da Phase 6 ou entregues antes só para rede, conforme desenho).
