@@ -13,4 +13,4 @@ Cada pasta contém um **`SKILL.md`** no formato de Agent Skills do Cursor (front
 | `tdd` | Red-green-refactor, fatias verticais |
 | `tests` | Bons vs maus testes |
 
-Planos de produto: pasta **`prd/`** com índice em **`prd/INDEX.md`** (antigas `PRD/` e `plans/` consolidadas).
+Planos de produto: pasta **`prd/`** com índice em **`prd/INDEX.md`** (conteúdo antigo de `plans/` e da antiga pasta `PRD/` consolidados em `prd/`).

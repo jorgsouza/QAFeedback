@@ -19,5 +19,5 @@ Documentação de produto e planos de implementação vivem em **`prd/`**, numer
 
 ## Migração das pastas antigas
 
-- Conteúdo que estava em **`PRD/`** (ficheiros `.md`, `routes.go`) e **`plans/`** foi movido para **`prd/PRD-00x-…/`**.
-- Atalhos: [plans/README.md](../plans/README.md), [PRD/README.md](../PRD/README.md).
+- Conteúdo que estava na pasta **`PRD/`** (histórico) e em **`plans/`** foi movido para **`prd/PRD-00x-…/`**. A pasta **`PRD/`** deixou de existir no repositório.
+- Atalho restante: [plans/README.md](../plans/README.md).
