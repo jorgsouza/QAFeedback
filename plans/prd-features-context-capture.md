@@ -12,7 +12,7 @@
 | **0** | Contrato `CapturedIssueContextV1`, `capturedContext`, `context-limits.ts` | **Feito** (`feature/captured-issue-context-phase0`) |
 | **1** | Linha do tempo (`interaction-timeline`, `page-bridge`) | **Feito** |
 | **2** | Rede resumida fetch + XHR, duração, IDs, secção Markdown | **Feito** |
-| **3** | Narrativa (`IssueNarrativeBuilder`) | Pendente |
+| **3** | Narrativa (`issue-narrative` + Markdown → ADF Jira) | **Feito** (MVP: Resumo, leitura rápida, Jira com headings/listas) |
 | **4** | Estado visual + DOM alvo | Pendente |
 | **5** | Runtime + performance | Pendente |
 | **6** | Privacidade / toggles | Pendente |
@@ -54,10 +54,12 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 - `pickNetworkSummariesForIssue`: prioridade erro → lenta (≥ `networkSlowThresholdMs`) → restantes; dedupe método+URL+status.
 - `buildCapturedIssueContext` sanitiza URLs, trunca strings, preenche `networkRequestSummaries` e `failedRequests`.
 
-### 2.4 `issue-builder.ts`
+### 2.4 `issue-builder.ts` + `issue-narrative.ts` + `jira-markdown-adf.ts`
 
+- `## Resumo`, `## O que aconteceu`, `## Leitura rápida da sessão` (quando há dados), depois contexto técnico e demais secções.
 - `## Requisições relevantes` quando há summaries; senão `## Requests com falha`.
-- Schema de contexto na issue: **Phase 2** (texto visível para validar build).
+- Schema de contexto na issue: **Phase 3** (narrativa + timeline + rede).
+- Jira: `markdownIssueBodyToAdf(buildIssueBody(...))` para descrição em ADF.
 
 ### 2.5–2.8
 
@@ -77,7 +79,7 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 | 6 | Performance | Pendente (Phase 5) |
 | 7 | DOM/selector | Pendente (Phase 4) |
 | 8 | Privacidade | Pendente (Phase 6) |
-| — | Narrativa | Pendente (Phase 3) |
+| — | Narrativa | **MVP** (Phase 3): secções Resumo + Leitura rápida; Jira via `markdownIssueBodyToAdf` |
 
 ---
 
@@ -139,22 +141,24 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ---
 
-## Phase 3: Narrativa da issue (`IssueNarrativeBuilder`)
+## Phase 3: Narrativa da issue (`issue-narrative` + ADF)
 
 **Cobre:** PRD “Como montar a issue” + Etapa 7.
+
+**Estado:** **MVP entregue** — `extension/src/shared/issue-narrative.ts` (Resumo, Leitura rápida da sessão); `issue-builder` compõe antes do bloco técnico; `jira-markdown-adf.ts` converte subset Markdown (`##`, listas, `**`, `` ` ``) para ADF na criação Jira (`markdownIssueBodyToAdf`).
 
 ### O que construir
 
 - Módulo dedicado que recebe `CapturedIssueContext` + texto livre do utilizador (`whatHappened`, título).
 - Gera ordem de secções alinhada ao PRD: resumo (derivado ou cópia do título + primeira frase), passos prováveis (da timeline + texto), observado/esperado (campos do formulário se existirem no futuro; hoje pode mapear só “o que aconteceu”), ambiente (subset de `page`), erro principal, requests, evidências (screenshot/HAR mencionados).
-- Manter **preview** editável no React sem duplicar lógica (uma função pura `buildNarrativeMarkdown`).
+- Manter **preview** editável no React sem duplicar lógica (funções puras; `buildIssueBody` continua a fonte única do Markdown).
 
 ### Critérios de aceite
 
-- [ ] GitHub e Jira recebem o mesmo corpo base (ou flags mínimas se Jira tiver limite).
-- [ ] Secção técnica antiga ou fundida de forma documentada (evitar duplicar URL 3 vezes).
-- [ ] Testes snapshot do Markdown para 2–3 cenários (com/sem timeline, com/sem rede).
-- [ ] Melhorar formatação ao salvar no JIRA pois esta sendo salvo como markdown e o Jira nao suporta isso, aparentemente.
+- [x] GitHub e Jira: mesmo texto-base (`buildIssueBody`); Jira envia ADF derivado desse Markdown (sem literais `##` / `**` como texto plano).
+- [x] Leitura rápida + Resumo reduzem salto entre “relato” e bloco técnico longo (URL continua uma vez em Contexto técnico).
+- [x] Testes: `issue-narrative.test.ts`, `jira-markdown-adf.test.ts`, `issue-builder` atualizado.
+- [x] Jira: formatação via ADF (headings, bullet/ordered lists, strong, code).
 
 ### Riscos
 
@@ -256,13 +260,13 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 - [ ] Ambiente: extensível via convenções do host (documentar)  
 - [ ] Performance: Web Vitals + long tasks quando possível  
 - [ ] Privacidade: pipeline + toggles  
-- [ ] Issue: narrativa estruturada, não só dumps  
+- [x] Issue: narrativa estruturada (Phase 3 MVP), não só dumps  
 
 ---
 
 ## 8. Próximo passo operacional
 
-1. **Phase 3** — `IssueNarrativeBuilder` (ou extrair de `issue-builder`) com testes snapshot.  
+1. ~~**Phase 3** — narrativa + ADF Jira~~ **Feito (MVP).** Melhorias opcionais: narrativa “observado/esperado”, snapshot visual do Markdown.  
 2. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
 3. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão.
 

@@ -42,6 +42,8 @@ describe("buildIssueTitle", () => {
 describe("buildIssueBody", () => {
   it("includes the what happened section when text is present", () => {
     const md = buildIssueBody(payload());
+    expect(md).toContain("## Resumo");
+    expect(md).toContain("Login falha");
     expect(md).toContain("## O que aconteceu");
     expect(md).toContain("O botão não responde após clicar.");
   });
@@ -72,7 +74,8 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
     expect(md).toContain("Schema de contexto (extensão): **v1**");
-    expect(md).toContain("Phase 2");
+    expect(md).toContain("Phase 3");
+    expect(md).not.toContain("## Leitura rápida da sessão");
   });
 
   it("shows Requisições relevantes when networkRequestSummaries present", () => {
@@ -102,6 +105,8 @@ describe("buildIssueBody", () => {
     expect(md).toContain("500 em 1200ms");
     expect(md).toContain("x-request-id");
     expect(md).not.toContain("## Requests com falha");
+    expect(md).toContain("## Leitura rápida da sessão");
+    expect(md).toContain("Rede (resumo):");
   });
 
   it("falls back to Requests com falha when no network summaries", () => {
@@ -147,6 +152,8 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Navegação");
     expect(md).toContain("SPA pushState");
     expect(md).toContain("Clique");
+    expect(md).toContain("## Leitura rápida da sessão");
+    expect(md).toContain("Linha do tempo:");
   });
 
   it("does not add elemento afetado for the extension root host id", () => {

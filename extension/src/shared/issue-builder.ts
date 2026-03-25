@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
 import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
+import { buildResumoLine, buildSessionHighlightsMarkdown } from "./issue-narrative";
 import { truncate } from "./sanitizer";
 
 function shouldIncludeElementSection(e: ElementContext): boolean {
@@ -97,9 +98,19 @@ function formatNetworkRelevant(entries: NetworkRequestSummaryEntryV1[]): string 
 export function buildIssueBody(payload: CreateIssuePayload): string {
   const { title: _t, includeTechnicalContext: _i, capturedContext: ctx, ...form } = payload;
   let md = "";
+  const resumo = buildResumoLine(payload);
+  if (resumo.trim()) {
+    md += `## Resumo\n${resumo}\n\n`;
+  }
   md += omitEmptySection("O que aconteceu", form.whatHappened);
 
   if (payload.includeTechnicalContext && ctx) {
+    const highlights = buildSessionHighlightsMarkdown(ctx);
+    if (highlights.trim()) {
+      md += "## Leitura rápida da sessão\n";
+      md += `${highlights}\n\n`;
+    }
+
     const p = ctx.page;
     md += "## Contexto técnico\n";
     md += `- URL: ${p.url}\n`;
@@ -111,7 +122,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Viewport (janela): ${p.viewport}\n`;
     md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
-    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 2 (timeline + rede resumida fetch/XHR; próx.: narrativa)\n\n`;
+    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 3 (narrativa + timeline + rede resumida)\n\n`;
 
     const tl = formatInteractionTimeline(ctx.interactionTimeline ?? []);
     if (tl) {
