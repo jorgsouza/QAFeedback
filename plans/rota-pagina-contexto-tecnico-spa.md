@@ -125,3 +125,5 @@ Com as camadas **A–F**, o requisito **“rótulo + contexto alinhados à URL e
 - `context-collector.ts` / `issue-builder.ts` — preenchimento e linha **Rota:** no Markdown.
 - `FeedbackApp.tsx` — chip na faixa de estado, `routeRevision` no `useMemo` do payload, contexto técnico reconstruído no `submit`.
 - `shadow-styles.ts` — `.qaf-route-chip`, `.qaf-status-strip-trailing`.
+
+**Evolução:** o chip e o payload usam **`routeSlug`** (`ra-notifications`, `ra-home`, …); `routeLabel` permanece em PT no Markdown. Paths sem regra explícita → `pathnameToFallbackSlug` (`ra-minha-conta-perfil`, etc.).

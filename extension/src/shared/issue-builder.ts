@@ -42,7 +42,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += "## Contexto técnico\n";
     md += `- URL: ${p.url}\n`;
     const searchBit = p.routeSearch.trim() ? ` · query: ${truncate(p.routeSearch, 200)}` : "";
-    md += `- Rota: ${p.routeLabel} (\`${p.pathname}\`${searchBit})\n`;
+    md += `- Rota técnica: \`${p.routeSlug}\` · ${p.routeLabel} · path: \`${p.pathname}\`${searchBit}\n`;
     md += `- Página: ${p.title}\n`;
     md += `- Data/Hora: ${p.timestamp}\n`;
     md += `- Navegador: ${truncate(p.userAgent, 300)}\n`;

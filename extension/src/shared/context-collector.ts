@@ -104,6 +104,7 @@ export function buildTechnicalContext(params: {
       url,
       pathname: route.pathname,
       routeSearch: route.routeSearch,
+      routeSlug: route.routeSlug,
       routeLabel: route.routeLabel,
       routeKey: route.routeKey,
       title: truncate(document.title || "", 200),

@@ -733,7 +733,7 @@ export const shadowCss = `
   font-size: 12px;
   line-height: 1.3;
   color: var(--qaf-m-muted);
-  max-width: min(200px, 55vw);
+  max-width: min(340px, 72vw);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

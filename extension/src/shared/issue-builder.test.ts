@@ -7,6 +7,7 @@ const pageCtx = {
   url: "https://exemplo.test/foo",
   pathname: "/foo",
   routeSearch: "",
+  routeSlug: "ra-foo",
   routeLabel: "Outra",
   routeKey: "other",
   title: "Página",
@@ -63,7 +64,8 @@ describe("buildIssueBody", () => {
     );
     expect(md).toContain("## Contexto técnico");
     expect(md).toContain("https://exemplo.test/foo");
-    expect(md).toContain("- Rota:");
+    expect(md).toContain("- Rota técnica:");
+    expect(md).toContain("`ra-foo`");
     expect(md).toContain("/foo");
     expect(md).toContain("Ecrã (screen):");
     expect(md).toContain("Vista / dispositivo");
@@ -79,6 +81,7 @@ describe("buildIssueBody", () => {
             url: "https://x.test/",
             pathname: "/",
             routeSearch: "",
+            routeSlug: "ra-root",
             routeLabel: "Início",
             routeKey: "root",
             title: "t",
@@ -114,6 +117,7 @@ describe("buildIssueBody", () => {
             url: "https://x.test/",
             pathname: "/",
             routeSearch: "",
+            routeSlug: "ra-root",
             routeLabel: "Início",
             routeKey: "root",
             title: "t",
