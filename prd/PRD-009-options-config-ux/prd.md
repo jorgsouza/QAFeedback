@@ -1,6 +1,7 @@
 # PRD-009 — UX da página de opções / configuração
 
 > Índice: [`prd/INDEX.md`](../INDEX.md)  
+> **Plano de implementação:** [`plan.md`](./plan.md)  
 > **Branch sugerida:** `feature/options-config-ux-refactor`
 
 ---
