@@ -21,4 +21,11 @@ export const CAPTURE_LIMITS = {
   timelineDedupeMs: 400,
   /** Mínimo entre eventos `input` no mesmo campo (reduz ruído por tecla) */
   timelineInputThrottleMs: 2000,
+
+  /** Pedidos no buffer do bridge antes do slice para o content script */
+  bridgeNetworkBuffer: 50,
+  /** Máximo de linhas na secção “Requisições relevantes” na issue */
+  issueNetworkSummaryMax: 20,
+  /** Duração a partir da qual o pedido conta como “lento” no resumo */
+  networkSlowThresholdMs: 3000,
 } as const;

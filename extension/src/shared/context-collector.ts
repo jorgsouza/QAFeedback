@@ -1,5 +1,6 @@
 import type { CapturedIssueContextV1, ElementContext, InteractionTimelineEntryV1 } from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
+import { pickNetworkSummariesForIssue, summariesToFailedRequests } from "./network-summary";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
@@ -7,22 +8,62 @@ import { buildViewModeHint } from "./view-layout-hint";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
 
+/** Linha bruta vinda do `page-bridge` (URL ainda não sanitizada). */
+export type BridgeNetworkRow = {
+  at: string;
+  method: string;
+  url: string;
+  status: number;
+  durationMs: number;
+  aborted?: boolean;
+  statusText?: string;
+  requestId?: string;
+  correlationId?: string;
+  contentType?: string;
+};
+
 export type BridgeSnapshot = {
   console: { level: "error" | "warn" | "log"; message: string }[];
-  failedRequests: { method: string; url: string; status: number; message: string }[];
+  networkSummaries: BridgeNetworkRow[];
   interactionTimeline: InteractionTimelineEntryV1[];
 };
 
-let latestBridge: BridgeSnapshot = { console: [], failedRequests: [], interactionTimeline: [] };
+let latestBridge: BridgeSnapshot = { console: [], networkSummaries: [], interactionTimeline: [] };
 let bridgeListenerAttached = false;
 
+function networkRowsFromBridgeDetail(d: {
+  networkSummaries?: BridgeNetworkRow[];
+  failedRequests?: { method: string; url: string; status: number; message: string }[];
+}): BridgeNetworkRow[] {
+  const n = d.networkSummaries;
+  if (n && n.length) return n;
+  const f = d.failedRequests;
+  if (!f?.length) return [];
+  return f.map((x) => ({
+    at: new Date().toISOString(),
+    method: x.method,
+    url: x.url,
+    status: x.status,
+    durationMs: 0,
+    statusText: x.message,
+  }));
+}
+
+type BridgeEventDetail = {
+  console?: BridgeSnapshot["console"];
+  failedRequests?: { method: string; url: string; status: number; message: string }[];
+  networkSummaries?: BridgeNetworkRow[];
+  interactionTimeline?: InteractionTimelineEntryV1[];
+};
+
 function onSnap(ev: Event): void {
-  const e = ev as CustomEvent<BridgeSnapshot>;
+  const e = ev as CustomEvent<BridgeEventDetail>;
   if (!e.detail) return;
-  const d = e.detail as BridgeSnapshot;
+  const d = e.detail;
+  const merged = networkRowsFromBridgeDetail(d);
   latestBridge = {
     console: (d.console ?? []).slice(-CAPTURE_LIMITS.issueConsoleEntries),
-    failedRequests: (d.failedRequests ?? []).slice(-CAPTURE_LIMITS.issueFailedRequests),
+    networkSummaries: merged.slice(-CAPTURE_LIMITS.bridgeNetworkBuffer),
     interactionTimeline: (d.interactionTimeline ?? []).slice(-CAPTURE_LIMITS.issueTimelineEntries),
   };
 }
@@ -69,7 +110,7 @@ export function readBridgeSnapshot(): BridgeSnapshot {
   }
   return {
     console: latestBridge.console.slice(-CAPTURE_LIMITS.issueConsoleEntries),
-    failedRequests: latestBridge.failedRequests.slice(-CAPTURE_LIMITS.issueFailedRequests),
+    networkSummaries: latestBridge.networkSummaries.slice(-CAPTURE_LIMITS.bridgeNetworkBuffer),
     interactionTimeline: latestBridge.interactionTimeline.slice(-CAPTURE_LIMITS.issueTimelineEntries),
   };
 }
@@ -102,6 +143,28 @@ export function buildCapturedIssueContext(params: {
   const iw = window.innerWidth;
   const ih = window.innerHeight;
 
+  const mappedSummaries = bridge.networkSummaries.map((r) => ({
+    at: r.at,
+    method: r.method,
+    url: sanitizeUrl(r.url),
+    status: r.status,
+    durationMs: r.durationMs,
+    aborted: r.aborted,
+    statusText: r.statusText ? truncate(r.statusText, 120) : undefined,
+    requestId: r.requestId ? truncate(r.requestId, 64) : undefined,
+    correlationId: r.correlationId ? truncate(r.correlationId, 64) : undefined,
+    responseContentType: r.contentType ? truncate(r.contentType, 80) : undefined,
+  }));
+
+  const picked = pickNetworkSummariesForIssue(
+    mappedSummaries,
+    CAPTURE_LIMITS.issueNetworkSummaryMax,
+    CAPTURE_LIMITS.networkSlowThresholdMs,
+  );
+
+  const networkRequestSummaries = picked.length ? picked : undefined;
+  const failedRequests = summariesToFailedRequests(picked, CAPTURE_LIMITS.issueFailedRequests);
+
   return {
     version: 1 as const,
     page: {
@@ -133,12 +196,8 @@ export function buildCapturedIssueContext(params: {
       level: c.level,
       message: truncate(c.message, 400),
     })),
-    failedRequests: bridge.failedRequests.map((r) => ({
-      method: r.method,
-      url: sanitizeUrl(r.url),
-      status: r.status,
-      message: truncate(r.message, 200),
-    })),
+    failedRequests,
+    ...(networkRequestSummaries ? { networkRequestSummaries } : {}),
     ...(bridge.interactionTimeline.length
       ? {
           interactionTimeline: bridge.interactionTimeline.map((t) => ({

@@ -72,7 +72,55 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
     expect(md).toContain("Schema de contexto (extensão): **v1**");
-    expect(md).toContain("Phase 1");
+    expect(md).toContain("Phase 2");
+  });
+
+  it("shows Requisições relevantes when networkRequestSummaries present", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          networkRequestSummaries: [
+            {
+              at: "2025-01-01T12:00:00.000Z",
+              method: "POST",
+              url: "https://exemplo.test/api/x",
+              status: 500,
+              durationMs: 1200,
+              requestId: "req-abc",
+            },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("## Requisições relevantes");
+    expect(md).toContain("POST https://exemplo.test/api/x");
+    expect(md).toContain("500 em 1200ms");
+    expect(md).toContain("x-request-id");
+    expect(md).not.toContain("## Requests com falha");
+  });
+
+  it("falls back to Requests com falha when no network summaries", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [
+            { method: "GET", url: "https://exemplo.test/boom", status: 502, message: "bad" },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("## Requests com falha");
+    expect(md).toContain("502");
+    expect(md).not.toContain("## Requisições relevantes");
   });
 
   it("includes interaction timeline when present", () => {

@@ -15,15 +15,55 @@ import type { InteractionTimelineEntryV1, InteractionTimelineKindV1 } from "../s
 
 const SNAP_EVENT = "qa-feedback:snapshot";
 
+type NetworkBridgeRow = {
+  at: string;
+  method: string;
+  url: string;
+  status: number;
+  durationMs: number;
+  aborted?: boolean;
+  statusText?: string;
+  requestId?: string;
+  correlationId?: string;
+  contentType?: string;
+};
+
+type BridgeDetail = {
+  console: { level: "error" | "warn" | "log"; message: string }[];
+  /** Legado: bridge antigo só enviava falhas */
+  failedRequests?: { method: string; url: string; status: number; message: string }[];
+  networkSummaries?: NetworkBridgeRow[];
+  interactionTimeline: InteractionTimelineEntryV1[];
+};
+
 function cap<T>(arr: T[], n: number): T[] {
   return arr.slice(-n);
 }
 
-type BridgeDetail = {
-  console: { level: "error" | "warn" | "log"; message: string }[];
-  failedRequests: { method: string; url: string; status: number; message: string }[];
-  interactionTimeline: InteractionTimelineEntryV1[];
-};
+function readCorrelationHeadersFromResponse(res: Response): {
+  requestId?: string;
+  correlationId?: string;
+  contentType?: string;
+} {
+  try {
+    const requestId =
+      res.headers.get("x-request-id") || res.headers.get("x-requestid") || res.headers.get("request-id") || undefined;
+    const correlationId =
+      res.headers.get("x-correlation-id") ||
+      res.headers.get("correlation-id") ||
+      res.headers.get("x-amzn-requestid") ||
+      undefined;
+    const ct = res.headers.get("content-type");
+    const contentType = ct ? ct.split(";")[0]?.trim() : undefined;
+    return {
+      requestId: requestId || undefined,
+      correlationId: correlationId || undefined,
+      contentType: contentType || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
 
 function init(): void {
   const root = document.documentElement;
@@ -32,11 +72,19 @@ function init(): void {
 
   const state = {
     console: [] as { level: "error" | "warn" | "log"; message: string }[],
-    failedRequests: [] as { method: string; url: string; status: number; message: string }[],
+    networkSummaries: [] as NetworkBridgeRow[],
     timeline: [] as InteractionTimelineEntryV1[],
   };
 
   const lastInputAtByField = new Map<string, number>();
+
+  function pushNetworkEntry(row: NetworkBridgeRow): void {
+    state.networkSummaries = cap(
+      [...state.networkSummaries, row],
+      CAPTURE_LIMITS.bridgeNetworkBuffer,
+    );
+    emit();
+  }
 
   function fieldThrottleKey(el: HTMLElement): string {
     if (el instanceof HTMLInputElement)
@@ -64,9 +112,7 @@ function init(): void {
       console: cap(state.console, CAPTURE_LIMITS.bridgeConsoleBuffer).slice(
         -CAPTURE_LIMITS.issueConsoleEntries,
       ),
-      failedRequests: cap(state.failedRequests, CAPTURE_LIMITS.bridgeFailedRequestsBuffer).slice(
-        -CAPTURE_LIMITS.issueFailedRequests,
-      ),
+      networkSummaries: cap(state.networkSummaries, CAPTURE_LIMITS.bridgeNetworkBuffer),
       interactionTimeline: cap(state.timeline, CAPTURE_LIMITS.bridgeTimelineBuffer).slice(
         -CAPTURE_LIMITS.issueTimelineEntries,
       ),
@@ -91,34 +137,103 @@ function init(): void {
   const w = window;
   const origFetch = w.fetch.bind(w);
   w.fetch = async (...args: Parameters<typeof fetch>) => {
-    const res = await origFetch(...args);
+    const t0 = performance.now();
+    const input = args[0];
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof Request
+          ? input.url
+          : input instanceof URL
+            ? input.href
+            : "";
+    let method =
+      (typeof input !== "string" && input instanceof Request ? input.method : undefined) ||
+      (args[1] && typeof args[1] === "object" && args[1] !== null && "method" in args[1]
+        ? String((args[1] as RequestInit).method)
+        : undefined) ||
+      "GET";
+    method = String(method).toUpperCase();
+
     try {
-      if (!res.ok) {
-        const input = args[0];
-        const reqInit = args[1];
-        const rawUrl = typeof input === "string" ? input : input instanceof Request ? input.url : "";
-        const method =
-          (typeof input !== "string" && input instanceof Request ? input.method : undefined) ||
-          (reqInit && reqInit.method) ||
-          "GET";
-        state.failedRequests = cap(
-          [
-            ...state.failedRequests,
-            {
-              method: String(method).toUpperCase(),
-              url: rawUrl,
-              status: res.status,
-              message: res.statusText || "",
-            },
-          ],
-          CAPTURE_LIMITS.bridgeFailedRequestsBuffer,
-        );
-        emit();
-      }
-    } catch {
-      /* ignore */
+      const res = await origFetch(...args);
+      const dt = Math.round(performance.now() - t0);
+      const hdrs = readCorrelationHeadersFromResponse(res);
+      pushNetworkEntry({
+        at: new Date().toISOString(),
+        method,
+        url: rawUrl,
+        status: res.status,
+        durationMs: dt,
+        statusText: res.statusText || "",
+        requestId: hdrs.requestId,
+        correlationId: hdrs.correlationId,
+        contentType: hdrs.contentType,
+      });
+      return res;
+    } catch (err) {
+      const dt = Math.round(performance.now() - t0);
+      const aborted = err instanceof Error && err.name === "AbortError";
+      pushNetworkEntry({
+        at: new Date().toISOString(),
+        method,
+        url: rawUrl,
+        status: 0,
+        durationMs: dt,
+        aborted,
+        statusText: aborted ? "aborted" : err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
-    return res;
+  };
+
+  const xhrMeta = new WeakMap<XMLHttpRequest, { method: string; url: string }>();
+  const origXhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (
+    this: XMLHttpRequest,
+    method: string,
+    url: string | URL,
+    async?: boolean,
+    username?: string | null,
+    password?: string | null,
+  ): void {
+    const urlStr = typeof url === "string" ? url : url.href;
+    xhrMeta.set(this, { method: String(method).toUpperCase(), url: urlStr });
+    origXhrOpen.call(this, method, url, async ?? true, username ?? null, password ?? null);
+  };
+
+  const origXhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+    const meta = xhrMeta.get(this) ?? { method: "GET", url: "" };
+    const t0 = performance.now();
+    const onEnd = (): void => {
+      this.removeEventListener("loadend", onEnd);
+      const dt = Math.round(performance.now() - t0);
+      let requestId: string | undefined;
+      let correlationId: string | undefined;
+      let contentType: string | undefined;
+      try {
+        requestId = this.getResponseHeader("x-request-id") || this.getResponseHeader("x-requestid") || undefined;
+        correlationId = this.getResponseHeader("x-correlation-id") || undefined;
+        const ct = this.getResponseHeader("content-type");
+        if (ct) contentType = ct.split(";")[0]?.trim();
+      } catch {
+        /* ignore */
+      }
+      pushNetworkEntry({
+        at: new Date().toISOString(),
+        method: meta.method,
+        url: meta.url,
+        status: this.status,
+        durationMs: dt,
+        statusText: this.statusText || "",
+        requestId: requestId || undefined,
+        correlationId: correlationId || undefined,
+        contentType: contentType || undefined,
+      });
+    };
+    this.addEventListener("loadend", onEnd);
+    return origXhrSend.call(this, body);
   };
 
   document.addEventListener(

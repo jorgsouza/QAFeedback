@@ -2,7 +2,9 @@ import type {
   CreateIssuePayload,
   ElementContext,
   InteractionTimelineKindV1,
+  NetworkRequestSummaryEntryV1,
 } from "./types";
+import { CAPTURE_LIMITS } from "./context-limits";
 import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
 import { truncate } from "./sanitizer";
 
@@ -73,6 +75,25 @@ function formatInteractionTimeline(
     .join("\n");
 }
 
+function formatNetworkRelevant(entries: NetworkRequestSummaryEntryV1[]): string {
+  if (!entries.length) return "";
+  const slowMs = CAPTURE_LIMITS.networkSlowThresholdMs;
+  return entries
+    .map((e) => {
+      const bits: string[] = [`${e.method} ${e.url} → ${e.status} em ${e.durationMs}ms`];
+      if (e.aborted) bits.push("abortida");
+      const isErr = e.status >= 400 || e.status === 0;
+      const isSlow = e.durationMs >= slowMs;
+      if (isErr) bits.push("**erro**");
+      else if (isSlow) bits.push("**lenta**");
+      if (e.requestId) bits.push(`x-request-id: \`${truncate(e.requestId, 48)}\``);
+      if (e.correlationId) bits.push(`x-correlation-id: \`${truncate(e.correlationId, 48)}\``);
+      if (e.responseContentType) bits.push(`content-type: ${e.responseContentType}`);
+      return `- ${bits.join(" · ")}`;
+    })
+    .join("\n");
+}
+
 export function buildIssueBody(payload: CreateIssuePayload): string {
   const { title: _t, includeTechnicalContext: _i, capturedContext: ctx, ...form } = payload;
   let md = "";
@@ -90,7 +111,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Viewport (janela): ${p.viewport}\n`;
     md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
-    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 1 (linha do tempo; próx.: rede resumida)\n\n`;
+    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 2 (timeline + rede resumida fetch/XHR; próx.: narrativa)\n\n`;
 
     const tl = formatInteractionTimeline(ctx.interactionTimeline ?? []);
     if (tl) {
@@ -114,10 +135,18 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
       md += `${c}\n\n`;
     }
 
-    const f = formatFailed(ctx.failedRequests);
-    if (f) {
-      md += "## Requests com falha\n";
-      md += `${f}\n\n`;
+    const net = ctx.networkRequestSummaries?.length
+      ? formatNetworkRelevant(ctx.networkRequestSummaries)
+      : "";
+    if (net) {
+      md += "## Requisições relevantes\n";
+      md += `${net}\n\n`;
+    } else {
+      const f = formatFailed(ctx.failedRequests);
+      if (f) {
+        md += "## Requests com falha\n";
+        md += `${f}\n\n`;
+      }
     }
   }
 

@@ -22,6 +22,21 @@ export type FailedRequestEntry = {
   message: string;
 };
 
+/** Phase 2 — resumo de pedido HTTP (fetch/XHR) para a issue. */
+export type NetworkRequestSummaryEntryV1 = {
+  at: string;
+  method: string;
+  /** URL sanitizada (sem query/hash). */
+  url: string;
+  status: number;
+  durationMs: number;
+  aborted?: boolean;
+  statusText?: string;
+  requestId?: string;
+  correlationId?: string;
+  responseContentType?: string;
+};
+
 export type ElementContext = {
   tag: string;
   id: string;
@@ -80,6 +95,8 @@ export type TechnicalContextPayload = {
   element?: ElementContext;
   /** Phase 1 — últimos eventos significativos (clique, navegação SPA, etc.) */
   interactionTimeline?: InteractionTimelineEntryV1[];
+  /** Phase 2 — prioridade erros/lentos; ver `pickNetworkSummariesForIssue` */
+  networkRequestSummaries?: NetworkRequestSummaryEntryV1[];
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
 };
