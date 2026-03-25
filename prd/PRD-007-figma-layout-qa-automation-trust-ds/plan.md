@@ -4,7 +4,7 @@
 > **Nó analisado (MCP):** `11:3550` (SECTION — artboard de documentação com variantes Mobile/Desktop, fluxo principal e sucesso).  
 > **Objetivo:** implementar na extensão Chrome a mesma hierarquia de informação do design e do PDF *QA Automation — plugin*, com aderência aos padrões **Trust DS** (componentes ou tokens espelhados no Shadow DOM).
 
-> **Nota (evolução):** além de UI, foi integrado o **quadro Jira no modal** e a **allowlist `BOARD_ID` / `VITE_JIRA_BOARD_ALLOWLIST`** (ver [painel-canto-board-jira-filtro.md](./painel-canto-board-jira-filtro.md)). A regra automática do **título em quatro palavras** mantém-se como única mudança “inteligente” de conteúdo descrita abaixo; escolha de board é fluxo de dados explícito acordado depois deste PRD.
+> **Nota (evolução):** além de UI, foi integrado o **quadro Jira no modal** e a **allowlist `BOARD_ID` / `VITE_JIRA_BOARD_ALLOWLIST`** (ver [PRD-005 — painel + board Jira](../PRD-005-jira-board-panel-filter/plan.md)). A regra automática do **título em quatro palavras** mantém-se como única mudança “inteligente” de conteúdo descrita abaixo; escolha de board é fluxo de dados explícito acordado depois deste PRD.
 
 ### Escopo funcional (restrito)
 

@@ -1,6 +1,6 @@
-# Plano: contexto rico para issues (PRD `PRD/features.md`)
+# Plano: contexto rico para issues (**PRD-003**)
 
-> **Fonte:** `PRD/features.md` — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de âmbito por agora:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
+> **Fonte:** [PRD-002 — `features.md`](../PRD-002-features-context-spec/features.md) — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de âmbito por agora:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
 > **Objetivo:** evoluir a extensão QA Feedback de “contexto técnico básico” para um **relato estruturado e seguro**, alinhado ao PRD, sem despejar telemetria crua.
 
 **Integração na `main`:** Phases **0–5** mergeadas via [PR #6](https://github.com/jorgsouza/QAFeedback/pull/6) (março/2026). **Phase 6** (privacidade / toggles) é opcional e independente de **documentar** ambiente/convenções do host (ver §3 e §8).

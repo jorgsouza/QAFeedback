@@ -1,7 +1,7 @@
 # Plano: Rótulo de rota na UI + contexto técnico (mitigação total SPA)
 
 > **Objetivo:** mostrar à esquerda das bolinhas de estado (ex.: Jira OK) um indicador da **rota atual** (`pathname` e/ou rótulo amigável tipo *Home*, *Empresa*, *Lista de reclamação*) e **persistir** `pathname` + rótulo no **contexto técnico** enviado nas issues.  
-> **Referência opcional de produto:** `PRD/routes.go` (só documentação; **não** é dependência de runtime na extensão).
+> **Referência opcional de produto:** [PRD-002 — `routes.go`](../PRD-002-features-context-spec/routes.go) (só documentação; **não** é dependência de runtime na extensão).
 
 ---
 

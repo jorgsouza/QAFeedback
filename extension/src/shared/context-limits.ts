@@ -1,6 +1,6 @@
 /**
  * Limites de retenção do contexto capturado para issues.
- * Ver `plans/prd-features-context-capture.md` (Phases 0–1). Alterar apenas aqui e alinhar `page-bridge`.
+ * Ver `prd/PRD-003-context-rich-issues/plan.md` (Phases 0–1). Alterar apenas aqui e alinhar `page-bridge`.
  */
 export const CAPTURE_LIMITS = {
   /** Entradas de console incluídas no `CapturedIssueContextV1` enviado à issue */

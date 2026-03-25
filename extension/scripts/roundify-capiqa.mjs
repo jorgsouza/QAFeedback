@@ -1,5 +1,5 @@
 /**
- * Lê PRD/capiQA.png: remove margens transparentes, preenche um quadrado com fit cover
+ * Lê prd/assets/capiQA.png: remove margens transparentes, preenche um quadrado com fit cover
  * (mascote o maior possível dentro do círculo do manifest — Chrome não aumenta o slot da toolbar)
  * e gera public/qa.png (64×64) + icons/icon*.png
  */
@@ -11,7 +11,7 @@ import sharp from "sharp";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const extRoot = join(__dirname, "..");
 const repoRoot = join(extRoot, "..");
-const src = join(repoRoot, "PRD", "capiQA.png");
+const src = join(repoRoot, "prd", "assets", "capiQA.png");
 const pub = join(extRoot, "public");
 const icons = join(pub, "icons");
 

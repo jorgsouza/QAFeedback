@@ -93,7 +93,7 @@ npm install
 npm run build
 ```
 
-O `build` **executa** **`npm run icons`** primeiro (`../PRD/capiQA.png` → `public/qa.png` + `public/icons/`).
+O `build` **executa** **`npm run icons`** primeiro (`../prd/assets/capiQA.png` → `public/qa.png` + `public/icons/`).
 
 Saída: **`dist/`**. Carregue **`extension/dist`** em **chrome://extensions** (modo desenvolvedor).
 
@@ -153,7 +153,7 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 
 ## Scripts
 
-- `npm run icons` — ícones a partir do PRD (`trim` + preenchimento do círculo para o mascote ocupar melhor o slot da barra do Chrome)
+- `npm run icons` — ícones a partir de `prd/assets/capiQA.png` (`trim` + preenchimento do círculo para o mascote ocupar melhor o slot da barra do Chrome)
 - `npm run build` — produção → `dist/`
 - `npm run dev` — igual ao `build`
 - `npm run check` — TypeScript

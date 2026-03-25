@@ -75,7 +75,8 @@ Carregue a pasta **`extension/dist`** em **chrome://extensions** (modo desenvolv
 |---------|----------|
 | [extension/README.md](extension/README.md) | Funcionalidades completas, build, permissões, estrutura do código |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico detalhado, page-bridge, mensagens do SW |
-| [PRD/](PRD/) | Especificação e imagens de referência |
-| [plans/](plans/) | Planos de funcionalidades (ex.: [contexto rico para issues](plans/prd-features-context-capture.md), HAR, captura por região, rota SPA, layout Figma) — vários com secção *Estado da implementação* |
+| [prd/](prd/) | **PRDs e planos numerados** — ver [`prd/INDEX.md`](prd/INDEX.md) (PRD-001 … PRD-008); ícone em [`prd/assets/capiQA.png`](prd/assets/capiQA.png) |
+| [PRD/](PRD/) | Atalho legado → aponta para [`prd/`](prd/) |
+| [plans/](plans/) | Atalho legado → ver [`prd/INDEX.md`](prd/INDEX.md) |
 
 No Cursor: [`.cursor/skills/`](.cursor/skills/).

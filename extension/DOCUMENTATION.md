@@ -35,7 +35,7 @@ npm run build
 - **chrome://extensions** → Modo do desenvolvedor → **Carregar descompactada** → escolha **`extension/dist`**.
 - Depois de mudanças no código: `npm run build` e **Recarregar** na extensão.
 
-O `build` **executa** **`npm run icons`** (lê **`../PRD/capiQA.png`**, máscara circular → `public/qa.png` e `public/icons/icon*.png`).
+O `build` **executa** **`npm run icons`** (lê **`../prd/assets/capiQA.png`**, máscara circular → `public/qa.png` e `public/icons/icon*.png`).
 
 ---
 
@@ -197,7 +197,7 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 
 ## Ícones (arte circular)
 
-- Fonte: **`PRD/capiQA.png`**.
+- Fonte: **`prd/assets/capiQA.png`**.
 - **`npm run icons`** (incluso no `build`): recorta margens transparentes (**trim**), preenche o quadrado com **cover** e aplica máscara circular — o mascote ocupa melhor o espaço nos tamanhos pequenos da barra do Chrome (o tamanho do *slot* continua fixo pelo browser).
 - Gera **`public/qa.png`** (64×64, FAB/modal) e **`public/icons/icon{16,32,48,128}.png`** (manifest + favicon da página de opções).
 
@@ -216,7 +216,7 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 
 | Comando | Efeito |
 |---------|--------|
-| `npm run icons` | PNGs a partir de `PRD/capiQA.png` |
+| `npm run icons` | PNGs a partir de `prd/assets/capiQA.png` |
 | `npm run build` | Ícones + Vite + page-bridge + `manifest.json` → `dist/` |
 | `npm run check` | `tsc --noEmit` |
 | `npm test` | Vitest — `src/**/*.test.ts` |
