@@ -36,7 +36,9 @@ export type TechnicalContextPayload = {
     pathname: string;
     /** `location.search` (query string). */
     routeSearch: string;
-    /** Rótulo para humanos (ex.: Home, Página da empresa). */
+    /** Slug técnico para UI e filtros (ex.: ra-notifications). */
+    routeSlug: string;
+    /** Rótulo para humanos (ex.: Home, ou pathname se desconhecido). */
     routeLabel: string;
     /** Chave estável para agrupar (ex.: home, empresa, other). */
     routeKey: string;

@@ -718,10 +718,10 @@ export function FeedbackApp() {
                 <div className="qaf-status-strip">
                   <span
                     className="qaf-route-chip"
-                    title={`${routeInfo.pathname}${routeInfo.routeSearch || ""}`}
-                    aria-label={`Rota: ${routeInfo.routeLabel}, caminho ${routeInfo.pathname}`}
+                    title={`${routeInfo.routeSlug} — ${routeInfo.pathname}${routeInfo.routeSearch || ""}`}
+                    aria-label={`Rota técnica ${routeInfo.routeSlug}, caminho ${routeInfo.pathname}`}
                   >
-                    {routeInfo.routeLabel}
+                    {routeInfo.routeSlug}
                   </span>
                   {githubTokenConfigured || jiraTokenConfigured || fullNetworkDiagnosticEnabled ? (
                     <div className="qaf-status-strip-trailing">
