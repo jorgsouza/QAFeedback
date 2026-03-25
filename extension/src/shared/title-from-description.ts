@@ -1,6 +1,6 @@
 /**
- * Gera o título da issue a partir das primeiras palavras da descrição
- * (digitada ou ditada). Palavras = segmentos separados por espaço em branco.
+ * Gera o título a partir das primeiras palavras de um texto (ex.: descrição).
+ * Útil quando integrar IA; o utilizador continua a poder editar/ditar o título no campo.
  */
 export function titleFromDescription(description: string, wordCount = 4): string {
   const parts = description
