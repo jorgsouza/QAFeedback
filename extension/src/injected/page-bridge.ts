@@ -12,7 +12,12 @@ import {
   summarizeSubmitTarget,
 } from "../shared/interaction-timeline";
 import { isBrowserExtensionSchemeUrl } from "../shared/network-summary";
-import type { InteractionTimelineEntryV1, InteractionTimelineKindV1 } from "../shared/types";
+import type {
+  InteractionTimelineEntryV1,
+  InteractionTimelineKindV1,
+  PerformanceSignalsSnapshotV1,
+  RuntimeErrorSnapshotV1,
+} from "../shared/types";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
 
@@ -34,6 +39,8 @@ type BridgeDetail = {
   /** Legado: bridge antigo só enviava falhas */
   failedRequests?: { method: string; url: string; status: number; message: string }[];
   networkSummaries?: NetworkBridgeRow[];
+  runtimeErrors?: RuntimeErrorSnapshotV1[];
+  performanceSignals?: PerformanceSignalsSnapshotV1;
   interactionTimeline: InteractionTimelineEntryV1[];
 };
 
@@ -75,9 +82,45 @@ function init(): void {
     console: [] as { level: "error" | "warn" | "log"; message: string }[],
     networkSummaries: [] as NetworkBridgeRow[],
     timeline: [] as InteractionTimelineEntryV1[],
+    runtimeErrors: [] as RuntimeErrorSnapshotV1[],
+    performanceSignals: {} as PerformanceSignalsSnapshotV1,
   };
 
   const lastInputAtByField = new Map<string, number>();
+
+  const runtimeErrorsByKey = new Map<string, RuntimeErrorSnapshotV1>();
+  const runtimeErrorOrder: string[] = [];
+
+  function pushRuntimeError(entry: Omit<RuntimeErrorSnapshotV1, "at" | "count">): void {
+    const stackPrefix = entry.stack ? entry.stack.slice(0, 120) : "";
+    const key = `${entry.kind}|${entry.message}|${stackPrefix}`;
+    const at = new Date().toISOString();
+    const existing = runtimeErrorsByKey.get(key);
+    if (existing) {
+      existing.at = at;
+      existing.count = (existing.count ?? 1) + 1;
+      existing.file = entry.file;
+      existing.line = entry.line;
+      existing.col = entry.col;
+      // deltaToLastClickMs é calculado no content script
+      emit();
+      return;
+    }
+
+    const next: RuntimeErrorSnapshotV1 = { ...entry, at, count: 1 };
+    runtimeErrorsByKey.set(key, next);
+    runtimeErrorOrder.push(key);
+
+    while (runtimeErrorOrder.length > CAPTURE_LIMITS.bridgeRuntimeErrorBuffer) {
+      const drop = runtimeErrorOrder.shift();
+      if (drop) runtimeErrorsByKey.delete(drop);
+    }
+
+    state.runtimeErrors = runtimeErrorOrder
+      .map((k) => runtimeErrorsByKey.get(k))
+      .filter((x): x is RuntimeErrorSnapshotV1 => Boolean(x));
+    emit();
+  }
 
   function pushNetworkEntry(row: NetworkBridgeRow): void {
     if (isBrowserExtensionSchemeUrl(row.url)) return;
@@ -115,6 +158,10 @@ function init(): void {
         -CAPTURE_LIMITS.issueConsoleEntries,
       ),
       networkSummaries: cap(state.networkSummaries, CAPTURE_LIMITS.bridgeNetworkBuffer),
+      runtimeErrors: cap(state.runtimeErrors, CAPTURE_LIMITS.bridgeRuntimeErrorBuffer).slice(
+        -CAPTURE_LIMITS.issueRuntimeErrorEntries,
+      ),
+      performanceSignals: state.performanceSignals,
       interactionTimeline: cap(state.timeline, CAPTURE_LIMITS.bridgeTimelineBuffer).slice(
         -CAPTURE_LIMITS.issueTimelineEntries,
       ),
@@ -135,6 +182,145 @@ function init(): void {
       return orig(...args);
     };
   });
+
+  // Runtime errors: janela e promessas rejeitadas (best-effort).
+  window.addEventListener("error", (ev: ErrorEvent) => {
+    try {
+      const message = ev.message ? String(ev.message) : "runtime error";
+      const stack =
+        ev.error && (ev.error as Error).stack ? String((ev.error as Error).stack) : undefined;
+      pushRuntimeError({
+        kind: "error",
+        message,
+        stack,
+        file: ev.filename,
+        line: typeof ev.lineno === "number" ? ev.lineno : undefined,
+        col: typeof ev.colno === "number" ? ev.colno : undefined,
+      });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  window.addEventListener("unhandledrejection", (ev: PromiseRejectionEvent) => {
+    try {
+      const reason = ev.reason;
+      const isErr = reason instanceof Error;
+      const message = isErr
+        ? reason.message
+        : typeof reason === "string"
+          ? reason
+          : "unhandled rejection";
+      const stack = isErr && reason.stack ? String(reason.stack) : undefined;
+      pushRuntimeError({
+        kind: "unhandledrejection",
+        message,
+        stack,
+      });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  // Performance signals: LCP/INP/CLS/long tasks (best-effort).
+  let perfLastEmitAt = 0;
+  function maybeEmitPerf(): void {
+    const now = Date.now();
+    if (now - perfLastEmitAt < CAPTURE_LIMITS.performanceEmitMinMs) return;
+    perfLastEmitAt = now;
+    emit();
+  }
+
+  function tryStartPerformanceObservers(): void {
+    try {
+      if (typeof PerformanceObserver !== "function") return;
+      const supported = PerformanceObserver.supportedEntryTypes ?? [];
+
+      if (supported.includes("largest-contentful-paint")) {
+        new PerformanceObserver((list) => {
+          try {
+            for (const e of list.getEntries() as any[]) {
+              const t = Number(e.renderTime ?? e.startTime);
+              if (!Number.isFinite(t)) continue;
+              state.performanceSignals.lcpMs = t;
+              state.performanceSignals.lcpAt = new Date().toISOString();
+              maybeEmitPerf();
+            }
+          } catch {
+            /* ignore */
+          }
+        }).observe({ type: "largest-contentful-paint", buffered: true } as any);
+      }
+
+      if (supported.includes("layout-shift")) {
+        new PerformanceObserver((list) => {
+          try {
+            for (const e of list.getEntries() as any[]) {
+              const v = Number(e.value);
+              if (!Number.isFinite(v)) continue;
+              const hadRecentInput = Boolean(e.hadRecentInput);
+              if (hadRecentInput) continue;
+              state.performanceSignals.cls = Number(state.performanceSignals.cls ?? 0) + v;
+              maybeEmitPerf();
+            }
+          } catch {
+            /* ignore */
+          }
+        }).observe({ type: "layout-shift", buffered: true } as any);
+      }
+
+      if (supported.includes("longtask")) {
+        new PerformanceObserver((list) => {
+          try {
+            for (const e of list.getEntries() as any[]) {
+              const d = Number(e.duration);
+              if (!Number.isFinite(d)) continue;
+              const cur = state.performanceSignals.longTasks ?? {};
+              const nextCount = (cur.count ?? 0) + 1;
+              const nextLongest = cur.longestMs != null ? Math.max(cur.longestMs ?? 0, d) : d;
+              state.performanceSignals.longTasks = {
+                count: nextCount,
+                longestMs: nextLongest,
+                lastAt: new Date().toISOString(),
+              };
+              maybeEmitPerf();
+            }
+          } catch {
+            /* ignore */
+          }
+        }).observe({ type: "longtask", buffered: true } as any);
+      }
+
+      // INP best-effort: Performance Event Timing ('event') entry type.
+      if (supported.includes("event")) {
+        new PerformanceObserver((list) => {
+          try {
+            let maxDuration = state.performanceSignals.inpMs ?? 0;
+            let updated = false;
+            for (const e of list.getEntries() as any[]) {
+              const d = Number(e.duration);
+              if (!Number.isFinite(d)) continue;
+              if (d > maxDuration) {
+                maxDuration = d;
+                updated = true;
+              }
+            }
+            if (updated) {
+              state.performanceSignals.inpMs = maxDuration;
+              state.performanceSignals.inpAt = new Date().toISOString();
+              maybeEmitPerf();
+            }
+          } catch {
+            /* ignore */
+          }
+        }).observe({ type: "event", buffered: true } as any);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  tryStartPerformanceObservers();
 
   const w = window;
   const origFetch = w.fetch.bind(w);

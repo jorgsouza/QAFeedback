@@ -225,6 +225,51 @@ describe("buildIssueBody", () => {
     expect(md).toContain("(error) boom");
   });
 
+  it("includes runtime error and performance signals when present", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          runtimeErrors: [
+            {
+              at: "2025-01-01T12:00:01.000Z",
+              kind: "error",
+              message: "Boom!",
+              stack: "Error: Boom! at doThing (file.js:1:2)",
+              file: "file.js",
+              line: 1,
+              col: 2,
+              count: 2,
+              deltaToLastClickMs: 1500,
+            },
+          ],
+          performanceSignals: {
+            lcpMs: 1200,
+            lcpAt: "2025-01-01T12:00:00.900Z",
+            inpMs: 450,
+            inpAt: "2025-01-01T12:00:00.950Z",
+            cls: 0.123,
+            longTasks: { count: 2, longestMs: 80, lastAt: "2025-01-01T12:00:00.980Z" },
+          },
+        },
+      }),
+    );
+    expect(md).toContain("## Erro de runtime principal");
+    expect(md).toContain("Tipo: error");
+    expect(md).toContain("Mensagem: Boom!");
+    expect(md).toContain("Δ desde último clique");
+    expect(md).toContain("Stack (truncado)");
+    expect(md).toContain("## Sinais de performance");
+    expect(md).toContain("LCP:");
+    expect(md).toContain("INP");
+    expect(md).toContain("CLS");
+    expect(md).toContain("Long tasks");
+  });
+
   it("includes visual state and target hint when present", () => {
     const md = buildIssueBody(
       payload({

@@ -70,6 +70,41 @@ export type TargetDomHintV1 = {
   rect?: { w: number; h: number };
 };
 
+export type RuntimeErrorSnapshotV1 = {
+  at: string;
+  kind: "error" | "unhandledrejection";
+  message: string;
+  stack?: string;
+  /** Quando disponível (error event) */
+  file?: string;
+  line?: number;
+  col?: number;
+  /** Contagem agregada (dedupe por mensagem+stack no bridge). */
+  count?: number;
+  /**
+   * Correlação simples com a última ação da timeline (ms entre “erro” e “último click”).
+   * Cálculo feito no content script (quando existe click).
+   */
+  deltaToLastClickMs?: number;
+};
+
+export type PerformanceSignalsSnapshotV1 = {
+  /** Largest Contentful Paint (best-effort). */
+  lcpMs?: number;
+  lcpAt?: string;
+  /** Interaction to Next Paint (best-effort). */
+  inpMs?: number;
+  inpAt?: string;
+  /** Cumulative Layout Shift (CLS, best-effort). */
+  cls?: number;
+  /** Long tasks (best-effort). */
+  longTasks?: {
+    count?: number;
+    longestMs?: number;
+    lastAt?: string;
+  };
+};
+
 /** Phase 1 — linha do tempo de interação (MAIN world → issue). */
 export type InteractionTimelineKindV1 =
   | "click"
@@ -125,6 +160,12 @@ export type TechnicalContextPayload = {
    */
   visualState?: VisualStateSnapshotV1;
   targetDomHint?: TargetDomHintV1;
+  /**
+   * Phase 5 — runtime errors e sinais de performance observados nesta sessão.
+   * Fields opcionais para não penalizar browsers sem APIs.
+   */
+  runtimeErrors?: RuntimeErrorSnapshotV1[];
+  performanceSignals?: PerformanceSignalsSnapshotV1;
   /** Phase 1 — últimos eventos significativos (clique, navegação SPA, etc.) */
   interactionTimeline?: InteractionTimelineEntryV1[];
   /** Phase 2 — prioridade erros/lentos; ver `pickNetworkSummariesForIssue` */

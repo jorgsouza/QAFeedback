@@ -202,9 +202,9 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [ ] Secções `## Erro de runtime principal` e `## Sinais de performance` quando houver dados.
-- [ ] Não duplicar erros já vistos no console se forem o mesmo evento (dedupe).
-- [ ] Degradação graciosa em browsers sem APIs (Safari gaps).
+- [x] Secções `## Erro de runtime principal` e `## Sinais de performance` quando houver dados.
+- [x] Não duplicar erros já vistos no console se forem o mesmo evento (dedupe por mensagem+stack no bridge).
+- [x] Degradação graciosa em browsers sem APIs (Safari gaps / PerformanceObserver unsupported).
 
 ### Riscos
 
@@ -255,10 +255,10 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 - [x] Timeline automática com buffer e masking  
 - [x] Rede: fetch + XHR, duração, IDs, lentas, erros  
-- [ ] Estado visual + DOM rico do alvo  
-- [ ] Runtime: erro + promise rejection com stack  
+- [x] Estado visual + DOM rico do alvo  
+- [x] Runtime: erro + promise rejection com stack  
 - [ ] Ambiente: extensível via convenções do host (documentar)  
-- [ ] Performance: Web Vitals + long tasks quando possível  
+- [x] Performance: Web Vitals (best-effort) + long tasks quando possível  
 - [ ] Privacidade: pipeline + toggles  
 - [x] Issue: narrativa estruturada (Phase 3 MVP), não só dumps  
 

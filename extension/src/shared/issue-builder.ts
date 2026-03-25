@@ -3,6 +3,8 @@ import type {
   ElementContext,
   InteractionTimelineKindV1,
   NetworkRequestSummaryEntryV1,
+  PerformanceSignalsSnapshotV1,
+  RuntimeErrorSnapshotV1,
   TargetDomHintV1,
   VisualStateSnapshotV1,
 } from "./types";
@@ -55,6 +57,40 @@ function formatTargetDomHint(h: TargetDomHintV1): string {
   if (h.textHint) lines.push(`- Texto (hint): "${truncate(h.textHint, 200)}"`);
   if (h.rect && Number.isFinite(h.rect.w) && Number.isFinite(h.rect.h)) {
     lines.push(`- Dimensão aproximada: ${h.rect.w}x${h.rect.h}px`);
+  }
+  return lines.join("\n");
+}
+
+function formatRuntimePrincipalError(err: RuntimeErrorSnapshotV1): string {
+  const lines: string[] = [];
+  lines.push(`- Tipo: ${err.kind}`);
+  lines.push(`- Mensagem: ${truncate(err.message, 360)}`);
+  if (err.count && err.count > 1) lines.push(`- Ocorrências (agregadas): ${err.count}`);
+  if (err.file) {
+    const pos = err.line ? `:${err.line}${err.col ? `:${err.col}` : ""}` : "";
+    lines.push(`- Local: ${truncate(err.file, 120)}${pos}`);
+  }
+  if (err.deltaToLastClickMs != null) lines.push(`- Δ desde último clique: ${Math.round(err.deltaToLastClickMs)}ms`);
+  if (err.stack) lines.push(`- Stack (truncado): \`${truncate(err.stack, 320)}\``);
+  return lines.join("\n");
+}
+
+function formatPerformanceSignals(p: PerformanceSignalsSnapshotV1): string {
+  const lines: string[] = [];
+  if (p.lcpMs != null) {
+    lines.push(`- LCP: ${Math.round(p.lcpMs)}ms${p.lcpAt ? ` (at: ${p.lcpAt})` : ""}`);
+  }
+  if (p.inpMs != null) {
+    lines.push(`- INP (best-effort): ${Math.round(p.inpMs)}ms${p.inpAt ? ` (at: ${p.inpAt})` : ""}`);
+  }
+  if (p.cls != null) {
+    const cls = Number(p.cls);
+    lines.push(`- CLS (cumulado, best-effort): ${Number.isFinite(cls) ? cls.toFixed(3) : String(p.cls)}`);
+  }
+  if (p.longTasks?.count) {
+    lines.push(
+      `- Long tasks (best-effort): ${p.longTasks.count}${p.longTasks.longestMs != null ? `, pior: ${Math.round(p.longTasks.longestMs)}ms` : ""}`,
+    );
   }
   return lines.join("\n");
 }
@@ -180,6 +216,22 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     if (ctx.targetDomHint && (ctx.targetDomHint.selectorHint || ctx.targetDomHint.role || ctx.targetDomHint.textHint)) {
       md += "## Elemento relacionado\n";
       md += `${formatTargetDomHint(ctx.targetDomHint)}\n\n`;
+    }
+
+    if (ctx.runtimeErrors?.length) {
+      const principal = ctx.runtimeErrors[ctx.runtimeErrors.length - 1]!;
+      md += "## Erro de runtime principal\n";
+      md += `${formatRuntimePrincipalError(principal)}\n\n`;
+    }
+
+    if (ctx.performanceSignals) {
+      const p = ctx.performanceSignals;
+      const hasAny =
+        p.lcpMs != null || p.inpMs != null || p.cls != null || (p.longTasks?.count ?? 0) > 0;
+      if (hasAny) {
+        md += "## Sinais de performance\n";
+        md += `${formatPerformanceSignals(p)}\n\n`;
+      }
     }
 
     if (ctx.element && shouldIncludeElementSection(ctx.element)) {

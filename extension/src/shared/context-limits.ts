@@ -28,4 +28,16 @@ export const CAPTURE_LIMITS = {
   issueNetworkSummaryMax: 20,
   /** Duração a partir da qual o pedido conta como “lento” no resumo */
   networkSlowThresholdMs: 3000,
+
+  /** Eventos de runtime (error/unhandledrejection) incluídos na issue */
+  issueRuntimeErrorEntries: 3,
+  /** Buffer no MAIN world antes do slice enviado ao content script */
+  bridgeRuntimeErrorBuffer: 20,
+
+  /** Sinais de performance (best-effort) incluídos na issue */
+  issuePerformance: 1,
+  /** Como mínimo entre emissões de sinais de performance (ms) */
+  performanceEmitMinMs: 500,
+  /** Long tasks: quantos IDs/ocorrências manter (best-effort) */
+  longTaskEntriesMax: 10,
 } as const;

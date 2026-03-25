@@ -2,6 +2,8 @@ import type {
   CapturedIssueContextV1,
   ElementContext,
   InteractionTimelineEntryV1,
+  PerformanceSignalsSnapshotV1,
+  RuntimeErrorSnapshotV1,
   TargetDomHintV1,
   VisualStateSnapshotV1,
 } from "./types";
@@ -33,9 +35,17 @@ export type BridgeSnapshot = {
   console: { level: "error" | "warn" | "log"; message: string }[];
   networkSummaries: BridgeNetworkRow[];
   interactionTimeline: InteractionTimelineEntryV1[];
+  runtimeErrors: RuntimeErrorSnapshotV1[];
+  performanceSignals?: PerformanceSignalsSnapshotV1;
 };
 
-let latestBridge: BridgeSnapshot = { console: [], networkSummaries: [], interactionTimeline: [] };
+let latestBridge: BridgeSnapshot = {
+  console: [],
+  networkSummaries: [],
+  interactionTimeline: [],
+  runtimeErrors: [],
+  performanceSignals: undefined,
+};
 let bridgeListenerAttached = false;
 
 function networkRowsFromBridgeDetail(d: {
@@ -58,6 +68,8 @@ function networkRowsFromBridgeDetail(d: {
 
 type BridgeEventDetail = {
   console?: BridgeSnapshot["console"];
+  runtimeErrors?: RuntimeErrorSnapshotV1[];
+  performanceSignals?: PerformanceSignalsSnapshotV1;
   failedRequests?: { method: string; url: string; status: number; message: string }[];
   networkSummaries?: BridgeNetworkRow[];
   interactionTimeline?: InteractionTimelineEntryV1[];
@@ -72,6 +84,8 @@ function onSnap(ev: Event): void {
     console: (d.console ?? []).slice(-CAPTURE_LIMITS.issueConsoleEntries),
     networkSummaries: merged.slice(-CAPTURE_LIMITS.bridgeNetworkBuffer),
     interactionTimeline: (d.interactionTimeline ?? []).slice(-CAPTURE_LIMITS.issueTimelineEntries),
+    runtimeErrors: (d.runtimeErrors ?? []).slice(-CAPTURE_LIMITS.issueRuntimeErrorEntries),
+    performanceSignals: d.performanceSignals,
   };
 }
 
@@ -119,6 +133,8 @@ export function readBridgeSnapshot(): BridgeSnapshot {
     console: latestBridge.console.slice(-CAPTURE_LIMITS.issueConsoleEntries),
     networkSummaries: latestBridge.networkSummaries.slice(-CAPTURE_LIMITS.bridgeNetworkBuffer),
     interactionTimeline: latestBridge.interactionTimeline.slice(-CAPTURE_LIMITS.issueTimelineEntries),
+    runtimeErrors: latestBridge.runtimeErrors.slice(-CAPTURE_LIMITS.issueRuntimeErrorEntries),
+    performanceSignals: latestBridge.performanceSignals,
   };
 }
 
@@ -320,6 +336,24 @@ export function buildCapturedIssueContext(params: {
   const networkRequestSummaries = picked.length ? picked : undefined;
   const failedRequests = summariesToFailedRequests(picked, CAPTURE_LIMITS.issueFailedRequests);
 
+  const lastClickAtIso =
+    bridge.interactionTimeline
+      .slice()
+      .reverse()
+      .find((t) => t.kind === "click")?.at ?? undefined;
+  const lastClickAtMs = lastClickAtIso ? new Date(lastClickAtIso).getTime() : undefined;
+
+  let runtimeErrors: RuntimeErrorSnapshotV1[] | undefined = bridge.runtimeErrors?.length
+    ? bridge.runtimeErrors.map((e) => ({ ...e }))
+    : undefined;
+  if (runtimeErrors?.length && lastClickAtMs != null && Number.isFinite(lastClickAtMs)) {
+    const lastIdx = runtimeErrors.length - 1;
+    const errAtMs = new Date(runtimeErrors[lastIdx]!.at).getTime();
+    if (Number.isFinite(errAtMs)) {
+      runtimeErrors[lastIdx]!.deltaToLastClickMs = Math.max(0, errAtMs - lastClickAtMs);
+    }
+  }
+
   return {
     version: 1 as const,
     page: {
@@ -362,6 +396,10 @@ export function buildCapturedIssueContext(params: {
       message: truncate(c.message, 400),
     })),
     failedRequests,
+    ...(runtimeErrors ? { runtimeErrors } : {}),
+    ...(bridge.performanceSignals && Object.keys(bridge.performanceSignals).length
+      ? { performanceSignals: bridge.performanceSignals }
+      : {}),
     ...(networkRequestSummaries ? { networkRequestSummaries } : {}),
     ...(bridge.interactionTimeline.length
       ? {
