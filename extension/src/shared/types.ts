@@ -29,6 +29,21 @@ export type ElementContext = {
   safeAttributes: string;
 };
 
+/** Phase 1 — linha do tempo de interação (MAIN world → issue). */
+export type InteractionTimelineKindV1 =
+  | "click"
+  | "submit"
+  | "input"
+  | "change"
+  | "keydown"
+  | "navigate";
+
+export type InteractionTimelineEntryV1 = {
+  at: string;
+  kind: InteractionTimelineKindV1;
+  summary: string;
+};
+
 /**
  * Dados técnicos da página sem metadados de versão do contrato.
  * Preferir `CapturedIssueContextV1` no payload de criação de issues.
@@ -63,6 +78,8 @@ export type TechnicalContextPayload = {
     viewModeHint: string;
   };
   element?: ElementContext;
+  /** Phase 1 — últimos eventos significativos (clique, navegação SPA, etc.) */
+  interactionTimeline?: InteractionTimelineEntryV1[];
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
 };

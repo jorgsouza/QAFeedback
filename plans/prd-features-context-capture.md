@@ -126,6 +126,8 @@ Motivo: **timeline + rede + narrativa** dão o maior salto de valor na issue com
 
 **Cobre:** PRD §1 + Etapa 2.
 
+**Estado:** implementado na branch `feature/captured-issue-context-phase0` (`page-bridge`, `interaction-timeline.ts`, secção Markdown `## Linha do tempo da interação`).
+
 ### O que construir
 
 - No **MAIN bridge** (ou listener delegado com custo baixo): eventos significativos — `click` (target resumido), `submit`, `input`/`change` (valor mascarado por tipo/nome), `keydown` (Enter/Tab/Escape), `focus`/`blur` (opcional, cap agressivo), navegação SPA (via `history` patch ou eventos já expostos pelo host + complementar com `popstate`).

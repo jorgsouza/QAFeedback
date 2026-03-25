@@ -72,6 +72,33 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
     expect(md).toContain("Schema de contexto (extensão): **v1**");
+    expect(md).toContain("Phase 1");
+  });
+
+  it("includes interaction timeline when present", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          interactionTimeline: [
+            {
+              at: "2025-01-01T12:00:00.000Z",
+              kind: "navigate",
+              summary: "SPA pushState → /foo",
+            },
+            { at: "2025-01-01T12:00:01.000Z", kind: "click", summary: 'Clicou em button "OK"' },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("## Linha do tempo da interação");
+    expect(md).toContain("Navegação");
+    expect(md).toContain("SPA pushState");
+    expect(md).toContain("Clique");
   });
 
   it("does not add elemento afetado for the extension root host id", () => {

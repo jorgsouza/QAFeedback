@@ -1,4 +1,8 @@
-import type { CreateIssuePayload, ElementContext } from "./types";
+import type {
+  CreateIssuePayload,
+  ElementContext,
+  InteractionTimelineKindV1,
+} from "./types";
 import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
 import { truncate } from "./sanitizer";
 
@@ -32,6 +36,43 @@ function formatFailed(reqs: { method: string; url: string; status: number; messa
     .join("\n");
 }
 
+function timelineKindLabelPt(kind: InteractionTimelineKindV1): string {
+  const labels: Record<InteractionTimelineKindV1, string> = {
+    click: "Clique",
+    submit: "Envio de formulário",
+    input: "Input",
+    change: "Alteração de campo",
+    keydown: "Tecla",
+    navigate: "Navegação",
+  };
+  return labels[kind];
+}
+
+function formatTimelineClock(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return iso.slice(11, 19);
+  }
+}
+
+function formatInteractionTimeline(
+  entries: { at: string; kind: InteractionTimelineKindV1; summary: string }[],
+): string {
+  if (!entries.length) return "";
+  return entries
+    .map(
+      (e, i) =>
+        `${i + 1}. \`${formatTimelineClock(e.at)}\` · **${timelineKindLabelPt(e.kind)}** — ${truncate(e.summary, 220)}`,
+    )
+    .join("\n");
+}
+
 export function buildIssueBody(payload: CreateIssuePayload): string {
   const { title: _t, includeTechnicalContext: _i, capturedContext: ctx, ...form } = payload;
   let md = "";
@@ -49,7 +90,13 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Viewport (janela): ${p.viewport}\n`;
     md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
-    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 0 (base para timeline, rede resumida, etc.)\n\n`;
+    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 1 (linha do tempo; próx.: rede resumida)\n\n`;
+
+    const tl = formatInteractionTimeline(ctx.interactionTimeline ?? []);
+    if (tl) {
+      md += "## Linha do tempo da interação\n";
+      md += `${tl}\n\n`;
+    }
 
     if (ctx.element && shouldIncludeElementSection(ctx.element)) {
       const e = ctx.element;

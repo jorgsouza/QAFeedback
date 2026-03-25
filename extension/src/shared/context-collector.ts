@@ -1,4 +1,4 @@
-import type { CapturedIssueContextV1, ElementContext } from "./types";
+import type { CapturedIssueContextV1, ElementContext, InteractionTimelineEntryV1 } from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
@@ -10,17 +10,20 @@ const SNAP_EVENT = "qa-feedback:snapshot";
 export type BridgeSnapshot = {
   console: { level: "error" | "warn" | "log"; message: string }[];
   failedRequests: { method: string; url: string; status: number; message: string }[];
+  interactionTimeline: InteractionTimelineEntryV1[];
 };
 
-let latestBridge: BridgeSnapshot = { console: [], failedRequests: [] };
+let latestBridge: BridgeSnapshot = { console: [], failedRequests: [], interactionTimeline: [] };
 let bridgeListenerAttached = false;
 
 function onSnap(ev: Event): void {
   const e = ev as CustomEvent<BridgeSnapshot>;
   if (!e.detail) return;
+  const d = e.detail as BridgeSnapshot;
   latestBridge = {
-    console: (e.detail.console ?? []).slice(-CAPTURE_LIMITS.issueConsoleEntries),
-    failedRequests: (e.detail.failedRequests ?? []).slice(-CAPTURE_LIMITS.issueFailedRequests),
+    console: (d.console ?? []).slice(-CAPTURE_LIMITS.issueConsoleEntries),
+    failedRequests: (d.failedRequests ?? []).slice(-CAPTURE_LIMITS.issueFailedRequests),
+    interactionTimeline: (d.interactionTimeline ?? []).slice(-CAPTURE_LIMITS.issueTimelineEntries),
   };
 }
 
@@ -67,6 +70,7 @@ export function readBridgeSnapshot(): BridgeSnapshot {
   return {
     console: latestBridge.console.slice(-CAPTURE_LIMITS.issueConsoleEntries),
     failedRequests: latestBridge.failedRequests.slice(-CAPTURE_LIMITS.issueFailedRequests),
+    interactionTimeline: latestBridge.interactionTimeline.slice(-CAPTURE_LIMITS.issueTimelineEntries),
   };
 }
 
@@ -135,5 +139,14 @@ export function buildCapturedIssueContext(params: {
       status: r.status,
       message: truncate(r.message, 200),
     })),
+    ...(bridge.interactionTimeline.length
+      ? {
+          interactionTimeline: bridge.interactionTimeline.map((t) => ({
+            at: t.at,
+            kind: t.kind,
+            summary: truncate(t.summary, 220),
+          })),
+        }
+      : {}),
   };
 }
