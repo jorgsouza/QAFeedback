@@ -1,6 +1,7 @@
 import type { CreateIssuePayload, JiraImageAttachmentPayload } from "./types";
 import { buildIssueBody, buildIssueTitle } from "./issue-builder";
 import { resolveJiraBoardFieldsForIssueCreate } from "./jira-board-filter-resolve";
+import { jiraMotivoCustomFieldApiValue, type JiraMotivoAbertura } from "./jira-motivo";
 
 export type JiraError = { ok: false; message: string; status?: number };
 export type JiraIssueResult = { ok: true; htmlUrl: string; key: string; warning?: string };
@@ -516,6 +517,34 @@ export function isJiraSprintBoardMoveError(message: string): boolean {
 }
 
 /**
+ * Quadros Kanban (ou com backlog desligado) rejeitam POST /backlog/{boardId}/issue.
+ * Nesse caso basta o POST /board/{id}/issue — a issue surge na primeira coluna (ex.: To Do).
+ */
+export function isJiraBoardWithoutBacklogError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("without backlog") ||
+    m.includes("without a backlog") ||
+    m.includes("board without backlog") ||
+    m.includes("does not have a backlog") ||
+    (m.includes("tried to move to backlog") && m.includes("without backlog"))
+  );
+}
+
+/** Erro típico ao criar com issuetype inválido para o projeto / esquema. */
+export function isJiraIssueTypeCreateError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("issuetype") ||
+    m.includes("issue type") ||
+    m.includes("issue_type") ||
+    m.includes("specify a valid issue type") ||
+    m.includes("valid issuetype") ||
+    m.includes("tipo de issue")
+  );
+}
+
+/**
  * Associa a issue ao quadro: Kanban / Scrum sem o bloqueio de sprints usa board+backlog;
  * quadros Scrum com sprints falham no primeiro passo — aplica-se sequência alternativa.
  */
@@ -536,13 +565,18 @@ async function associateIssueWithBoardBacklog(params: {
   });
 
   if (onto.ok) {
-    return moveIssueToJiraBoardBacklog({
+    const boardBl = await moveIssueToJiraBoardBacklog({
       base: params.base,
       email: params.email,
       apiToken: params.apiToken,
       boardId: params.boardId,
       issueRef: params.issueRef,
     });
+    if (boardBl.ok) return { ok: true };
+    if (isJiraBoardWithoutBacklogError(boardBl.message)) {
+      return { ok: true };
+    }
+    return boardBl;
   }
 
   if (!isJiraSprintBoardMoveError(onto.message)) {
@@ -570,6 +604,20 @@ async function associateIssueWithBoardBacklog(params: {
     issueRef: params.issueRef,
   });
   if (boardBl.ok) return { ok: true };
+  if (isJiraBoardWithoutBacklogError(boardBl.message)) {
+    const ontoKb = await moveIssueOntoJiraSoftwareBoard({
+      base: params.base,
+      email: params.email,
+      apiToken: params.apiToken,
+      boardId: params.boardId,
+      issueRef: params.issueRef,
+    });
+    if (ontoKb.ok) return { ok: true };
+    return {
+      ok: false,
+      message: `${boardBl.message} | Quadro sem backlog: ${ontoKb.message}`,
+    };
+  }
 
   const rankId = await getBoardRankCustomFieldId({
     base: params.base,
@@ -682,17 +730,19 @@ export async function createJiraIssue(params: {
     };
   }
 
+  const boardIdPre = resolveJiraSoftwareBoardId(params.siteUrl, params.jiraSoftwareBoardId);
+
+  /** Chave do projeto alinhada ao quadro escolhido (modal/opções), não só ao valor guardado nas opções. */
   let projectKey = params.projectKey.trim().toUpperCase();
-  if (!projectKey) {
-    const bid = resolveJiraSoftwareBoardId(params.siteUrl, params.jiraSoftwareBoardId);
-    if (bid != null) {
-      const br = await fetchJiraSoftwareBoard({
-        siteUrl: params.siteUrl,
-        email: params.email,
-        apiToken: params.apiToken,
-        boardId: bid,
-      });
-      if (br.ok) projectKey = br.board.projectKey.toUpperCase();
+  if (boardIdPre != null) {
+    const br = await fetchJiraSoftwareBoard({
+      siteUrl: params.siteUrl,
+      email: params.email,
+      apiToken: params.apiToken,
+      boardId: boardIdPre,
+    });
+    if (br.ok) {
+      projectKey = br.board.projectKey.toUpperCase();
     }
   }
   if (!projectKey) {
@@ -718,22 +768,22 @@ export async function createJiraIssue(params: {
     bodyText = `${bodyText}\n\n${extra}`;
   }
 
+  let issueTypeEffective = params.issueTypeName.trim() || "Bug";
+
   const fields: Record<string, unknown> = {
     project: { key: projectKey },
     summary: summary.slice(0, 255),
     description: plainTextToAdf(bodyText),
-    issuetype: { name: params.issueTypeName.trim() || "Bug" },
   };
 
   const cf = params.motivoCustomFieldId?.trim();
   if (cf) {
-    fields[cf] = { value: params.motivoAbertura };
+    fields[cf] = jiraMotivoCustomFieldApiValue(params.motivoAbertura as JiraMotivoAbertura);
   }
 
   const bfId = params.jiraBoardFilterSelectFieldId?.trim();
   const bfVal = params.jiraBoardFilterSelectValue?.trim();
 
-  const boardIdPre = resolveJiraSoftwareBoardId(params.siteUrl, params.jiraSoftwareBoardId);
   let boardFilterSatisfied = false;
 
   if (boardIdPre != null) {
@@ -747,6 +797,7 @@ export async function createJiraIssue(params: {
     });
 
     if (resolved.ok) {
+      issueTypeEffective = resolved.effectiveIssueTypeName;
       boardFilterSatisfied = resolved.unresolved.length === 0;
       for (const f of resolved.fields) {
         fields[f.fieldId] = f.set;
@@ -765,21 +816,39 @@ export async function createJiraIssue(params: {
     fields[bfId] = { value: bfVal };
   }
 
+  fields.issuetype = { name: issueTypeEffective };
+
   const createUrl = new URL(`${base}/rest/api/3/issue`);
   createUrl.searchParams.set("updateHistory", "true");
 
-  const res = await fetch(createUrl.toString(), {
+  const createHeaders = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: basicAuthHeader(params.email, params.apiToken),
+  };
+
+  let res = await fetch(createUrl.toString(), {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: basicAuthHeader(params.email, params.apiToken),
-    },
+    headers: createHeaders,
     body: JSON.stringify({ fields }),
   });
 
   if (!res.ok) {
-    return { ok: false, message: await jiraErrorMessage(res), status: res.status };
+    const msg = await jiraErrorMessage(res);
+    if (/^bug$/i.test(issueTypeEffective) && isJiraIssueTypeCreateError(msg)) {
+      issueTypeEffective = "Task";
+      fields.issuetype = { name: "Task" };
+      res = await fetch(createUrl.toString(), {
+        method: "POST",
+        headers: createHeaders,
+        body: JSON.stringify({ fields }),
+      });
+      if (!res.ok) {
+        return { ok: false, message: await jiraErrorMessage(res), status: res.status };
+      }
+    } else {
+      return { ok: false, message: msg, status: res.status };
+    }
   }
 
   try {
@@ -787,29 +856,32 @@ export async function createJiraIssue(params: {
     if (!j.key) return { ok: false, message: "Jira não devolveu a chave da issue." };
     const issueRef = j.id?.trim() || j.key;
     const htmlUrl = `${base}/browse/${encodeURIComponent(j.key)}`;
-    const boardId = resolveJiraSoftwareBoardId(params.siteUrl, params.jiraSoftwareBoardId);
-    if (boardId == null) {
+    if (boardIdPre == null) {
       return { ok: true, htmlUrl, key: j.key };
     }
 
-    if (boardFilterSatisfied) {
-      return { ok: true, htmlUrl, key: j.key };
-    }
-
+    /**
+     * Sempre tentar colocar a issue no backlog do quadro escolhido. Antes saltávamos este passo
+     * quando `boardFilterSatisfied` era true — com JQL só project/type ou resolução incompleta,
+     * a issue ficava no projeto mas fora do quadro (ex.: REC-27814 noutro board).
+     */
     const assoc = await associateIssueWithBoardBacklog({
       base,
       email: params.email,
       apiToken: params.apiToken,
-      boardId,
+      boardId: boardIdPre,
       issueRef,
       issueKey: j.key,
     });
     if (!assoc.ok) {
+      const hint = boardFilterSatisfied
+        ? " (os campos do filtro podem não bater com o JQL deste quadro)"
+        : "";
       return {
         ok: true,
         htmlUrl,
         key: j.key,
-        warning: `Issue criada, mas não foi associada ao quadro ${boardId}: ${assoc.message}`,
+        warning: `Issue criada, mas não foi associada ao quadro ${boardIdPre}: ${assoc.message}${hint}`,
       };
     }
 

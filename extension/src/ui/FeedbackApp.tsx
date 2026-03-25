@@ -30,10 +30,33 @@ import { runRegionScreenshotFlow } from "../content/region-screenshot-flow";
 type Tab = "form" | "preview";
 
 type RepoOption = { owner: string; repo: string; label: string };
+type JiraBoardOption = { id: number; name: string; type?: string };
+
+function CollapseSheetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+      />
+    </svg>
+  );
+}
 
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+
+function CopyIcon() {
+  return (
+    <svg className="qaf-dictation-mic-svg" viewBox="0 0 24 24" width={16} height={16} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+      />
+    </svg>
+  );
+}
 
 function MicIcon() {
   return (
@@ -53,7 +76,22 @@ function MicIcon() {
   );
 }
 
-/** Ícone do FAB: `public/qa.png` (`npm run icons` — máscara circular sobre `PRD/capiQA.png`). */
+/** Texto do modo diagnóstico (tooltip / aria no ícone ℹ️). */
+const NETWORK_DIAG_TOOLTIP =
+  "Modo diagnóstico: a registar pedidos HTTP desta aba; ao enviar ao Jira pode anexar-se um arquivo HAR. Se isto falhar, feche o DevTools nesta aba e reabra o feedback.";
+
+function InfoCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+      />
+    </svg>
+  );
+}
+
+/** Ícone do FAB: `public/qa.png` 64×64; botão icon-only 64×64 (Figma). */
 function FeedbackFabIcon() {
   if (!FEEDBACK_ICON_URL) {
     return (
@@ -86,6 +124,8 @@ const initialForm = (): IssueFormState => destinationDefaults(false, false);
 
 export function FeedbackApp() {
   const [minimized, setMinimized] = useState(false);
+  /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("form");
   const [form, setForm] = useState<IssueFormState>(initialForm);
@@ -106,6 +146,9 @@ export function FeedbackApp() {
   const [jiraTokenConfigured, setJiraTokenConfigured] = useState(false);
   /** null = OK; context = extensão recarregada — precisa F5; other = falha de mensagem; loadFailed = erro no SW ao ler storage */
   const [repoListIssue, setRepoListIssue] = useState<null | "context" | "other" | "loadFailed">(null);
+  const [jiraBoardsForModal, setJiraBoardsForModal] = useState<JiraBoardOption[]>([]);
+  const [selectedJiraBoardId, setSelectedJiraBoardId] = useState("");
+  const [jiraBoardsListError, setJiraBoardsListError] = useState<string | null>(null);
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
@@ -126,7 +169,7 @@ export function FeedbackApp() {
     toggleField,
     speechError,
     clearSpeechError,
-  } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open });
+  } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open && !sheetCollapsed });
 
   useEffect(() => {
     ensurePageBridgeInjected();
@@ -204,6 +247,9 @@ export function FeedbackApp() {
         jiraTokenConfigured?: boolean;
         fullNetworkDiagnostic?: boolean;
         loadFailed?: boolean;
+        jiraBoards?: JiraBoardOption[];
+        jiraDefaultBoardId?: string;
+        jiraBoardsError?: string;
       };
       if (r && "loadFailed" in r && r.loadFailed) {
         setRepoTargets([]);
@@ -211,6 +257,9 @@ export function FeedbackApp() {
         setGithubTokenConfigured(false);
         setJiraTokenConfigured(false);
         setFullNetworkDiagnosticEnabled(false);
+        setJiraBoardsForModal([]);
+        setSelectedJiraBoardId("");
+        setJiraBoardsListError(null);
         setRepoListIssue("loadFailed");
         return;
       }
@@ -244,12 +293,26 @@ export function FeedbackApp() {
       });
       setRepoTargets(list);
       setRepoIndex(0);
+
+      const jiraBoards = Array.isArray(r?.jiraBoards) ? r.jiraBoards : [];
+      const jiraDefRaw = typeof r?.jiraDefaultBoardId === "string" ? r.jiraDefaultBoardId.trim() : "";
+      const jbErr = typeof r?.jiraBoardsError === "string" ? r.jiraBoardsError : null;
+      setJiraBoardsForModal(jiraBoards);
+      setJiraBoardsListError(jbErr);
+      setSelectedJiraBoardId((prev) => {
+        if (prev && jiraBoards.some((b) => String(b.id) === prev)) return prev;
+        if (jiraDefRaw && jiraBoards.some((b) => String(b.id) === jiraDefRaw)) return jiraDefRaw;
+        return jiraBoards[0] ? String(jiraBoards[0].id) : "";
+      });
     } catch (e) {
       setRepoTargets([]);
       setRepoIndex(0);
       setGithubTokenConfigured(false);
       setJiraTokenConfigured(false);
       setFullNetworkDiagnosticEnabled(false);
+      setJiraBoardsForModal([]);
+      setSelectedJiraBoardId("");
+      setJiraBoardsListError(null);
       setRepoListIssue(isExtensionContextInvalidatedError(e) ? "context" : "other");
     }
   }, []);
@@ -330,6 +393,11 @@ export function FeedbackApp() {
     if (form.sendToGitHub && !selectedRepo) return false;
     if (form.sendToJira) {
       if (!isJiraMotivoAbertura(form.jiraMotivoAbertura)) return false;
+      if (jiraTokenConfigured) {
+        if (jiraBoardsListError) return false;
+        if (jiraBoardsForModal.length === 0) return false;
+        if (!selectedJiraBoardId.trim()) return false;
+      }
     }
     return true;
   })();
@@ -365,6 +433,7 @@ export function FeedbackApp() {
 
   const closeModal = () => {
     setOpen(false);
+    setSheetCollapsed(false);
     resetFlow();
   };
 
@@ -385,7 +454,7 @@ export function FeedbackApp() {
         jiraImageAttachments = [];
         for (const { file } of pendingImages) {
           if (file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
-            setError(`Imagem demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB por ficheiro).`);
+            setError(`Imagem demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB por arquivo).`);
             setBusy(false);
             return;
           }
@@ -403,6 +472,9 @@ export function FeedbackApp() {
         payload: {
           ...payload,
           ...(jiraImageAttachments?.length ? { jiraImageAttachments } : {}),
+          ...(form.sendToJira && selectedJiraBoardId.trim()
+            ? { jiraSoftwareBoardId: selectedJiraBoardId.trim() }
+            : {}),
         },
         owner: selectedRepo?.owner,
         repo: selectedRepo?.repo,
@@ -445,10 +517,19 @@ export function FeedbackApp() {
 
   const openModal = useCallback(() => {
     setOpen(true);
+    setSheetCollapsed(false);
     setError(null);
     setPostSubmit(null);
     setTab("form");
   }, []);
+
+  const openOrExpandFeedback = useCallback(() => {
+    if (open && sheetCollapsed) {
+      setSheetCollapsed(false);
+      return;
+    }
+    openModal();
+  }, [open, sheetCollapsed, openModal]);
 
   return (
     <>
@@ -459,7 +540,7 @@ export function FeedbackApp() {
             <button
               type="button"
               className="qaf-fab qaf-fab-icon-only"
-              onClick={openModal}
+              onClick={openOrExpandFeedback}
               aria-label="Abrir feedback"
             >
               <FeedbackFabIcon />
@@ -483,44 +564,71 @@ export function FeedbackApp() {
         )}
       </div>
 
-      {open && (
+      {open && !sheetCollapsed && (
         <>
-          <button type="button" className="qaf-backdrop" aria-label="Fechar" onClick={closeModal} />
-          <div className="qaf-modal" role="dialog" aria-modal="true" aria-labelledby="qaf-dlg-title">
+          <button
+            type="button"
+            className="qaf-backdrop qaf-backdrop--sheet"
+            aria-label="Fechar"
+            onClick={closeModal}
+          />
+          <div
+            className="qaf-modal qaf-modal--dock"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qaf-dlg-title"
+          >
             <div className="qaf-modal-header">
-              <div className="qaf-modal-header-text">
-                <h2 className="qaf-modal-title" id="qaf-dlg-title">
-                  Enviar feedback
-                </h2>
-                <p className="qaf-modal-subtitle">
-                  {!hasAnyDestination ? (
-                    <>
-                      Configure o token do <strong>GitHub</strong> e/ou do <strong>Jira</strong> nas opções para enviar o
-                      relatório por API.
-                    </>
-                  ) : (
-                    <>
-                      Envie para{" "}
-                      {githubTokenConfigured && jiraTokenConfigured ? (
-                        <>
-                          <strong>GitHub</strong>, <strong>Jira</strong> ou ambos
-                        </>
-                      ) : githubTokenConfigured ? (
-                        <strong>GitHub</strong>
-                      ) : (
-                        <strong>Jira</strong>
-                      )}
-                      . Escolha o destino e preencha o que aconteceu.
-                    </>
-                  )}
-                </p>
-                <button type="button" className="qaf-modal-settings-link" onClick={openOptions}>
-                  Configurações
+              <div className="qaf-modal-header-brand">
+                <div className="qaf-modal-avatar">
+                  <FeedbackFabIcon />
+                </div>
+                <div className="qaf-modal-header-text">
+                  <h2 className="qaf-modal-title" id="qaf-dlg-title">
+                    RA Inspector
+                  </h2>
+                  <p className="qaf-modal-subtitle">
+                    {!hasAnyDestination ? (
+                      <>
+                        Configure o token do <strong>GitHub</strong> e/ou do <strong>Jira</strong> nas opções para
+                        enviar o relatório por API.
+                      </>
+                    ) : (
+                      <>Ferramenta de QA do Reclame AQUI</>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="qaf-modal-header-actions">
+                <button
+                  type="button"
+                  className="qaf-modal-icon-btn"
+                  onClick={() => setSheetCollapsed(true)}
+                  aria-label="Recolher painel"
+                  aria-expanded={true}
+                  title="Recolher painel — o formulário mantém-se; clique na capivara para reabrir"
+                >
+                  <CollapseSheetIcon />
+                </button>
+                <button
+                  type="button"
+                  className="qaf-modal-icon-btn"
+                  onClick={openOptions}
+                  aria-label="Abrir configurações"
+                  title="Configurações"
+                >
+                  ⚙
+                </button>
+                <button
+                  type="button"
+                  className="qaf-modal-close"
+                  onClick={closeModal}
+                  aria-label="Fechar e limpar"
+                  title="Fechar e limpar"
+                >
+                  ×
                 </button>
               </div>
-              <button type="button" className="qaf-modal-close" onClick={closeModal} aria-label="Fechar">
-                ×
-              </button>
             </div>
 
             {!postSubmit && githubTokenConfigured && form.sendToGitHub && (
@@ -591,43 +699,124 @@ export function FeedbackApp() {
             )}
 
             <div className="qaf-body">
-              {fullNetworkDiagnosticEnabled && !postSubmit ? (
-                networkDiagError ? (
-                  <div className="qaf-network-diag qaf-network-diag--error" role="alert">
-                    <strong>Captura de rede:</strong> {networkDiagError}
+              {!postSubmit &&
+              (githubTokenConfigured || jiraTokenConfigured || fullNetworkDiagnosticEnabled) ? (
+                <div className="qaf-status-strip">
+                  <div
+                    className="qaf-status-strip-dots"
+                    role="list"
+                    aria-label="Tokens configurados nas opções"
+                  >
+                    {githubTokenConfigured ? (
+                      <span
+                        className="qaf-token-dot"
+                        role="listitem"
+                        title="GitHub: token configurado."
+                        aria-label="GitHub: token configurado."
+                      />
+                    ) : null}
+                    {jiraTokenConfigured ? (
+                      <span
+                        className="qaf-token-dot"
+                        role="listitem"
+                        title="Jira Cloud: token configurado."
+                        aria-label="Jira Cloud: token configurado."
+                      />
+                    ) : null}
                   </div>
-                ) : (
-                  <div className="qaf-network-diag" role="status">
-                    <strong>Modo diagnóstico:</strong> a registar pedidos HTTP desta aba; ao enviar ao{" "}
-                    <strong>Jira</strong> pode anexar-se um ficheiro HAR. Se isto falhar, feche o{" "}
-                    <strong>DevTools nesta aba</strong> e reabra o feedback.
-                  </div>
-                )
+                  {fullNetworkDiagnosticEnabled ? (
+                    <button
+                      type="button"
+                      className="qaf-info-trigger"
+                      title={NETWORK_DIAG_TOOLTIP}
+                      aria-label={NETWORK_DIAG_TOOLTIP}
+                    >
+                      <InfoCircleIcon />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {fullNetworkDiagnosticEnabled && !postSubmit && networkDiagError ? (
+                <div className="qaf-network-diag qaf-network-diag--error" role="alert">
+                  <strong>Captura de rede:</strong> {networkDiagError}
+                </div>
               ) : null}
               {postSubmit ? (
                 <div className="qaf-success">
-                  <div>Envio concluído.</div>
-                  {postSubmit.github && (
-                    <p>
-                      <a href={postSubmit.github} target="_blank" rel="noreferrer">
-                        Abrir issue no GitHub
-                      </a>
-                    </p>
-                  )}
-                  {postSubmit.jira && (
-                    <p>
-                      <a href={postSubmit.jira} target="_blank" rel="noreferrer">
-                        {postSubmit.jiraIssueBrowse ? "Abrir no quadro Jira" : "Abrir issue no Jira"}
-                      </a>
-                    </p>
-                  )}
-                  {postSubmit.jiraIssueBrowse ? (
-                    <p>
-                      <a href={postSubmit.jiraIssueBrowse} target="_blank" rel="noreferrer">
-                        Abrir issue no Jira (detalhe)
-                      </a>
-                    </p>
-                  ) : null}
+                  <div className="qaf-success-hero">
+                    <div className="qaf-success-check" aria-hidden>
+                      ✓
+                    </div>
+                    <h3 className="qaf-success-title">Evidência criada</h3>
+                  </div>
+                  <div className="qaf-success-cards">
+                    {postSubmit.github ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">GitHub</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.github!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.github}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                    {postSubmit.jira ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">Jira Board</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.jira!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.jira}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                    {postSubmit.jiraIssueBrowse ? (
+                      <div className="qaf-success-card">
+                        <div className="qaf-success-card-head">Jira Issue</div>
+                        <div className="qaf-success-card-actions">
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
+                          >
+                            <CopyIcon /> Copiar
+                          </button>
+                          <a
+                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                            href={postSubmit.jiraIssueBrowse}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Acessar
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                   {postSubmit.warnings?.length ? (
                     <div className="qaf-error qaf-error-warn">
                       {postSubmit.warnings.map((w) => (
@@ -635,42 +824,13 @@ export function FeedbackApp() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="qaf-actions-row qaf-success-actions">
-                    <div className="qaf-actions-left">
-                      {postSubmit.github ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.github!)}
-                        >
-                          Copiar URL GitHub
-                        </button>
-                      ) : null}
-                      {postSubmit.jira ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.jira!)}
-                        >
-                          {postSubmit.jiraIssueBrowse ? "Copiar URL do quadro" : "Copiar URL Jira"}
-                        </button>
-                      ) : null}
-                      {postSubmit.jiraIssueBrowse ? (
-                        <button
-                          type="button"
-                          className="qaf-btn qaf-btn-text"
-                          onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
-                        >
-                          Copiar URL da issue
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="qaf-actions-right">
+                  <div className="qaf-footer-eq">
+                    <div className="qaf-footer-eq-row">
+                      <button type="button" className="qaf-btn qaf-btn-submit" onClick={resetFlow}>
+                        Criar novo
+                      </button>
                       <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
                         Fechar
-                      </button>
-                      <button type="button" className="qaf-btn qaf-btn-submit" onClick={resetFlow}>
-                        Novo feedback
                       </button>
                     </div>
                   </div>
@@ -685,8 +845,8 @@ export function FeedbackApp() {
                   ) : null}
                   {listeningField ? (
                     <div className="qaf-speech-live" role="status" aria-live="polite">
-                      A escutar no {listeningField === "title" ? "título" : "campo «O que aconteceu»"}… clique no
-                      microfone outra vez para parar.
+                      A escutar no {listeningField === "title" ? "título" : "campo da descrição"}… clique no microfone
+                      outra vez para parar.
                     </div>
                   ) : null}
 
@@ -745,33 +905,64 @@ export function FeedbackApp() {
                             </button>
                           </div>
                         </div>
-                      ) : githubTokenConfigured ? (
-                        <p className="qaf-dest-hint">
-                          Destino: <strong>GitHub</strong> (token configurado).
-                        </p>
-                      ) : (
-                        <p className="qaf-dest-hint">
-                          Destino: <strong>Jira Cloud</strong> (token configurado).
-                        </p>
-                      )}
-                      {form.sendToJira && (
+                      ) : null}
+                      {form.sendToJira && jiraTokenConfigured ? (
                         <div className="qaf-field">
-                          <label className="qaf-label" htmlFor="qaf-motivo">
-                            Motivo da abertura do Bug/Sub-Bug <span className="qaf-required">*</span>
+                          <label className="qaf-label" htmlFor="qaf-jira-board">
+                            Board do Jira para vincular <span className="qaf-required">*</span>
                           </label>
-                          <select
-                            id="qaf-motivo"
-                            className="qaf-select"
-                            value={form.jiraMotivoAbertura}
-                            onChange={(e) => setForm((f) => ({ ...f, jiraMotivoAbertura: e.target.value }))}
-                          >
-                            <option value="">Selecionar…</option>
+                          {jiraBoardsListError ? (
+                            <div className="qaf-error">
+                              Não foi possível carregar os quadros: {jiraBoardsListError}{" "}
+                              <button type="button" className="qaf-link" onClick={() => void loadRepoTargets()}>
+                                Tentar novamente
+                              </button>
+                            </div>
+                          ) : jiraBoardsForModal.length === 0 ? (
+                            <div className="qaf-error qaf-error-warn">
+                              Nenhum quadro disponível. Confirme o token Jira e o ID do quadro nas opções, ou ajuste{" "}
+                              <strong>BOARD_ID</strong> ou <strong>VITE_JIRA_BOARD_ALLOWLIST</strong> no{" "}
+                              <code>.env</code> antes do <code>npm run build</code>.
+                            </div>
+                          ) : (
+                            <select
+                              id="qaf-jira-board"
+                              className="qaf-select"
+                              value={selectedJiraBoardId}
+                              onChange={(e) => setSelectedJiraBoardId(e.target.value)}
+                            >
+                              {jiraBoardsForModal.map((b) => (
+                                <option key={b.id} value={String(b.id)}>
+                                  {b.name} ({b.type ?? "?"}) — ID {b.id}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ) : null}
+                      {form.sendToJira && (
+                        <div
+                          className="qaf-field qaf-field--motivo-abertura"
+                          role="radiogroup"
+                          aria-labelledby="qaf-motivo-label"
+                        >
+                          <span className="qaf-label" id="qaf-motivo-label">
+                            Motivo de abertura <span className="qaf-required">*</span>
+                          </span>
+                          <div className="qaf-chip-group">
                             {JIRA_MOTIVO_ABERTURA_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
+                              <button
+                                key={opt}
+                                type="button"
+                                role="radio"
+                                aria-checked={form.jiraMotivoAbertura === opt}
+                                className={`qaf-chip ${form.jiraMotivoAbertura === opt ? "qaf-chip--selected" : ""}`}
+                                onClick={() => setForm((f) => ({ ...f, jiraMotivoAbertura: opt }))}
+                              >
                                 {opt}
-                              </option>
+                              </button>
                             ))}
-                          </select>
+                          </div>
                         </div>
                       )}
                       {(form.sendToGitHub || form.sendToJira) && (
@@ -786,11 +977,11 @@ export function FeedbackApp() {
                               className="qaf-input qaf-input-flex"
                               value={form.title}
                               onChange={onField("title")}
-                              placeholder="Resumo curto (título no GitHub / resumo no Jira)"
+                              placeholder="Resumo (issue no GitHub / Jira)"
                               title={
                                 speechSupported && secureContext
-                                  ? "Voz do Chrome: clique no microfone para falar ou parar. Também pode usar ditado do SO (ex.: Win+H)."
-                                  : "Microfone: ditado do sistema (ex.: Win+H no Windows) após focar o campo"
+                                  ? "Voz do Chrome: microfone para falar ou parar. Também ditado do SO (ex.: Win+H)."
+                                  : "Ditado do sistema após focar o campo"
                               }
                             />
                             <button
@@ -802,13 +993,13 @@ export function FeedbackApp() {
                                 listeningField === "title"
                                   ? "Parar reconhecimento de voz no título"
                                   : speechSupported && secureContext
-                                    ? "Falar no título (reconhecimento de voz do Chrome)"
+                                    ? "Falar no título (voz do Chrome)"
                                     : "Focar título para ditado do sistema"
                               }
                               aria-pressed={listeningField === "title"}
                               title={
                                 speechSupported && secureContext
-                                  ? `Voz do Chrome (idioma: ${speechRecognitionLang}). Clique para falar ou parar; o áudio é processado pelo serviço do Google.`
+                                  ? `Voz do Chrome (idioma: ${speechRecognitionLang}).`
                                   : getDictationMicTooltip("title", dictationPlatform)
                               }
                               onClick={() => {
@@ -824,7 +1015,7 @@ export function FeedbackApp() {
                       )}
                       <div className="qaf-field">
                         <label className="qaf-label" htmlFor="qaf-what">
-                          O que aconteceu <span className="qaf-required">*</span>
+                          Descreva o problema <span className="qaf-required">*</span>
                         </label>
                         <div className="qaf-textarea-with-mic">
                           <textarea
@@ -857,7 +1048,7 @@ export function FeedbackApp() {
                               setError(null);
                               addImageFiles(files);
                             }}
-                            placeholder="Descreva o comportamento observado (pode colar prints com Ctrl+V se enviar ao Jira)"
+                            placeholder="Aqui você pode relatar o comportamento observado (pode colar prints ou simplesmente descrever)"
                             title={
                               speechSupported && secureContext
                                 ? "Voz do Chrome no microfone ao lado; pode colar imagens com Ctrl+V (Jira)."
@@ -894,7 +1085,9 @@ export function FeedbackApp() {
                       </div>
                       {jiraTokenConfigured && form.sendToJira ? (
                         <div className="qaf-img-field">
-                          <span className="qaf-label">Prints para o Jira (opcional)</span>
+                          <span className="qaf-label">
+                            Prints do problema (opcional) - {pendingImages.length}/{JIRA_FEEDBACK_MAX_IMAGES}
+                          </span>
                           <div className="qaf-img-actions">
                             <input
                               ref={fileInputRef}
@@ -923,10 +1116,10 @@ export function FeedbackApp() {
                             <div className="qaf-img-btn-row">
                               <button
                                 type="button"
-                                className="qaf-btn-ghost"
+                                className="qaf-btn-ghost qaf-btn-ghost--dashed"
                                 onClick={() => fileInputRef.current?.click()}
                               >
-                                Adicionar imagens…
+                                Selecionar imagem
                               </button>
                               <button
                                 type="button"
@@ -937,7 +1130,7 @@ export function FeedbackApp() {
                                 }
                                 onClick={() => void onRegionScreenshot()}
                               >
-                                {regionScreenshotBusy ? "A capturar…" : "Capturar área da página…"}
+                                {regionScreenshotBusy ? "A capturar…" : "Capturar tela"}
                               </button>
                             </div>
                             <p className="qaf-img-hint">
@@ -974,20 +1167,22 @@ export function FeedbackApp() {
                         <span className="qaf-check-text">
                           <span className="qaf-check-title">Incluir contexto técnico</span>
                           <span className="qaf-check-hint">
-                            URL, viewport e ecrã (screen), indício desktop/móvel/emulação DevTools, último clique na
+                            URL, viewport e tela (screen), indício desktop/móvel/emulação DevTools, último clique na
                             página (não no botão), console e requests com falha.
                           </span>
                         </span>
                       </label>
-                      <div className="qaf-actions-row">
-                        <div className="qaf-actions-left">
-                          <button type="button" className="qaf-btn qaf-btn-text" onClick={() => copyText(previewMd)}>
-                            Copiar markdown
-                          </button>
-                        </div>
-                        <div className="qaf-actions-right">
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
+                      <div className="qaf-footer-eq">
+                        <div className="qaf-footer-eq-row">
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
                             Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary"
+                            onClick={() => copyText(previewMd)}
+                          >
+                            <CopyIcon /> Copiar
                           </button>
                           <button
                             type="button"
@@ -1003,15 +1198,17 @@ export function FeedbackApp() {
                   ) : (
                     <>
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
-                      <div className="qaf-actions-row">
-                        <div className="qaf-actions-left">
-                          <button type="button" className="qaf-btn qaf-btn-text" onClick={() => copyText(previewMd)}>
-                            Copiar markdown
-                          </button>
-                        </div>
-                        <div className="qaf-actions-right">
-                          <button type="button" className="qaf-btn qaf-btn-secondary" onClick={closeModal}>
+                      <div className="qaf-footer-eq">
+                        <div className="qaf-footer-eq-row">
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
                             Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="qaf-btn qaf-btn-secondary"
+                            onClick={() => copyText(previewMd)}
+                          >
+                            <CopyIcon /> Copiar
                           </button>
                           <button
                             type="button"

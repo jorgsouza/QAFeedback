@@ -5,4 +5,7 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
   },
+  define: {
+    __QAF_JIRA_BOARD_ALLOWLIST__: JSON.stringify(""),
+  },
 });

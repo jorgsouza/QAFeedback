@@ -16,7 +16,8 @@ Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM*
 8. [Mensagens do service worker](#mensagens-do-service-worker)
 9. [page-bridge e “erros” da extensão](#page-bridge-e-erros-da-extensão)
 10. [Ícones (arte circular)](#ícones-arte-circular)
-11. [Referência rápida de scripts](#referência-rápida-de-scripts)
+11. [Jira: quadro no modal, allowlist e tipo Bug → Task](#jira-quadro-no-modal-allowlist-e-tipo-bug--task)
+12. [Referência rápida de scripts](#referência-rápida-de-scripts)
 
 ---
 
@@ -59,8 +60,13 @@ Abra as opções pelo menu da extensão, **chrome://extensions**, ou **Configura
 | **API token Jira** | Criado em [id.atlassian.com/.../api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens). |
 | **Quadro Software — backlog destino** | **Menu (`<select>`)**. Depois de e-mail + token válidos (e site resolvível), a **lista de quadros carrega automaticamente** (debounce ~550 ms), sem botão de teste. |
 | **Ao escolher um quadro** | A extensão confirma a conexão, lê a **chave do projeto** e o **filtro do quadro** (campos como Squad quando existirem) e **salva** em `chrome.storage.local` — equivalente ao antigo “testar e listar”. |
+| **Tipo na criação vs opções** | Se o **JQL do filtro do quadro** não incluir o tipo configurado (ex.: só **Task**) mas nas opções estiver **Bug**, o estado de teste pode mostrar: *Tipo na criação neste quadro: Task (nas opções: Bug)* — é o comportamento esperado antes de enviar feedback. |
+
+**Allowlist de quadros (build):** em `extension/.env` ou na raiz do repositório, `BOARD_ID=id1,id2` ou `VITE_JIRA_BOARD_ALLOWLIST=…`. Lista **vazia** = sem filtro (todos os quadros a que a conta tem acesso). Só **IDs** entram no bundle; **nunca** coloque API tokens no `.env` que vá para o `dist/`.
 
 **Avançado** (opcional): URL manual do site, chave de projeto, overrides de campo select do filtro — só quando a inferência não basta.
+
+**Página de opções (`options.html`):** ícones em `<link rel="icon">` apontam para `public/icons/icon*.png` (melhor nitidez no separador do Chrome quando a página abre em aba).
 
 ### Armazenamento
 
@@ -71,11 +77,12 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 ## Uso no dia a dia (modal)
 
 1. Site com host permitido e permissão concedida (ou **clique no ícone** da extensão se estiver “ao clicar”).
-2. **FAB** → modal.
+2. **FAB** → painel (sheet à direita); **seta** no cabeçalho recolhe o painel mantendo o rascunho; **FAB** reabre.
 3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
-4. **Jira**: preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites de tamanho/quantidade).
-5. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
-6. **Preview** → **Enviar**.
+4. **Faixa de estado** (topo do formulário): **bolinhas verdes** = token GitHub e/ou Jira configurado (tooltip com texto acessível). Com **modo diagnóstico completo** nas opções, aparece **ícone ℹ️** com o texto longo sobre HAR e DevTools; falhas de captura de rede seguem em **banner** separado.
+5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
+6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
+7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5).
 
 ---
 
@@ -121,6 +128,11 @@ Muitas entradas são **avisos da própria página** (ex.: scripts de analytics) 
 
 Token ou escopos Issues (fine-grained) incorretos.
 
+### Jira: issue criada mas “não associada ao quadro” / erro de backlog
+
+- Mensagens como *Tried to move to backlog on board without backlog* referem-se a quadros **Kanban** ou **sem backlog** na API: o código trata o caso conhecido; se ainda falhar, verifique se o **tipo de issue** da criação entra no **filtro JQL** do quadro (a extensão passa de **Bug** para **Task** quando o filtro permite Task e não Bug).
+- Confirme **Board do Jira para vincular** no modal e o **ID** na allowlist (se usar `BOARD_ID`).
+
 ---
 
 ## Arquitetura e arquivos
@@ -133,7 +145,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Opções | `src/options/OptionsApp.tsx`, `options.html` |
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
-| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-motivo.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts`, `jira-motivo.ts` (`jiraMotivoCustomFieldApiValue`: array `[{ value }]` para multi-select/checkboxes no Jira Cloud) |
 | Imagens Jira | `src/shared/feedback-image-utils.ts` |
 | Corpo da issue | `src/shared/issue-builder.ts` |
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
@@ -151,9 +163,9 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 | Tipo | Uso |
 |------|-----|
-| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**. |
+| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`** filtrados pela allowlist de build, ou **`jiraBoardsError`**. |
 | `OPEN_OPTIONS` | Abre a página de opções. |
-| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). |
+| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). Opcional **`jiraSoftwareBoardId`**: quadro usado só nesse envio (validado face à lista filtrada). |
 | `START_NETWORK_DIAGNOSTIC` | Com opção ativa: anexa CDP à aba do remetente e inicia `Network.enable`. |
 | `STOP_NETWORK_DIAGNOSTIC` | Desliga o depurador na aba do remetente (cancelar/fechar modal). |
 | `CAPTURE_VISIBLE_TAB` | Devolve `dataUrl` PNG do viewport (`chrome.tabs.captureVisibleTab(windowId, …)` — usa `sender.tab.windowId`, não `tabId`). |
@@ -177,8 +189,17 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 ## Ícones (arte circular)
 
 - Fonte: **`PRD/capiQA.png`**.
-- **`npm run icons`** (incluso no `build`).
-- Gera **`public/qa.png`** e **`public/icons/icon{16,32,48,128}.png`**.
+- **`npm run icons`** (incluso no `build`): recorta margens transparentes (**trim**), preenche o quadrado com **cover** e aplica máscara circular — o mascote ocupa melhor o espaço nos tamanhos pequenos da barra do Chrome (o tamanho do *slot* continua fixo pelo browser).
+- Gera **`public/qa.png`** (64×64, FAB/modal) e **`public/icons/icon{16,32,48,128}.png`** (manifest + favicon da página de opções).
+
+---
+
+## Jira: quadro no modal, allowlist e tipo Bug → Task
+
+1. **Lista de quadros** no painel vem do mesmo fluxo que nas opções (`JIRA_TEST_AND_LIST_BOARDS` / `LIST_REPO_TARGETS`), filtrada por **`builtInJiraBoardAllowlistIds()`** quando o build define allowlist.
+2. **`CREATE_ISSUE`:** o content envia **`jiraSoftwareBoardId`** opcional; o service worker valida contra a lista conhecida e repassa a `createJiraIssue`.
+3. **`resolveJiraBoardFieldsForIssueCreate`** lê o JQL do filtro do quadro (`type IN (...)` ou `issuetype = …`). Se o tipo nas opções for **Bug**, o filtro **não** incluir Bug mas **incluir Task**, o tipo efetivo passa a **Task** (`effectiveIssueTypeName` na resposta). O POST `/issue` usa esse nome.
+4. Se o **POST /issue** falhar com erro típico de **issue type** e o tipo tentado for **Bug**, há **uma repetição** automática com **Task** (útil quando não houve resolução completa do filtro).
 
 ---
 
