@@ -2,6 +2,12 @@
 export const EXTENSION_ROOT_HOST_ID = "qa-feedback-extension-root";
 
 /**
+ * Disparado pelo content script quando o utilizador clica no ícone da extensão com o host já montado
+ * (reinjeção de content.js). A UI volta a mostrar o FAB se estiver oculto.
+ */
+export const QAF_ENGAGE_EXTENSION_UI_EVENT = "qaf-engage-extension-ui";
+
+/**
  * Overlay de «capturar área» (light DOM em `body`, fora do shadow host).
  * Deve ser ignorado na linha do tempo e no alvo do feedback como o host.
  */

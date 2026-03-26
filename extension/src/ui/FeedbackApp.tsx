@@ -20,6 +20,7 @@ import { shadowCss } from "./shadow-styles";
 import {
   elementIsInsideExtensionUi,
   eventPathTouchesExtensionUi,
+  QAF_ENGAGE_EXTENSION_UI_EVENT,
 } from "../shared/extension-constants";
 import {
   isExtensionContextInvalidatedError,
@@ -260,12 +261,13 @@ function destinationDefaults(githubOk: boolean, jiraOk: boolean): IssueFormState
 
 const initialForm = (): IssueFormState => destinationDefaults(false, false);
 
-function readInitialUiState(): { sheetCollapsed: boolean; open: boolean } {
+function readInitialUiState(): { sheetCollapsed: boolean; open: boolean; fabDismissed: boolean } {
   const s = readTabSnapshotFromSession();
-  if (!s) return { sheetCollapsed: false, open: false };
+  if (!s) return { sheetCollapsed: false, open: false, fabDismissed: false };
   return {
     sheetCollapsed: s.sheetCollapsed,
     open: s.open,
+    fabDismissed: Boolean(s.fabDismissed),
   };
 }
 
@@ -289,6 +291,7 @@ export function FeedbackApp() {
   /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
   const [sheetCollapsed, setSheetCollapsed] = useState(initialUi.sheetCollapsed);
   const [open, setOpen] = useState(initialUi.open);
+  const [fabDismissed, setFabDismissed] = useState(initialUi.fabDismissed);
   const [tab, setTab] = useState<Tab>(() => {
     const p = readTabSnapshotFromSession()?.panelTab;
     return p === "preview" ? "preview" : "form";
@@ -347,6 +350,12 @@ export function FeedbackApp() {
     ensurePageBridgeInjected();
   }, []);
 
+  useEffect(() => {
+    const onEngage = () => setFabDismissed(false);
+    window.addEventListener(QAF_ENGAGE_EXTENSION_UI_EVENT, onEngage);
+    return () => window.removeEventListener(QAF_ENGAGE_EXTENSION_UI_EVENT, onEngage);
+  }, []);
+
   /** Evita gravar `open: false` na extensão antes de ler `chrome.storage.session` (corrida ao trocar de URL). */
   const [tabUiHydrated, setTabUiHydrated] = useState(false);
 
@@ -382,6 +391,7 @@ export function FeedbackApp() {
             }));
           }
           if (!sess) {
+            setFabDismissed(Boolean(fromExt.fabDismissed));
             if (fromExt.repoIndex != null && Number.isFinite(fromExt.repoIndex) && fromExt.repoIndex >= 0) {
               setRepoIndex(fromExt.repoIndex);
             }
@@ -407,13 +417,14 @@ export function FeedbackApp() {
       selectedJiraBoardId,
       panelTab: tab,
       form,
+      fabDismissed,
     });
     const h = window.setTimeout(() => {
       writeTabSnapshotToSession(snap);
       persistTabSnapshotToExtensionTab(snap);
     }, 250);
     return () => clearTimeout(h);
-  }, [open, sheetCollapsed, repoIndex, selectedJiraBoardId, tab, form, tabUiHydrated]);
+  }, [open, sheetCollapsed, repoIndex, selectedJiraBoardId, tab, form, fabDismissed, tabUiHydrated]);
 
   const [routeRevision, setRouteRevision] = useState(0);
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
@@ -703,6 +714,7 @@ export function FeedbackApp() {
     setTab("form");
     setOpen(false);
     setSheetCollapsed(false);
+    setFabDismissed(true);
     setRepoIndex(0);
     setSelectedJiraBoardId("");
     const snap = buildTabSnapshotV2({
@@ -712,6 +724,7 @@ export function FeedbackApp() {
       selectedJiraBoardId: "",
       panelTab: "form",
       form: fresh,
+      fabDismissed: true,
     });
     writeTabSnapshotToSession(snap);
     persistTabSnapshotToExtensionTab(snap);
@@ -810,6 +823,7 @@ export function FeedbackApp() {
     };
 
   const openModal = useCallback(() => {
+    setFabDismissed(false);
     setOpen(true);
     setSheetCollapsed(false);
     setError(null);
@@ -826,29 +840,35 @@ export function FeedbackApp() {
   }, [open, sheetCollapsed, openModal]);
 
   return (
-    <>
+    <div className="qaf-portal-root">
       <style>{shadowCss}</style>
-      <div className="qaf-wrap">
-        <div className="qaf-fab-cluster">
-          <button
-            type="button"
-            className="qaf-fab qaf-fab-icon-only"
-            onClick={openOrExpandFeedback}
-            aria-label="Abrir feedback"
-          >
-            <FeedbackFabIcon />
-          </button>
-          <button
-            type="button"
-            className="qaf-fab-dismiss"
-            onClick={closeModal}
-            aria-label="Fechar e limpar"
-            title="Fechar e limpar rascunho e estado guardados nesta aba"
-          >
-            ×
-          </button>
+      {!fabDismissed && (
+        <div className="qaf-wrap">
+          <div className="qaf-fab-cluster">
+            <button
+              type="button"
+              className="qaf-fab qaf-fab-icon-only"
+              onClick={openOrExpandFeedback}
+              aria-label="Abrir feedback"
+            >
+              <FeedbackFabIcon />
+            </button>
+            <button
+              type="button"
+              className="qaf-fab-dismiss"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+              }}
+              aria-label="Fechar botão de feedback e limpar"
+              title="Oculta o botão e limpa o rascunho nesta aba. Para voltar a mostrar, clique no ícone da extensão."
+            >
+              ×
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {open && !sheetCollapsed && (
         <>
@@ -1560,6 +1580,6 @@ export function FeedbackApp() {
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }

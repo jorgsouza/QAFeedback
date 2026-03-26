@@ -54,4 +54,26 @@ describe("feedback-ui-session v2", () => {
     expect(parseTabSnapshotFromStoredValue(null)).toBeNull();
     expect(parseTabSnapshotFromStoredValue({ v: 9 })).toBeNull();
   });
+
+  it("round-trips fabDismissed in snapshot", () => {
+    const snap = buildTabSnapshotV2({
+      open: false,
+      sheetCollapsed: false,
+      repoIndex: 0,
+      selectedJiraBoardId: "",
+      panelTab: "form",
+      form: {
+        title: "",
+        whatHappened: "",
+        includeTechnicalContext: true,
+        sendToGitHub: true,
+        sendToJira: false,
+        jiraMotivoAbertura: "",
+      },
+      fabDismissed: true,
+    });
+    expect(snap.fabDismissed).toBe(true);
+    writeTabSnapshotToSession(snap);
+    expect(readTabSnapshotFromSession()?.fabDismissed).toBe(true);
+  });
 });

@@ -1,5 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
-import { EXTENSION_ROOT_HOST_ID } from "../shared/extension-constants";
+import { EXTENSION_ROOT_HOST_ID, QAF_ENGAGE_EXTENSION_UI_EVENT } from "../shared/extension-constants";
 import { installInvalidatedExtensionContextGuards } from "../shared/extension-runtime";
 import { subscribeToLocationChanges } from "../shared/location-subscription";
 import { FeedbackApp } from "../ui/FeedbackApp";
@@ -16,7 +16,10 @@ function mountParent(): HTMLElement | null {
 
 function mount(): void {
   const existing = document.getElementById(HOST_ID);
-  if (existing?.isConnected) return;
+  if (existing?.isConnected) {
+    window.dispatchEvent(new CustomEvent(QAF_ENGAGE_EXTENSION_UI_EVENT));
+    return;
+  }
 
   if (appRoot) {
     try {

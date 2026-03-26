@@ -11,9 +11,39 @@ export const shadowCss = `
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Camada full-viewport: o host do shadow costuma ter tamanho 0; isto garante hit-testing nos FABs e no modal. */
+.qaf-portal-root {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2147483646;
+  isolation: isolate;
+}
+
+.qaf-portal-root .qaf-wrap,
+.qaf-portal-root .qaf-backdrop,
+.qaf-portal-root .qaf-modal {
+  pointer-events: auto;
+}
+
+.qaf-portal-root .qaf-wrap {
+  z-index: 1;
+}
+
+.qaf-portal-root .qaf-backdrop {
+  z-index: 2;
+}
+
+.qaf-portal-root .qaf-modal {
+  z-index: 3;
+}
+
 .qaf-wrap {
   position: fixed;
-  z-index: 2147483646;
   right: 16px;
   bottom: 16px;
   display: flex;
@@ -143,9 +173,13 @@ export const shadowCss = `
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+  position: relative;
+  z-index: 0;
 }
 
 .qaf-fab-dismiss {
+  position: relative;
+  z-index: 2;
   width: 28px;
   height: 28px;
   margin: 0;
@@ -163,6 +197,8 @@ export const shadowCss = `
   justify-content: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .qaf-fab-dismiss:hover {
@@ -192,7 +228,6 @@ export const shadowCss = `
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 2147483645;
 }
 
 .qaf-backdrop--sheet {
@@ -215,7 +250,6 @@ export const shadowCss = `
   --qaf-m-on-primary: #f8fafc;
 
   position: fixed;
-  z-index: 2147483647;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);

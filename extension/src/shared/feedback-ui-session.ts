@@ -14,6 +14,8 @@ export type FeedbackTabSnapshotV2 = {
   open: boolean;
   sheetCollapsed: boolean;
   minimized: boolean;
+  /** Utilizador fechou o FAB com × — FAB oculto até novo clique no ícone da extensão. */
+  fabDismissed?: boolean;
   repoIndex?: number;
   selectedJiraBoardId?: string;
   panelTab?: "form" | "preview";
@@ -50,11 +52,13 @@ export function parseTabSnapshotFromStoredValue(raw: unknown): FeedbackTabSnapsh
   if (o.v !== 2) return null;
   const panelTab = o.panelTab === "preview" || o.panelTab === "form" ? o.panelTab : undefined;
   const ri = o.repoIndex;
+  const fd = o.fabDismissed;
   return {
     v: 2,
     open: Boolean(o.open),
     sheetCollapsed: Boolean(o.sheetCollapsed),
     minimized: Boolean(o.minimized),
+    fabDismissed: typeof fd === "boolean" ? fd : undefined,
     repoIndex: typeof ri === "number" && Number.isFinite(ri) ? ri : undefined,
     selectedJiraBoardId: typeof o.selectedJiraBoardId === "string" ? o.selectedJiraBoardId : undefined,
     panelTab,
@@ -121,13 +125,15 @@ export function buildTabSnapshotV2(params: {
   selectedJiraBoardId: string;
   panelTab: "form" | "preview";
   form: IssueFormState;
+  fabDismissed?: boolean;
 }): FeedbackTabSnapshotV2 {
-  const { form, ...rest } = params;
+  const { form, fabDismissed, ...rest } = params;
   return {
     v: 2,
     open: rest.open,
     sheetCollapsed: rest.sheetCollapsed,
     minimized: false,
+    fabDismissed: fabDismissed ? true : undefined,
     repoIndex: rest.repoIndex,
     selectedJiraBoardId: rest.selectedJiraBoardId.trim() || undefined,
     panelTab: rest.panelTab,
