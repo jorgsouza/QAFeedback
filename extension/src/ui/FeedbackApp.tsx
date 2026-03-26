@@ -55,7 +55,6 @@ function CollapseSheetIcon() {
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
-const MIC_ICON_URL = tryGetExtensionResourceUrl("mic.png");
 
 function CopyIcon() {
   return (
@@ -112,21 +111,10 @@ function SuccessCheckGlyph() {
   );
 }
 
-/** Ícone do microfone: asset Figma/DS (`mic.png` em public/) ou fallback SVG. */
+/**
+ * Microfone estilo {DS} Icons / Figma (outline). SVG embutido: o ficheiro mic.png anterior era texto (URL), não PNG.
+ */
 function MicIcon() {
-  if (MIC_ICON_URL) {
-    return (
-      <img
-        src={MIC_ICON_URL}
-        alt=""
-        width={16}
-        height={16}
-        className="qaf-dictation-mic-img"
-        draggable={false}
-        aria-hidden
-      />
-    );
-  }
   return (
     <svg
       className="qaf-dictation-mic-svg"
@@ -137,9 +125,23 @@ function MicIcon() {
       focusable="false"
     >
       <path
-        fill="currentColor"
-        d="M12 14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2s-2 .9-2 2v5c0 1.1.9 2 2 2zm5-2c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"
       />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 10v2a7 7 0 0 1-14 0v-2"
+      />
+      <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 19v3" />
+      <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M8 22h8" />
     </svg>
   );
 }

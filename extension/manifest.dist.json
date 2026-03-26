@@ -38,7 +38,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["page-bridge.js", "qa.png", "mic.png"],
+      "resources": ["page-bridge.js", "qa.png"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]

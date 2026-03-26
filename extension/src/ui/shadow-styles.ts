@@ -479,7 +479,7 @@ export const shadowCss = `
 .qaf-input-with-mic .qaf-input-flex {
   width: 100%;
   min-width: 0;
-  padding-right: 44px;
+  padding-right: 42px;
   box-sizing: border-box;
 }
 
@@ -495,7 +495,7 @@ export const shadowCss = `
   width: 100%;
   min-width: 0;
   min-height: 137px;
-  padding: 8px 44px 8px 12px;
+  padding: 10px 42px 10px 12px;
   box-sizing: border-box;
   resize: vertical;
 }
@@ -513,42 +513,40 @@ export const shadowCss = `
   background: #ffffff;
   color: #0f172b;
   cursor: pointer;
+  box-sizing: border-box;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-/* Título: microfone centrado na altura do campo 48px (Trust sm-icon 32×32). */
+.qaf-dictation-mic-svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Título: microfone centrado no input 48px; inset para não colidir com a borda arredondada. */
 .qaf-dictation-mic-btn--inline {
   position: absolute;
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
   z-index: 2;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
 }
 
-/* Descreva o problema: canto superior direito dentro da caixa (prints / Figma), sem padding-bottom extra. */
+/* Descreva o problema: dentro do campo, canto superior direito (abaixo da borda superior). */
 .qaf-dictation-mic-btn--textarea {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   bottom: auto;
   z-index: 2;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   margin: 0;
-}
-
-.qaf-dictation-mic-img {
-  display: block;
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  pointer-events: none;
 }
 
 .qaf-dictation-mic-btn:hover {
@@ -573,10 +571,6 @@ export const shadowCss = `
   background: rgba(234, 88, 12, 0.18);
   border-color: #ea580c;
   color: #9a3412;
-}
-
-.qaf-dictation-mic-svg {
-  display: block;
 }
 
 .qaf-speech-notice {
