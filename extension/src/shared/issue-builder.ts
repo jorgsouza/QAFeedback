@@ -5,6 +5,9 @@ import type {
   NetworkRequestSummaryEntryV1,
   PerformanceSignalsSnapshotV1,
   RuntimeErrorSnapshotV1,
+  SensitiveFindingKindV1,
+  SensitiveFindingSeverityV1,
+  SensitiveFindingV1,
   TargetDomHintV1,
   VisualStateSnapshotV1,
 } from "./types";
@@ -12,6 +15,38 @@ import { CAPTURE_LIMITS } from "./context-limits";
 import { EXTENSION_ROOT_HOST_ID } from "./extension-constants";
 import { buildResumoLine, buildSessionHighlightsMarkdown } from "./issue-narrative";
 import { truncate } from "./sanitizer";
+
+function findingKindLabelPt(kind: SensitiveFindingKindV1): string {
+  const labels: Record<SensitiveFindingKindV1, string> = {
+    secret_or_token: "segredo ou token",
+    session_cookie: "sessão / cookie",
+    pii: "PII (dados pessoais)",
+    injection_hint: "indício de injeção / parser",
+    mixed_content: "conteúdo misto",
+    misconfiguration: "misconfiguration",
+  };
+  return labels[kind];
+}
+
+function findingSeverityLabelPt(s: SensitiveFindingSeverityV1): string {
+  const labels: Record<SensitiveFindingSeverityV1, string> = {
+    info: "informativa",
+    low: "baixa",
+    medium: "média",
+    high: "alta",
+  };
+  return labels[s];
+}
+
+function formatSensitiveFindings(findings: SensitiveFindingV1[]): string {
+  return findings
+    .map((f, i) => {
+      const conf = f.confidence === "low" ? " · *confiança baixa*" : "";
+      const sug = f.actionSuggested ? `\n  - Sugestão: ${truncate(f.actionSuggested, 220)}` : "";
+      return `${i + 1}. **Possível ${findingKindLabelPt(f.kind)}** — severidade sugerida: *${findingSeverityLabelPt(f.severity)}* · fonte: *${f.source}* · ${f.location}\n   - ${f.summary}\n   - Prévia: \`${truncate(f.samplePreview, 56)}\` · ref: \`${f.evidenceFingerprint}\`${conf}${sug}`;
+    })
+    .join("\n\n");
+}
 
 function shouldIncludeElementSection(e: ElementContext): boolean {
   if (e.id === EXTENSION_ROOT_HOST_ID) return false;
@@ -182,6 +217,13 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     if (highlights.trim()) {
       md += "## Leitura rápida da sessão\n";
       md += `${highlights}\n\n`;
+    }
+
+    if (ctx.sensitiveFindings?.length) {
+      md += "## Achados sensíveis / segurança\n\n";
+      md +=
+        "> Heurísticas automáticas (não substituem revisão manual nem confirmam vulnerabilidade); falsos positivos são possíveis.\n\n";
+      md += `${formatSensitiveFindings(ctx.sensitiveFindings)}\n\n`;
     }
 
     const p = ctx.page;

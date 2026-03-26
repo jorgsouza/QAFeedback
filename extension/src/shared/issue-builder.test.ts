@@ -76,6 +76,37 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Schema de contexto (extensão): **v1**");
     expect(md).toContain("Phase 3");
     expect(md).not.toContain("## Leitura rápida da sessão");
+    expect(md).not.toContain("## Achados sensíveis");
+  });
+
+  it("includes Achados sensíveis when context has sensitiveFindings", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          sensitiveFindings: [
+            {
+              kind: "pii",
+              severity: "low",
+              source: "console",
+              location: "console (log)",
+              summary: "Possível endereço de e-mail (PII) no texto capturado.",
+              evidenceFingerprint: "fp:abc123",
+              samplePreview: "qa@exemplo…",
+            },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("## Achados sensíveis / segurança");
+    expect(md).toContain("Heurísticas automáticas");
+    expect(md).toContain("PII");
+    expect(md).toContain("qa@exemplo");
+    expect(md).toContain("fp:abc123");
   });
 
   it("shows Requisições relevantes when networkRequestSummaries present", () => {

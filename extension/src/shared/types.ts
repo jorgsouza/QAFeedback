@@ -172,6 +172,40 @@ export type TechnicalContextPayload = {
   networkRequestSummaries?: NetworkRequestSummaryEntryV1[];
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
+  /**
+   * PRD-010 — achados heurísticos (segurança/PII) sobre dados já capturados.
+   * Nunca incluir valores completos de segredos; usar `samplePreview` truncado.
+   */
+  sensitiveFindings?: SensitiveFindingV1[];
+};
+
+/** PRD-010 — tipo estável de achado sensível (heurística, não confirmação). */
+export type SensitiveFindingKindV1 =
+  | "secret_or_token"
+  | "session_cookie"
+  | "pii"
+  | "injection_hint"
+  | "mixed_content"
+  | "misconfiguration";
+
+export type SensitiveFindingSourceV1 = "network" | "console" | "runtime" | "dom" | "page";
+
+export type SensitiveFindingSeverityV1 = "info" | "low" | "medium" | "high";
+
+export type SensitiveFindingV1 = {
+  kind: SensitiveFindingKindV1;
+  severity: SensitiveFindingSeverityV1;
+  source: SensitiveFindingSourceV1;
+  /** Onde olhar (ex.: linha de rede, snippet de “fonte”). */
+  location: string;
+  /** Uma frase neutra (“Possível …”). */
+  summary: string;
+  /** Dedupe / referência sem expor o valor bruto. */
+  evidenceFingerprint: string;
+  /** Sempre truncado / mascarado. */
+  samplePreview: string;
+  confidence?: "low" | "medium";
+  actionSuggested?: string;
 };
 
 /**

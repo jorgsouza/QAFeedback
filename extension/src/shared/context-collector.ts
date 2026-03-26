@@ -12,6 +12,7 @@ import { pickNetworkSummariesForIssue, summariesToFailedRequests } from "./netwo
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
+import { detectSensitiveFindings } from "./sensitive-findings";
 import { buildViewModeHint } from "./view-layout-hint";
 import { elementIsInsideExtensionUi } from "./extension-constants";
 
@@ -354,7 +355,7 @@ export function buildCapturedIssueContext(params: {
     }
   }
 
-  return {
+  const captured: CapturedIssueContextV1 = {
     version: 1 as const,
     page: {
       url,
@@ -411,4 +412,6 @@ export function buildCapturedIssueContext(params: {
         }
       : {}),
   };
+  const sensitiveFindings = detectSensitiveFindings(captured);
+  return sensitiveFindings.length ? { ...captured, sensitiveFindings } : captured;
 }
