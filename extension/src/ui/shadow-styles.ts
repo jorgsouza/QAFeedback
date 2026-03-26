@@ -469,26 +469,34 @@ export const shadowCss = `
 
 .qaf-textarea { min-height: 88px; resize: vertical; }
 
+/* Título / descrição: microfone dentro da caixa (Figma / AIStudio: relative + absolute). */
 .qaf-input-with-mic {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
+  display: block;
+  width: 100%;
 }
 
-.qaf-input-flex {
-  flex: 1;
+.qaf-input-with-mic .qaf-input-flex {
+  width: 100%;
   min-width: 0;
+  padding-right: 44px;
+  box-sizing: border-box;
 }
 
 .qaf-textarea-with-mic {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  position: relative;
+  display: block;
+  width: 100%;
 }
 
-.qaf-textarea-flex {
-  flex: 1;
+.qaf-textarea-with-mic .qaf-textarea-flex {
+  display: block;
+  width: 100%;
   min-width: 0;
+  min-height: 88px;
+  padding-bottom: 48px;
+  box-sizing: border-box;
+  resize: vertical;
 }
 
 .qaf-dictation-mic-btn {
@@ -500,26 +508,36 @@ export const shadowCss = `
   height: 44px;
   padding: 0;
   border-radius: 8px;
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
+/* 32×32 como Figma / protótipo AIStudio (w-8 h-8). */
 .qaf-dictation-mic-btn--inline {
-  width: 36px;
-  height: 36px;
-}
-
-/* Textarea + mic: trigger 32×32 (Figma I11:5123;4:681). */
-.qaf-dictation-mic-btn--textarea {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  z-index: 2;
   width: 32px;
   height: 32px;
   min-width: 32px;
   min-height: 32px;
-  margin-top: 0;
-  align-self: flex-end;
+}
+
+.qaf-dictation-mic-btn--textarea {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  margin: 0;
 }
 
 .qaf-dictation-mic-btn:hover {
