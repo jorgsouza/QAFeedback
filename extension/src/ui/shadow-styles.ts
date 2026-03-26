@@ -923,6 +923,12 @@ export const shadowCss = `
   box-shadow: 0 0 0 1px var(--qaf-m-border) inset;
 }
 
+.qaf-status-badge--caution {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.14);
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.35) inset;
+}
+
 .qaf-config-missing {
   font-size: 13px;
   color: var(--qaf-m-text);

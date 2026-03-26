@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CreateIssuePayload, IssueFormState, JiraImageAttachmentPayload } from "../shared/types";
+import { normalizeCaptureMode } from "../shared/capture-mode";
+import type {
+  CaptureModeV1,
+  CreateIssuePayload,
+  IssueFormState,
+  JiraImageAttachmentPayload,
+} from "../shared/types";
 import {
   fileToBase64,
   JIRA_FEEDBACK_MAX_IMAGE_BYTES,
@@ -326,6 +332,8 @@ export function FeedbackApp() {
   const [jiraBoardsListError, setJiraBoardsListError] = useState<string | null>(null);
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
+  /** PRD-010 Fase 2 — modo de contexto na issue (vem das opções). */
+  const [captureMode, setCaptureMode] = useState<CaptureModeV1>("debug-interno");
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
@@ -500,6 +508,7 @@ export function FeedbackApp() {
         githubTokenConfigured?: boolean;
         jiraTokenConfigured?: boolean;
         fullNetworkDiagnostic?: boolean;
+        captureMode?: CaptureModeV1;
         loadFailed?: boolean;
         jiraBoards?: JiraBoardOption[];
         jiraDefaultBoardId?: string;
@@ -511,6 +520,7 @@ export function FeedbackApp() {
         setGithubTokenConfigured(false);
         setJiraTokenConfigured(false);
         setFullNetworkDiagnosticEnabled(false);
+        setCaptureMode("debug-interno");
         setJiraBoardsForModal([]);
         setSelectedJiraBoardId("");
         setJiraBoardsListError(null);
@@ -521,6 +531,7 @@ export function FeedbackApp() {
       const ghOk = Boolean(r?.githubTokenConfigured);
       const jiraOk = Boolean(r?.jiraTokenConfigured);
       setFullNetworkDiagnosticEnabled(Boolean(r?.fullNetworkDiagnostic));
+      setCaptureMode(normalizeCaptureMode(r?.captureMode));
       setGithubTokenConfigured(ghOk);
       setJiraTokenConfigured(jiraOk);
       setForm((f) => {
@@ -641,10 +652,10 @@ export function FeedbackApp() {
     const target =
       lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
     const capturedContext = form.includeTechnicalContext
-      ? buildCapturedIssueContext({ lastTarget: target, bridge })
+      ? buildCapturedIssueContext({ lastTarget: target, bridge, captureMode })
       : undefined;
     return { ...form, capturedContext };
-  }, [form, lastTarget, routeRevision]);
+  }, [form, lastTarget, routeRevision, captureMode]);
 
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
 
@@ -768,7 +779,7 @@ export function FeedbackApp() {
       const target =
         lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
       const capturedContextForSend = form.includeTechnicalContext
-        ? buildCapturedIssueContext({ lastTarget: target, bridge })
+        ? buildCapturedIssueContext({ lastTarget: target, bridge, captureMode })
         : undefined;
       const submitPayload: CreateIssuePayload = { ...form, capturedContext: capturedContextForSend };
 
@@ -1041,6 +1052,17 @@ export function FeedbackApp() {
                           }
                         >
                           HAR
+                        </span>
+                        <span
+                          className={`qaf-status-badge ${captureMode === "producao-sensivel" ? "qaf-status-badge--caution" : "qaf-status-badge--on"}`}
+                          role="listitem"
+                          title={
+                            captureMode === "producao-sensivel"
+                              ? "Modo Produção sensível: menos dados brutos no texto da issue (veja Opções)."
+                              : "Modo Debug interno: mais contexto técnico na issue (padrão)."
+                          }
+                        >
+                          {captureMode === "producao-sensivel" ? "Ctx restrito" : "Ctx debug"}
                         </span>
                       </div>
                     </div>

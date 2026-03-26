@@ -1,4 +1,5 @@
 import type {
+  CaptureModeV1,
   CreateIssuePayload,
   ElementContext,
   InteractionTimelineKindV1,
@@ -96,17 +97,20 @@ function formatTargetDomHint(h: TargetDomHintV1): string {
   return lines.join("\n");
 }
 
-function formatRuntimePrincipalError(err: RuntimeErrorSnapshotV1): string {
+function formatRuntimePrincipalError(err: RuntimeErrorSnapshotV1, captureMode: CaptureModeV1): string {
+  const msgMax = captureMode === "producao-sensivel" ? 200 : 360;
   const lines: string[] = [];
   lines.push(`- Tipo: ${err.kind}`);
-  lines.push(`- Mensagem: ${truncate(err.message, 360)}`);
+  lines.push(`- Mensagem: ${truncate(err.message, msgMax)}`);
   if (err.count && err.count > 1) lines.push(`- Ocorrências (agregadas): ${err.count}`);
-  if (err.file) {
+  if (captureMode === "debug-interno" && err.file) {
     const pos = err.line ? `:${err.line}${err.col ? `:${err.col}` : ""}` : "";
     lines.push(`- Local: ${truncate(err.file, 120)}${pos}`);
   }
   if (err.deltaToLastClickMs != null) lines.push(`- Δ desde último clique: ${Math.round(err.deltaToLastClickMs)}ms`);
-  if (err.stack) lines.push(`- Stack (truncado): \`${truncate(err.stack, 320)}\``);
+  if (captureMode === "debug-interno" && err.stack) {
+    lines.push(`- Stack (truncado): \`${truncate(err.stack, 320)}\``);
+  }
   return lines.join("\n");
 }
 
@@ -130,10 +134,14 @@ function formatPerformanceSignals(p: PerformanceSignalsSnapshotV1): string {
   return lines.join("\n");
 }
 
-function formatConsole(entries: { level: string; message: string }[]): string {
+function formatConsole(
+  entries: { level: string; message: string }[],
+  captureMode: CaptureModeV1,
+): string {
   if (!entries.length) return "";
+  const max = captureMode === "producao-sensivel" ? 180 : 400;
   return entries
-    .map((e) => `- (${e.level}) ${truncate(e.message, 400)}`)
+    .map((e) => `- (${e.level}) ${truncate(e.message, max)}`)
     .join("\n");
 }
 
@@ -174,19 +182,25 @@ function formatTimelineClock(iso: string): string {
 
 function formatInteractionTimeline(
   entries: { at: string; kind: InteractionTimelineKindV1; summary: string }[],
+  captureMode: CaptureModeV1,
 ): string {
   if (!entries.length) return "";
+  const smax = captureMode === "producao-sensivel" ? 100 : 220;
   return entries
     .map(
       (e, i) =>
-        `${i + 1}. \`${formatTimelineClock(e.at)}\` · **${timelineKindLabelPt(e.kind)}** — ${truncate(e.summary, 220)}`,
+        `${i + 1}. \`${formatTimelineClock(e.at)}\` · **${timelineKindLabelPt(e.kind)}** — ${truncate(e.summary, smax)}`,
     )
     .join("\n");
 }
 
-function formatNetworkRelevant(entries: NetworkRequestSummaryEntryV1[]): string {
+function formatNetworkRelevant(
+  entries: NetworkRequestSummaryEntryV1[],
+  captureMode: CaptureModeV1,
+): string {
   if (!entries.length) return "";
   const slowMs = CAPTURE_LIMITS.networkSlowThresholdMs;
+  const showIds = captureMode === "debug-interno";
   return entries
     .map((e) => {
       const bits: string[] = [`${e.method} ${e.url} → ${e.status} em ${e.durationMs}ms`];
@@ -195,8 +209,8 @@ function formatNetworkRelevant(entries: NetworkRequestSummaryEntryV1[]): string 
       const isSlow = e.durationMs >= slowMs;
       if (isErr) bits.push("**erro**");
       else if (isSlow) bits.push("**lenta**");
-      if (e.requestId) bits.push(`x-request-id: \`${truncate(e.requestId, 48)}\``);
-      if (e.correlationId) bits.push(`x-correlation-id: \`${truncate(e.correlationId, 48)}\``);
+      if (showIds && e.requestId) bits.push(`x-request-id: \`${truncate(e.requestId, 48)}\``);
+      if (showIds && e.correlationId) bits.push(`x-correlation-id: \`${truncate(e.correlationId, 48)}\``);
       if (e.responseContentType) bits.push(`content-type: ${e.responseContentType}`);
       return `- ${bits.join(" · ")}`;
     })
@@ -213,6 +227,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
   md += omitEmptySection("O que aconteceu", form.whatHappened);
 
   if (payload.includeTechnicalContext && ctx) {
+    const captureMode = ctx.captureMode ?? "debug-interno";
     const highlights = buildSessionHighlightsMarkdown(ctx);
     if (highlights.trim()) {
       md += "## Leitura rápida da sessão\n";
@@ -228,6 +243,11 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
 
     const p = ctx.page;
     md += "## Contexto técnico\n";
+    const modoLine =
+      captureMode === "producao-sensivel"
+        ? "Produção sensível (menos dados brutos no corpo da issue; achados sensíveis seguem na seção dedicada)."
+        : "Debug interno (padrão — mais contexto para diagnóstico).";
+    md += `- Modo de captura: **${modoLine}**\n`;
     md += `- URL: ${p.url}\n`;
     const searchBit = p.routeSearch.trim() ? ` · query: ${truncate(p.routeSearch, 200)}` : "";
     md += `- Rota técnica: \`${p.routeSlug}\` · ${p.routeLabel} · path: \`${p.pathname}\`${searchBit}\n`;
@@ -239,7 +259,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
     md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 3 (narrativa + timeline + rede resumida)\n\n`;
 
-    const tl = formatInteractionTimeline(ctx.interactionTimeline ?? []);
+    const tl = formatInteractionTimeline(ctx.interactionTimeline ?? [], captureMode);
     if (tl) {
       md += "## Linha do tempo da interação\n";
       md += `${tl}\n\n`;
@@ -263,7 +283,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     if (ctx.runtimeErrors?.length) {
       const principal = ctx.runtimeErrors[ctx.runtimeErrors.length - 1]!;
       md += "## Erro de runtime principal\n";
-      md += `${formatRuntimePrincipalError(principal)}\n\n`;
+      md += `${formatRuntimePrincipalError(principal, captureMode)}\n\n`;
     }
 
     if (ctx.performanceSignals) {
@@ -286,14 +306,14 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
       md += "\n";
     }
 
-    const c = formatConsole(ctx.console);
+    const c = formatConsole(ctx.console, captureMode);
     if (c) {
       md += "## Console\n";
       md += `${c}\n\n`;
     }
 
     const net = ctx.networkRequestSummaries?.length
-      ? formatNetworkRelevant(ctx.networkRequestSummaries)
+      ? formatNetworkRelevant(ctx.networkRequestSummaries, captureMode)
       : "";
     if (net) {
       md += "## Requisições relevantes\n";

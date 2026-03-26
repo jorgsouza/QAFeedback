@@ -1,3 +1,6 @@
+/** PRD-010 Fase 2 — como o texto técnico da issue é “fechado” para exposição. */
+export type CaptureModeV1 = "debug-interno" | "producao-sensivel";
+
 export type IssueFormState = {
   title: string;
   whatHappened: string;
@@ -177,6 +180,8 @@ export type TechnicalContextPayload = {
    * Nunca incluir valores completos de segredos; usar `samplePreview` truncado.
    */
   sensitiveFindings?: SensitiveFindingV1[];
+  /** Modo aplicado na montagem do contexto (auditoria + builder). */
+  captureMode?: CaptureModeV1;
 };
 
 /** PRD-010 — tipo estável de achado sensível (heurística, não confirmação). */
@@ -264,6 +269,10 @@ export type ExtensionSettings = {
    * Requer permissão `debugger` e pode conflitar com DevTools aberto na mesma aba.
    */
   fullNetworkDiagnostic?: boolean;
+  /**
+   * PRD-010 — debug interno (padrão) mantém mais texto na issue; produção sensível reduz brutos.
+   */
+  captureMode?: CaptureModeV1;
 };
 
 /** Imagem serializada para o service worker anexar após criar a issue no Jira. */

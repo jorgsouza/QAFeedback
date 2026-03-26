@@ -12,7 +12,9 @@ import { pickNetworkSummariesForIssue, summariesToFailedRequests } from "./netwo
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
+import { applyCaptureModeToContext, normalizeCaptureMode } from "./capture-mode";
 import { detectSensitiveFindings } from "./sensitive-findings";
+import type { CaptureModeV1 } from "./types";
 import { buildViewModeHint } from "./view-layout-hint";
 import { elementIsInsideExtensionUi } from "./extension-constants";
 
@@ -300,8 +302,10 @@ function captureTargetDomHint(el: Element | null): TargetDomHintV1 | undefined {
 export function buildCapturedIssueContext(params: {
   lastTarget: Element | null;
   bridge: BridgeSnapshot;
+  captureMode?: CaptureModeV1;
 }): CapturedIssueContextV1 {
-  const { lastTarget, bridge } = params;
+  const { lastTarget, bridge, captureMode: captureModeRaw } = params;
+  const captureMode = normalizeCaptureMode(captureModeRaw);
   const url = sanitizeUrl(window.location.href);
   const route = resolvePageRouteInfo(window.location);
 
@@ -413,5 +417,8 @@ export function buildCapturedIssueContext(params: {
       : {}),
   };
   const sensitiveFindings = detectSensitiveFindings(captured);
-  return sensitiveFindings.length ? { ...captured, sensitiveFindings } : captured;
+  const merged: CapturedIssueContextV1 = sensitiveFindings.length
+    ? { ...captured, sensitiveFindings }
+    : captured;
+  return applyCaptureModeToContext(merged, captureMode);
 }

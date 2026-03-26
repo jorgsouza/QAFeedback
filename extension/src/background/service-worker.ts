@@ -262,6 +262,7 @@ chrome.runtime.onMessage.addListener(
             githubTokenConfigured: Boolean(s.githubToken?.trim()),
             jiraTokenConfigured,
             fullNetworkDiagnostic: Boolean(s.fullNetworkDiagnostic),
+            captureMode: s.captureMode ?? "debug-interno",
           };
           if (jiraTokenConfigured) {
             const jb = await listFilteredJiraBoardsForFeedback(s);
@@ -281,6 +282,7 @@ chrome.runtime.onMessage.addListener(
             githubTokenConfigured: false,
             jiraTokenConfigured: false,
             fullNetworkDiagnostic: false,
+            captureMode: "debug-interno",
             loadFailed: true,
           });
         }

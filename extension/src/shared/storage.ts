@@ -1,3 +1,4 @@
+import { normalizeCaptureMode } from "./capture-mode";
 import type { ExtensionSettings } from "./types";
 
 const KEY = "qaFeedbackSettings";
@@ -21,6 +22,7 @@ export const emptySettings = (): ExtensionSettings => ({
   jiraBoardFilterSelectFieldId: "",
     jiraBoardFilterSelectValue: "",
     fullNetworkDiagnostic: false,
+    captureMode: "debug-interno",
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -55,6 +57,7 @@ export async function loadSettings(): Promise<ExtensionSettings> {
     jiraBoardFilterSelectValue:
       typeof raw.jiraBoardFilterSelectValue === "string" ? raw.jiraBoardFilterSelectValue : "",
     fullNetworkDiagnostic: raw.fullNetworkDiagnostic === true,
+    captureMode: normalizeCaptureMode(raw.captureMode),
   };
 }
 

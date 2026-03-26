@@ -75,6 +75,8 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Indício de teste.");
     expect(md).toContain("Schema de contexto (extensão): **v1**");
     expect(md).toContain("Phase 3");
+    expect(md).toContain("- Modo de captura:");
+    expect(md).toContain("Debug interno");
     expect(md).not.toContain("## Leitura rápida da sessão");
     expect(md).not.toContain("## Achados sensíveis");
   });
@@ -135,6 +137,7 @@ describe("buildIssueBody", () => {
     expect(md).toContain("POST https://exemplo.test/api/x");
     expect(md).toContain("500 em 1200ms");
     expect(md).toContain("x-request-id");
+    expect(md).toContain("Modo de captura:");
     expect(md).not.toContain("## Requests com falha");
     expect(md).toContain("## Leitura rápida da sessão");
     expect(md).toContain("Rede (resumo):");
@@ -330,5 +333,62 @@ describe("buildIssueBody", () => {
     expect(md).toContain("## Elemento relacionado");
     expect(md).toContain("Seletor sugerido");
     expect(md).toContain("aria-label");
+  });
+
+  it("omits correlation and request ids em rede when captureMode is producao-sensivel", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          captureMode: "producao-sensivel",
+          networkRequestSummaries: [
+            {
+              at: "2025-01-01T12:00:00.000Z",
+              method: "GET",
+              url: "https://exemplo.test/api/x",
+              status: 200,
+              durationMs: 50,
+              requestId: "rid-1",
+              correlationId: "cid-1",
+            },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("Produção sensível");
+    expect(md).not.toContain("x-request-id");
+    expect(md).not.toContain("rid-1");
+    expect(md).not.toContain("x-correlation-id");
+  });
+
+  it("omits stack em runtime when captureMode is producao-sensivel", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          captureMode: "producao-sensivel",
+          runtimeErrors: [
+            {
+              at: "2025-01-01T12:00:01.000Z",
+              kind: "error",
+              message: "oops",
+              stack: "very long stack trace that must not appear",
+            },
+          ],
+        },
+      }),
+    );
+    expect(md).toContain("## Erro de runtime principal");
+    expect(md).toContain("oops");
+    expect(md).not.toContain("Stack (truncado)");
+    expect(md).not.toContain("very long stack");
   });
 });

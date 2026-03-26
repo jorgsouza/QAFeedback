@@ -1031,6 +1031,70 @@ export function OptionsApp() {
         }}
       >
         <SectionHeading>Captura avançada</SectionHeading>
+        <fieldset style={{ border: "none", margin: "0 0 18px", padding: 0 }}>
+          <legend style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "#0f172a" }}>
+            Modo de contexto na issue
+          </legend>
+          <label
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              cursor: "pointer",
+              marginBottom: 10,
+              fontSize: 14,
+            }}
+          >
+            <input
+              type="radio"
+              name="qaf-capture-mode"
+              checked={settings.captureMode !== "producao-sensivel"}
+              onChange={() => setSettings({ ...settings, captureMode: "debug-interno" })}
+              style={{ marginTop: 3, flexShrink: 0 }}
+            />
+            <span>
+              <strong>Debug interno</strong> (recomendado em homologação)
+              <span
+                style={{
+                  display: "block",
+                  fontWeight: 400,
+                  fontSize: 13,
+                  color: "#64748b",
+                  marginTop: 6,
+                  lineHeight: 1.55,
+                }}
+              >
+                Mantém mais texto técnico na descrição para facilitar diagnóstico. Achados sensíveis continuam na seção
+                dedicada quando existirem.
+              </span>
+            </span>
+          </label>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
+            <input
+              type="radio"
+              name="qaf-capture-mode"
+              checked={settings.captureMode === "producao-sensivel"}
+              onChange={() => setSettings({ ...settings, captureMode: "producao-sensivel" })}
+              style={{ marginTop: 3, flexShrink: 0 }}
+            />
+            <span>
+              <strong>Produção sensível</strong>
+              <span
+                style={{
+                  display: "block",
+                  fontWeight: 400,
+                  fontSize: 13,
+                  color: "#64748b",
+                  marginTop: 6,
+                  lineHeight: 1.55,
+                }}
+              >
+                Reduz trechos brutos no corpo da issue (mensagens mais curtas, sem stack completo, sem IDs de correlação nas
+                linhas de rede). Útil em páginas com dados mais sensíveis; a seção de achados sensíveis segue aparecendo.
+              </span>
+            </span>
+          </label>
+        </fieldset>
         <label
           style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}
         >
