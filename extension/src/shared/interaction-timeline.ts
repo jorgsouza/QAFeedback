@@ -1,5 +1,9 @@
 import { truncate } from "./sanitizer";
-import { EXTENSION_ROOT_HOST_ID, eventPathTouchesExtensionUi } from "./extension-constants";
+import {
+  EXTENSION_ROOT_HOST_ID,
+  elementIsInsideExtensionUi,
+  eventPathTouchesExtensionUi,
+} from "./extension-constants";
 
 /** Alinhado a `EXTENSION_ROOT_HOST_ID` — usado no page-bridge (bundle separado). */
 export const TIMELINE_IGNORE_HOST_ID = EXTENSION_ROOT_HOST_ID;
@@ -73,6 +77,7 @@ export function summarizeClickTarget(el: Element): string {
 export function summarizeTabSectionSelection(doc: Document): string {
   const tab = doc.querySelector('[role="tab"][aria-selected="true"]');
   if (!(tab instanceof Element)) return "";
+  if (elementIsInsideExtensionUi(tab)) return "";
   const aria = tab.getAttribute("aria-label")?.trim();
   const text = (tab.textContent || "").trim().replace(/\s+/g, " ");
   const id = tab.id ? `#${tab.id}` : "";
@@ -94,6 +99,8 @@ export function signatureDialogTitles(doc: Document): string {
   const parts: string[] = [];
   for (const n of nodes) {
     if (!(n instanceof Element)) continue;
+    /** Não registar modais do overlay de captura nem da UI da extensão na timeline da página. */
+    if (elementIsInsideExtensionUi(n)) continue;
     const aria = n.getAttribute("aria-label")?.trim();
     const labelled = n.getAttribute("aria-labelledby");
     let fromLabelled = "";

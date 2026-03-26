@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
+import { EXTENSION_REGION_PICKER_OVERLAY_ID } from "./extension-constants";
 import {
   signatureDialogTitles,
   summarizeClickTarget,
@@ -43,6 +44,13 @@ describe("interaction-timeline", () => {
     document.body.innerHTML =
       '<div role="dialog" aria-modal="true" aria-label="Confirmar exclusão"></div>';
     expect(signatureDialogTitles(document)).toContain("Confirmar exclusão");
+  });
+
+  it("signatureDialogTitles ignores extension region-picker overlay dialog", () => {
+    document.body.innerHTML = `<div id="${EXTENSION_REGION_PICKER_OVERLAY_ID}" role="dialog" aria-modal="true" aria-label="Selecionar área para captura"></div>
+      <div role="dialog" aria-modal="true" aria-label="Só da app"></div>`;
+    expect(signatureDialogTitles(document)).toBe("Só da app");
+    expect(signatureDialogTitles(document)).not.toContain("Selecionar área");
   });
 
   it("summarizeFormFieldTimeline masks password inputs", () => {
