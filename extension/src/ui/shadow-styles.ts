@@ -167,6 +167,28 @@ export const shadowCss = `
   transform: translateY(0) scale(0.97);
 }
 
+.qaf-fab-icon-only.qaf-fab--integrations-loading {
+  position: relative;
+}
+
+.qaf-fab-icon-only.qaf-fab--integrations-loading::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 77, 55, 0.2);
+  border-top-color: var(--qaf-m-primary);
+  animation: qaf-fab-spin 0.65s linear infinite;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+@keyframes qaf-fab-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .qaf-fab-cluster {
   display: flex;
   flex-direction: column;
@@ -927,6 +949,32 @@ export const shadowCss = `
   color: #92400e;
   background: rgba(245, 158, 11, 0.14);
   box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.35) inset;
+}
+
+.qaf-integrations-loading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--qaf-m-text);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(239, 246, 255, 0.85);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.qaf-integrations-loading__spinner {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 2px solid rgba(37, 99, 235, 0.25);
+  border-top-color: #2563eb;
+  animation: qaf-fab-spin 0.65s linear infinite;
+  box-sizing: border-box;
 }
 
 .qaf-config-missing {

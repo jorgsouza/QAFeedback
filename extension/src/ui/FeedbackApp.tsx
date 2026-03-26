@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { normalizeCaptureMode } from "../shared/capture-mode";
 import type {
   CaptureModeV1,
@@ -297,6 +297,13 @@ export function FeedbackApp() {
   /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
   const [sheetCollapsed, setSheetCollapsed] = useState(initialUi.sheetCollapsed);
   const [open, setOpen] = useState(initialUi.open);
+  const openRef = useRef(initialUi.open);
+  openRef.current = open;
+  const integrationsLoadGenRef = useRef(0);
+  /** Evita aviso falso de “sem destino” enquanto LIST_REPO_TARGETS não termina (ex.: após F5). */
+  const [integrationsFetchState, setIntegrationsFetchState] = useState<"idle" | "loading" | "done">(
+    () => (initialUi.open ? "loading" : "idle"),
+  );
   const [fabDismissed, setFabDismissed] = useState(initialUi.fabDismissed);
   const [tab, setTab] = useState<Tab>(() => {
     const p = readTabSnapshotFromSession()?.panelTab;
@@ -501,6 +508,8 @@ export function FeedbackApp() {
   }, [addImageFiles, form.sendToJira, jiraTokenConfigured, pendingImages.length]);
 
   const loadRepoTargets = useCallback(async () => {
+    const gen = ++integrationsLoadGenRef.current;
+    setIntegrationsFetchState("loading");
     setRepoListIssue(null);
     try {
       const r = (await chrome.runtime.sendMessage({ type: "LIST_REPO_TARGETS" })) as {
@@ -582,8 +591,17 @@ export function FeedbackApp() {
       setSelectedJiraBoardId("");
       setJiraBoardsListError(null);
       setRepoListIssue(isExtensionContextInvalidatedError(e) ? "context" : "other");
+    } finally {
+      if (gen !== integrationsLoadGenRef.current) return;
+      if (openRef.current) setIntegrationsFetchState("done");
+      else setIntegrationsFetchState("idle");
     }
   }, []);
+
+  useLayoutEffect(() => {
+    if (open) setIntegrationsFetchState("loading");
+    else setIntegrationsFetchState("idle");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -661,6 +679,8 @@ export function FeedbackApp() {
 
   const selectedRepo = repoTargets[repoIndex];
   const hasAnyDestination = githubTokenConfigured || jiraTokenConfigured;
+  const integrationsLoading = integrationsFetchState === "loading";
+  const integrationsReady = integrationsFetchState === "done";
   const canSubmit = (() => {
     if (!hasAnyDestination) return false;
     if (!form.sendToGitHub && !form.sendToJira) return false;
@@ -858,9 +878,15 @@ export function FeedbackApp() {
           <div className="qaf-fab-cluster">
             <button
               type="button"
-              className="qaf-fab qaf-fab-icon-only"
+              className={`qaf-fab qaf-fab-icon-only${integrationsLoading && open ? " qaf-fab--integrations-loading" : ""}`}
               onClick={openOrExpandFeedback}
               aria-label="Abrir feedback"
+              aria-busy={integrationsLoading && open}
+              title={
+                integrationsLoading && open
+                  ? "Carregando integrações GitHub/Jira…"
+                  : undefined
+              }
             >
               <FeedbackFabIcon />
             </button>
@@ -907,7 +933,7 @@ export function FeedbackApp() {
                   </h2>
                   <p className="qaf-modal-subtitle">
                     Transforma evidências da sessão em reports mais completos para Jira e GitHub.
-                    {!hasAnyDestination ? (
+                    {integrationsReady && !hasAnyDestination ? (
                       <>
                         {" "}
                         <span className="qaf-modal-subtitle-note">
@@ -1226,7 +1252,15 @@ export function FeedbackApp() {
 
                   {tab === "form" ? (
                     <>
-                      {!hasAnyDestination ? (
+                      {integrationsLoading ? (
+                        <div className="qaf-integrations-loading" role="status" aria-live="polite">
+                          <span className="qaf-integrations-loading__spinner" aria-hidden />
+                          <span>
+                            Carregando configurações do GitHub/Jira… Isso costuma levar só um instante após recarregar
+                            a página.
+                          </span>
+                        </div>
+                      ) : !hasAnyDestination ? (
                         <div className="qaf-config-missing">
                           <strong>Nenhum destino configurado.</strong> Adicione o <strong>GitHub token</strong> e/ou o{" "}
                           <strong>API token Jira</strong> nas opções da extensão e clique em <strong>Salvar</strong>.{" "}
