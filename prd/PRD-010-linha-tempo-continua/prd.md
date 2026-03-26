@@ -176,3 +176,10 @@ Resultado esperado:
 - **SW dorme/reinicia (MV3):** mitigar com espelho em `chrome.storage.session`.
 - **Explosão de eventos:** cap + throttling já existente + dedupe no append.
 - **Payload grande na issue:** manter limite de exibição final e resumir quando exceder.
+
+---
+
+### Ver também
+
+- **Análise de execução** (estado no código): [analise-execucao.md](analise-execucao.md).
+- **Documentação técnica da extensão:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) — secção *Linha do tempo contínua (mesma aba)* e tabela de mensagens do service worker.

@@ -1,6 +1,6 @@
 # Índice de PRDs e planos (QAFeedback)
 
-Documentação de produto e planos de implementação vivem em **`prd/`**, numerados por ordem de arquivo (**PRD-001** …). Cada pasta pode ter `prd.md` (especificação), `plan.md` (plano técnico / fases) ou vários ficheiros (ex.: spec + anexos).
+Documentação de produto e planos de implementação vivem em **`prd/`**, numerados por ordem de arquivo (**PRD-001** … **PRD-011**). Cada pasta pode ter `prd.md` (especificação), `plan.md` (plano técnico / fases) ou vários arquivos (ex.: spec + anexos).
 
 | ID | Título | Conteúdo | Estado (alto nível) |
 |----|--------|----------|---------------------|

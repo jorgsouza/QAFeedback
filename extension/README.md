@@ -4,6 +4,8 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 
 **Documentação técnica completa:** [DOCUMENTATION.md](./DOCUMENTATION.md)
 
+**PRDs e planos numerados (produto):** [`prd/INDEX.md`](../prd/INDEX.md) (raiz do repositório).
+
 ---
 
 ## O que a extensão faz
@@ -44,12 +46,13 @@ Com **Incluir contexto técnico** ativo, o relatório Markdown inclui, entre out
 - URL, título da página, data/hora, **User-Agent**.
 - **Viewport** (janela) e **tela** (`screen`), **DPR**, **maxTouchPoints**, **pointer fine/coarse**.
 - **Indício automático** de vista desktop vs móvel vs **possível emulação no DevTools** (heurística — não há API oficial para o toggle de dispositivo).
-- **Linha do tempo da interação** (cliques, navegação SPA, inputs relevantes — exceto UI da extensão), via **page-bridge**.
+- **Linha do tempo da interação** (cliques, navegação SPA, inputs relevantes — exceto UI da extensão), via **page-bridge**; em **navegações completas na mesma aba**, o histórico é **acumulado no service worker** por `tabId` e fundido no envio (ver secção dedicada em [DOCUMENTATION.md](./DOCUMENTATION.md#linha-do-tempo-contínua-mesma-aba) e [PRD-010](../prd/PRD-010-linha-tempo-continua/prd.md)).
 - **Requisições relevantes** (`fetch` e **XHR**): método, URL sanitizada, status, duração, IDs de correlação quando legíveis; prioridade erros e pedidos lentos.
 - **Estado visual** (diálogos/modais, busy, abas ativas) e **elemento relacionado** (dicas de seletor / `role`), quando detetados.
 - **Erro de runtime principal** e **sinais de performance** (LCP, CLS, long tasks, INP em browsers que suportam), quando houver dados.
 - **Elemento em foco/clicado** na página (não o botão da extensão), com tag, id, classes e atributos sanitizados.
 - **Console** (erros, avisos, logs). Pedidos só com falha continuam cobertos quando não há resumo completo de rede.
+- **Achados sensíveis** e **modo de captura** (debug interno vs produção sensível) quando aplicável — roadmap em [PRD-011](../prd/PRD-011-maturidade-produto/plan.md).
 - No **Jira**, a descrição pode ser enviada em **ADF** convertido a partir do mesmo Markdown (`jira-markdown-adf.ts`). Detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md).
 
 ### Modo diagnóstico completo (opções)
@@ -144,6 +147,11 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts`, `context-limits.ts` |
 | Narrativa / Jira ADF | `src/shared/issue-narrative.ts`, `src/shared/jira-markdown-adf.ts` |
 | Timeline / rede (helpers) | `src/shared/interaction-timeline.ts`, `src/shared/network-summary.ts` |
+| Timeline sessão por aba (SW) | `src/shared/timeline-session-store.ts`, `src/background/timeline-tab-session.ts`, `src/shared/timeline-append-queue.ts` |
+| Achados sensíveis / modo captura | `src/shared/sensitive-findings.ts`, `src/shared/capture-mode.ts` |
+| Correlação rede–erros–timeline | `src/shared/session-correlation.ts` |
+| Ambiente da app (metadados) | `src/shared/app-environment-capture.ts` |
+| Sessão UI / imagens pendentes (`session` storage) | `src/shared/feedback-ui-session.ts`, `src/shared/pending-images-session.ts` |
 | Indício vista desktop/móvel | `src/shared/view-layout-hint.ts` |
 | page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
 | Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |

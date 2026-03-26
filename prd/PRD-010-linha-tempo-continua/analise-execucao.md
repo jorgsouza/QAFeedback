@@ -72,3 +72,5 @@ Ou seja: o cenário Reclame AQUI (várias URLs na **mesma aba**) perdia eventos 
 - `extension/src/ui/FeedbackApp.tsx` — `SESSION_START` / `SESSION_END` e leitura da timeline no submit.
 
 Fila de capturas de ecrã por aba e persistência em `chrome.storage.session` (prints pendentes) é trabalho relacionado à mesma linha (fiabilidade sob navegação), mas é separável da timeline em si.
+
+**Documentação técnica:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) (secção *Linha do tempo contínua (mesma aba)* e mensagens `QAF_TIMELINE_*`).

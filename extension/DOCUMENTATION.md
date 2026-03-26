@@ -17,7 +17,8 @@ Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM*
 9. [page-bridge e “erros” da extensão](#page-bridge-e-erros-da-extensão)
 10. [Ícones (arte circular)](#ícones-arte-circular)
 11. [Jira: quadro no modal, allowlist e tipo Bug → Task](#jira-quadro-no-modal-allowlist-e-tipo-bug--task)
-12. [Referência rápida de scripts](#referência-rápida-de-scripts)
+12. [Linha do tempo contínua (mesma aba)](#linha-do-tempo-contínua-mesma-aba)
+13. [Referência rápida de scripts](#referência-rápida-de-scripts)
 
 ---
 
@@ -152,7 +153,15 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Jira: Markdown → ADF | `src/shared/jira-markdown-adf.ts` |
 | Limites de captura (buffers, caps) | `src/shared/context-limits.ts` |
 | Linha do tempo / rede (helpers) | `src/shared/interaction-timeline.ts`, `src/shared/network-summary.ts` |
+| Timeline **sessão por aba** (SW + storage) | `src/shared/timeline-session-store.ts`, `src/background/timeline-tab-session.ts`, `src/shared/timeline-append-queue.ts` |
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
+| Achados sensíveis (heurísticas) | `src/shared/sensitive-findings.ts` |
+| Modo de captura (debug vs produção sensível) | `src/shared/capture-mode.ts` |
+| Correlação temporal (rede / erros ↔ timeline) | `src/shared/session-correlation.ts` |
+| Metadados da aplicação (ambiente) | `src/shared/app-environment-capture.ts` |
+| Estado da UI por aba (`chrome.storage.session`) | `src/shared/feedback-ui-session.ts` |
+| Imagens pendentes por aba (sessão) | `src/shared/pending-images-session.ts` |
+| Fila de mensagens ao SW (best-effort) | `src/shared/extension-message-queue.ts` |
 | Ditado SO (textos) | `src/shared/native-dictation-hint.ts` |
 | Rota da página (rótulo + SPA) | `src/shared/page-route-context.ts`, `location-subscription.ts` |
 | Storage / tipos | `src/shared/storage.ts`, `types.ts` |
@@ -177,6 +186,12 @@ Token ou escopos Issues (fine-grained) incorretos.
 | `TEST_GITHUB` | Valida PAT e lista repos (as opções podem mandar o token no corpo da mensagem). |
 | `TEST_JIRA` | Teste simples de conexão (legado / uso interno). |
 | `JIRA_TEST_AND_LIST_BOARDS` | Teste + lista de quadros; campos opcionais **`jiraEmail`**, **`jiraApiToken`**, **`jiraSiteUrl`**, **`jiraSoftwareBoardId`** substituem temporariamente o storage (opções antes de Salvar). Sem ID de quadro, lista **todos** os quadros Agile acessíveis. |
+| `QAF_TIMELINE_SESSION_START` | Inicia ou reata **sessão de timeline** para `sender.tab.id` (opcional `sessionId`); usado ao abrir/engajar o painel. |
+| `QAF_TIMELINE_APPEND` | Envia lote de entradas **`InteractionTimelineEntryV1`** para acumular no store da aba (dedupe + cap + TTL no SW). |
+| `QAF_TIMELINE_GET_FOR_SUBMIT` | Devolve a timeline consolidada da aba para fundir no contexto da issue no submit. |
+| `QAF_TIMELINE_SESSION_END` | Limpa sessão da aba após envio ou fecho explícito do fluxo. |
+| `QAF_LOAD_TAB_UI` / `QAF_PERSIST_TAB_UI` | Lê/grava estado efémero da UI de feedback por aba em **`chrome.storage.session`** (ex.: rascunho posição do painel). |
+| `QAF_LOAD_PENDING_IMAGES` / `QAF_PERSIST_PENDING_IMAGES` | Lê/grava fila de capturas/imagens pendentes por **`tabId`** em sessão (sobrevive a reinícios do SW). |
 
 ---
 
@@ -186,7 +201,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 - **Interceptar** **`console.error` / `warn` / `log`** e enviar um resumo via `CustomEvent` para o contexto da extensão (contexto técnico).
 - **Interceptar** **`fetch`** e **registrar** respostas **não OK**.
-- **Linha do tempo** (Phase 1): cliques, `submit`, `change` em campos, `input` com throttle (~2s por campo), teclas Enter/Tab/Escape, `popstate` e `history.pushState`/`replaceState` (SPA). Eventos dentro da UI da extensão (`#qa-feedback-extension-root`) são ignorados. Limites em `context-limits.ts`.
+- **Linha do tempo** (Phase 1): cliques, `submit`, `change` em campos, `input` com throttle (~2s por campo), teclas Enter/Tab/Escape, `popstate` e `history.pushState`/`replaceState` (SPA). Eventos dentro da UI da extensão (`#qa-feedback-extension-root`) são ignorados. Limites em `context-limits.ts`. O bridge só vê o **documento atual**; para manter histórico após **navegação completa na mesma aba**, o `context-collector` envia **deltas** ao SW (`QAF_TIMELINE_APPEND`) e o submit usa **`QAF_TIMELINE_GET_FOR_SUBMIT`** antes de aplicar limites de exibição — ver [Linha do tempo contínua](#linha-do-tempo-contínua-mesma-aba) e [PRD-010](../prd/PRD-010-linha-tempo-continua/prd.md).
 - **Rede resumida** (Phase 2): cada **`fetch`** e **`XMLHttpRequest`** gera uma linha com método, URL (sanitizada na montagem do contexto), status, duração (ms), e cabeçalhos de correlação quando legíveis (`x-request-id`, `x-correlation-id`, etc.). Respostas **opacas** (CORS) podem vir com status `0` sem headers. A issue usa **`## Requisições relevantes`** (prioridade: erros, depois lentas ≥3s, depois outras; máx. 20 linhas). O HAR (CDP) continua opcional e separado.
 - **Runtime e performance** (Phase 5): `window` **`error`** e **`unhandledrejection`** (mensagem, stack, ficheiro/linha quando existir, dedupe por chave); **`PerformanceObserver`** para LCP, layout-shift (CLS), `longtask` e INP (best-effort). O **`context-collector`** pode preencher **`deltaToLastClickMs`** no último erro face ao último clique da timeline. No corpo da issue: **`## Erro de runtime principal`** e **`## Sinais de performance`** quando há dados.
 - **Estado visual e DOM alvo** (Phase 4): obtidos no **`context-collector`** no momento do envio (heurísticas no DOM: diálogos/modais, busy, abas ativas; dicas de seletor / `role` / texto para o alvo), não no bridge. Secções **`## Estado visual no momento do bug`** e **`## Elemento relacionado`** quando aplicável.
@@ -209,6 +224,22 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 2. **`CREATE_ISSUE`:** o modal envia **`jiraSoftwareBoardId`** no payload quando o utilizador escolhe um quadro; **`pickJiraBoardIdForCreate`** exige que esse ID esteja na mesma lista permitida (**erro** se não estiver). Só usa o quadro «predefinido» das opções quando **não** há ID explícito no pedido.
 3. **`resolveJiraBoardFieldsForIssueCreate`** lê o JQL do filtro do quadro (`type IN (...)` ou `issuetype = …`). Se o tipo nas opções for **Bug**, o filtro **não** incluir Bug mas **incluir Task**, o tipo efetivo passa a **Task** (`effectiveIssueTypeName` na resposta). O POST `/issue` usa esse nome.
 4. Se o **POST /issue** falhar com erro típico de **issue type** e o tipo tentado for **Bug**, há **uma repetição** automática com **Task** (útil quando não houve resolução completa do filtro).
+
+---
+
+## Linha do tempo contínua (mesma aba)
+
+Objetivo: o QA pode percorrer **várias URLs na mesma aba** (reloads / navegações completas) e, ao enviar o feedback, a issue inclui a **linha do tempo acumulada** dessa jornada — não só a página final.
+
+- **`timeline-session-store.ts`** — merge incremental, deduplicação, limites e TTL; espelho em **`chrome.storage.session`** para sobreviver a reinícios do service worker (MV3).
+- **`timeline-tab-session.ts`** — lógica no SW por **`tabId`** (handlers delegados a partir de `service-worker.ts`).
+- **`timeline-append-queue.ts`** — fila de `QAF_TIMELINE_APPEND` para reduzir perda de eventos sob rajadas de snapshots.
+- **`context-collector.ts`** — compara snapshots sucessivos do bridge e envia apenas entradas **novas** ao SW.
+- **`FeedbackApp.tsx`** — `QAF_TIMELINE_SESSION_START` ao engajar o painel; `QAF_TIMELINE_SESSION_END` após sucesso ou fecho.
+
+Especificação e análise de execução: [PRD-010 — pasta `prd/PRD-010-linha-tempo-continua/`](../prd/PRD-010-linha-tempo-continua/prd.md) (também [analise-execucao.md](../prd/PRD-010-linha-tempo-continua/analise-execucao.md)).
+
+**Modos de captura, achados sensíveis e evolução OWASP-aware** documentam-se no [PRD-011](../prd/PRD-011-maturidade-produto/plan.md) (plano de maturidade do produto).
 
 ---
 
