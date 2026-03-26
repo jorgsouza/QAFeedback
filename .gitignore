@@ -26,3 +26,22 @@ extension/dist/
 # Raiz do monorepo (se adicionar mais pacotes)
 node_modules/
 dist/
+
+# Cache, cobertura e temporários
+coverage/
+.nyc_output/
+.cache/
+.tmp/
+tmp/
+
+# Ferramentas JS
+.pnpm-store/
+.turbo/
+
+# Artefactos de teste E2E
+playwright-report/
+test-results/
+
+# Cursor / IA
+.cursor/index/
+.cursor/cache/

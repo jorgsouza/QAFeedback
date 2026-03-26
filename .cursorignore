@@ -1,0 +1,34 @@
+# Dependências e build
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.turbo/**
+**/.next/**
+**/.cache/**
+
+# Testes e cobertura
+**/coverage/**
+**/.nyc_output/**
+
+# Artefatos e logs
+**/*.log
+**/tmp/**
+**/.temp/**
+**/.DS_Store
+
+# Git e IDE
+.git/**
+.vscode/**
+.idea/**
+
+# Documentação pesada que raramente muda no fluxo de implementação
+prd/**
+plans/**
+
+# Binários/arquivos grandes
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.webp
+**/*.mp4
+**/*.zip
