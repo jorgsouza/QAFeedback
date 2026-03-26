@@ -6,10 +6,12 @@ import { CAPTURE_LIMITS } from "../shared/context-limits";
 import {
   eventPathTouchesQaExtensionHost,
   eventTargetElement,
+  signatureDialogTitles,
   summarizeClickTarget,
   summarizeFormFieldTimeline,
   summarizeKeydownTimeline,
   summarizeSubmitTarget,
+  summarizeTabSectionSelection,
 } from "../shared/interaction-timeline";
 import { isBrowserExtensionSchemeUrl } from "../shared/network-summary";
 import type {
@@ -523,6 +525,82 @@ function init(): void {
   }
   patchHistory("pushState");
   patchHistory("replaceState");
+
+  let lastEmittedScrollY = typeof window.scrollY === "number" ? window.scrollY : 0;
+  let lastScrollThrottleAt = 0;
+  window.addEventListener(
+    "scroll",
+    () => {
+      try {
+        const now = Date.now();
+        if (now - lastScrollThrottleAt < CAPTURE_LIMITS.timelineScrollThrottleMs) return;
+        const y = window.scrollY ?? 0;
+        const dy = Math.abs(y - lastEmittedScrollY);
+        if (dy < CAPTURE_LIMITS.timelineScrollMinDeltaPx) return;
+        lastScrollThrottleAt = now;
+        const down = y >= lastEmittedScrollY;
+        lastEmittedScrollY = y;
+        const arrow = down ? "↓" : "↑";
+        pushTimeline({
+          kind: "scroll",
+          summary: `Scroll ${arrow} ~${Math.round(dy)}px (eixo principal)`,
+        });
+      } catch {
+        /* ignore */
+      }
+    },
+    { passive: true },
+  );
+
+  let lastDialogSig = "";
+  let lastTabSig = "";
+  let domMutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function flushDomTimelineHints(): void {
+    try {
+      const dSig = signatureDialogTitles(document);
+      if (dSig !== lastDialogSig) {
+        const prev = lastDialogSig;
+        lastDialogSig = dSig;
+        if (!dSig && prev) {
+          pushTimeline({ kind: "dialog", summary: "Modal ou painel modal fechado" });
+        } else if (dSig) {
+          pushTimeline({
+            kind: "dialog",
+            summary: `Modal visível: ${dSig.replace(/\|/g, " · ").slice(0, 118)}`,
+          });
+        }
+      }
+
+      const tabLabel = summarizeTabSectionSelection(document);
+      if (tabLabel && tabLabel !== lastTabSig) {
+        lastTabSig = tabLabel;
+        pushTimeline({ kind: "section", summary: `Aba ou secção ativa: ${tabLabel}` });
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function scheduleDomTimelineHints(): void {
+    if (domMutTimer != null) clearTimeout(domMutTimer);
+    domMutTimer = setTimeout(() => {
+      domMutTimer = null;
+      flushDomTimelineHints();
+    }, CAPTURE_LIMITS.timelineDomMutationDebounceMs);
+  }
+
+  try {
+    const mo = new MutationObserver(() => scheduleDomTimelineHints());
+    mo.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-selected", "aria-hidden", "aria-modal", "role", "open", "class"],
+    });
+  } catch {
+    /* ignore */
+  }
 
   emit();
 }

@@ -19,6 +19,12 @@ export const CAPTURE_LIMITS = {
 
   /** Ignorar novo evento se for igual ao último dentro deste intervalo (ms) */
   timelineDedupeMs: 400,
+  /** PRD-010 Fase 5 — mínimo de |ΔscrollY| (px) para registar scroll na timeline */
+  timelineScrollMinDeltaPx: 120,
+  /** PRD-010 Fase 5 — intervalo mínimo entre entradas de scroll na timeline */
+  timelineScrollThrottleMs: 900,
+  /** PRD-010 Fase 5 — debounce para agregar mutações DOM (modal/abas) */
+  timelineDomMutationDebounceMs: 280,
   /** Mínimo entre eventos `input` no mesmo campo (reduz ruído por tecla) */
   timelineInputThrottleMs: 2000,
 

@@ -13,7 +13,7 @@
 | **2** — Modos de captura | **Concluída** |
 | **3** — Contexto da aplicação | **Concluída** |
 | **4** — Correlação ação ↔ rede ↔ erro | **Concluída** |
-| **5** — Timeline mais rica | Pendente |
+| **5** — Timeline mais rica | **Concluída** |
 | **6** — Preview alinhado ao submit | Pendente |
 | **7** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
 | **8** — Base para IA | Pendente |
@@ -150,10 +150,19 @@ Eventos adicionais ou refinados no bridge + timeline + limites: scroll com limia
 
 ### Critérios de aceite
 
-- [ ] Novos tipos ou entradas aparecem na timeline da issue quando aplicável.
-- [ ] Timeline não explode em volume em páginas ruidosas (limites respeitados).
-- [ ] Interações geradas pela UI da extensão não poluem a timeline.
-- [ ] Testes de timeline cobrem dedupe e novos tipos.
+- [x] Novos tipos ou entradas aparecem na timeline da issue quando aplicável.
+- [x] Timeline não explode em volume em páginas ruidosas (limites respeitados).
+- [x] Interações geradas pela UI da extensão não poluem a timeline.
+- [x] Testes de timeline cobrem dedupe e novos tipos.
+
+### O que foi entregue (implementação)
+
+- `types.ts`: novos tipos de timeline `scroll`, `dialog`, `section`.
+- `context-limits.ts`: `timelineScrollMinDeltaPx`, `timelineScrollThrottleMs`, `timelineDomMutationDebounceMs`.
+- `interaction-timeline.ts`: cliques com `role=tab`, `aria-label` e ordem testid → id → aria → texto; `summarizeTabSectionSelection`, `signatureDialogTitles`.
+- `page-bridge.ts`: listener de scroll (passive) com limiar + throttle; `MutationObserver` com debounce para mudanças de modal e de aba (`aria-selected`); continua a ignorar eventos da UI da extensão via `eventPathTouchesQaExtensionHost`.
+- `issue-builder.ts` / `issue-narrative.ts`: rótulos PT para os novos tipos; leitura rápida com contagens de scroll/modal/aba.
+- `interaction-timeline.test.ts`: casos para tab, aria-label, tabs e dialog.
 
 ---
 
@@ -211,7 +220,7 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 Executar **na ordem das fases 1 → 8** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline e preview; por fim UX e gancho IA.
 
-**Próximo passo sugerido:** **Fase 5** (timeline de interação mais rica e legível).
+**Próximo passo sugerido:** **Fase 6** (preview alinhado ao submit).
 
 ---
 

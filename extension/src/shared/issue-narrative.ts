@@ -37,6 +37,9 @@ function timelineKindLabelPt(kind: InteractionTimelineKindV1): string {
     change: "alteração de campo",
     keydown: "tecla",
     navigate: "navegação (SPA)",
+    scroll: "scroll",
+    dialog: "modal / diálogo",
+    section: "aba/secção",
   };
   return labels[kind];
 }
@@ -107,8 +110,17 @@ export function buildSessionHighlightsMarkdown(ctx: CapturedIssueContextV1): str
   if (tl.length) {
     const clicks = tl.filter((e) => e.kind === "click").length;
     const navs = tl.filter((e) => e.kind === "navigate").length;
+    const scrolls = tl.filter((e) => e.kind === "scroll").length;
+    const dialogs = tl.filter((e) => e.kind === "dialog").length;
+    const sections = tl.filter((e) => e.kind === "section").length;
+    const extras = [
+      scrolls ? `${scrolls} scroll` : "",
+      dialogs ? `${dialogs} evento(s) de modal` : "",
+      sections ? `${sections} troca(s) de aba/secção` : "",
+    ].filter(Boolean);
+    const extraChunk = extras.length ? `; ${extras.join(", ")}` : "";
     lines.push(
-      `- **Linha do tempo:** ${tl.length} evento(s) — ${clicks} clique(s), ${navs} navegação(ões) (SPA/popstate).`,
+      `- **Linha do tempo:** ${tl.length} evento(s) — ${clicks} clique(s), ${navs} navegação(ões) (SPA/popstate)${extraChunk}.`,
     );
   }
 

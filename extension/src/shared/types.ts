@@ -32,7 +32,13 @@ export type InteractionTimelineKindV1 =
   | "input"
   | "change"
   | "keydown"
-  | "navigate";
+  | "navigate"
+  /** PRD-010 Fase 5 — scroll vertical significativo (limiares no bridge). */
+  | "scroll"
+  /** PRD-010 Fase 5 — mudança em diálogo/modal visível. */
+  | "dialog"
+  /** PRD-010 Fase 5 — troca de aba/secção (role=tab selecionado). */
+  | "section";
 
 export type InteractionTimelineEntryV1 = {
   at: string;

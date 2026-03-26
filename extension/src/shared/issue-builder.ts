@@ -196,6 +196,9 @@ function timelineKindLabelPt(kind: InteractionTimelineKindV1): string {
     change: "Alteração de campo",
     keydown: "Tecla",
     navigate: "Navegação",
+    scroll: "Scroll",
+    dialog: "Modal / diálogo",
+    section: "Aba/secção",
   };
   return labels[kind];
 }
