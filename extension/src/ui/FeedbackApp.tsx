@@ -3,6 +3,7 @@ import { normalizeCaptureMode } from "../shared/capture-mode";
 import type {
   CaptureModeV1,
   CreateIssuePayload,
+  InteractionTimelineEntryV1,
   IssueFormState,
   JiraImageAttachmentPayload,
 } from "../shared/types";
@@ -18,6 +19,7 @@ import { buildIssueBody } from "../shared/issue-builder";
 import {
   buildCapturedIssueContext,
   ensurePageBridgeInjected,
+  fetchSessionTimelineForSubmit,
   readBridgeSnapshot,
 } from "../shared/context-collector";
 import { subscribeToLocationChanges } from "../shared/location-subscription";
@@ -344,6 +346,8 @@ export function FeedbackApp() {
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
+  /** Timeline acumulada no SW (multi-URL); atualizada para o separador Preview. */
+  const [sessionTimelinePreview, setSessionTimelinePreview] = useState<InteractionTimelineEntryV1[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -364,6 +368,17 @@ export function FeedbackApp() {
   useEffect(() => {
     ensurePageBridgeInjected();
   }, []);
+
+  /** Regista sessão de timeline por aba (não limpa histórico já agregado no SW). */
+  useEffect(() => {
+    if (!open) return;
+    void chrome.runtime
+      .sendMessage({
+        type: "QAF_TIMELINE_SESSION_START",
+        sessionId: crypto.randomUUID(),
+      })
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     const onEngage = () => setFabDismissed(false);
@@ -443,6 +458,25 @@ export function FeedbackApp() {
 
   const [routeRevision, setRouteRevision] = useState(0);
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (!open || !form.includeTechnicalContext) {
+      setSessionTimelinePreview([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const entries = await fetchSessionTimelineForSubmit();
+        if (!cancelled) setSessionTimelinePreview(entries);
+      } catch {
+        if (!cancelled) setSessionTimelinePreview([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, form.includeTechnicalContext, routeRevision, tab, postSubmit]);
 
   useEffect(() => {
     if (open) clearSpeechError();
@@ -670,10 +704,16 @@ export function FeedbackApp() {
     const target =
       lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
     const capturedContext = form.includeTechnicalContext
-      ? buildCapturedIssueContext({ lastTarget: target, bridge, captureMode })
+      ? buildCapturedIssueContext({
+          lastTarget: target,
+          bridge,
+          captureMode,
+          sessionInteractionTimeline:
+            sessionTimelinePreview.length > 0 ? sessionTimelinePreview : undefined,
+        })
       : undefined;
     return { ...form, capturedContext };
-  }, [form, lastTarget, routeRevision, captureMode]);
+  }, [form, lastTarget, routeRevision, captureMode, sessionTimelinePreview]);
 
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
 
@@ -732,6 +772,7 @@ export function FeedbackApp() {
   /** Fecha o fluxo, limpa rascunho/imagens e grava estado vazio na sessão da aba (sessionStorage + SW). */
   const closeModal = useCallback(() => {
     void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
+    void chrome.runtime.sendMessage({ type: "QAF_TIMELINE_SESSION_END" }).catch(() => {});
     setNetworkDiagError(null);
     setLastTarget(null);
     const fresh = destinationDefaults(githubTokenConfigured, jiraTokenConfigured);
@@ -742,6 +783,7 @@ export function FeedbackApp() {
     setForm(fresh);
     setError(null);
     setPostSubmit(null);
+    setSessionTimelinePreview([]);
     setTab("form");
     setOpen(false);
     setSheetCollapsed(false);
@@ -798,8 +840,14 @@ export function FeedbackApp() {
       const bridge = readBridgeSnapshot();
       const target =
         lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
+      const sessionTl = form.includeTechnicalContext ? await fetchSessionTimelineForSubmit() : [];
       const capturedContextForSend = form.includeTechnicalContext
-        ? buildCapturedIssueContext({ lastTarget: target, bridge, captureMode })
+        ? buildCapturedIssueContext({
+            lastTarget: target,
+            bridge,
+            captureMode,
+            sessionInteractionTimeline: sessionTl.length > 0 ? sessionTl : undefined,
+          })
         : undefined;
       const submitPayload: CreateIssuePayload = { ...form, capturedContext: capturedContextForSend };
 
@@ -825,6 +873,12 @@ export function FeedbackApp() {
       };
 
       if (res && res.ok && (res.githubUrl || res.jiraUrl)) {
+        try {
+          await chrome.runtime.sendMessage({ type: "QAF_TIMELINE_SESSION_END" });
+        } catch {
+          /* ignore */
+        }
+        setSessionTimelinePreview([]);
         const warnings = [...(res.warnings ?? [])];
         if (!form.sendToJira && pendingImages.length > 0) {
           warnings.push(

@@ -23,8 +23,32 @@ import type { CaptureModeV1 } from "./types";
 import { buildViewModeHint } from "./view-layout-hint";
 import { elementIsInsideExtensionUi } from "./extension-constants";
 import { captureAppEnvironment } from "./app-environment-capture";
+import {
+  mergeSessionAndBridgeTimelines,
+  timelineEntryFingerprint,
+} from "./timeline-session-store";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
+
+/** Evita reenviar as mesmas entradas ao SW; o SW também deduplica. */
+const sentTimelineFingerprints = new Set<string>();
+const SENT_FP_MAX = 2500;
+
+function flushTimelineAppendToSw(entries: InteractionTimelineEntryV1[]): void {
+  if (!entries.length) return;
+  const toSend: InteractionTimelineEntryV1[] = [];
+  for (const e of entries) {
+    const f = timelineEntryFingerprint(e);
+    if (sentTimelineFingerprints.has(f)) continue;
+    sentTimelineFingerprints.add(f);
+    toSend.push(e);
+  }
+  if (sentTimelineFingerprints.size > SENT_FP_MAX) sentTimelineFingerprints.clear();
+  if (!toSend.length) return;
+  void chrome.runtime
+    .sendMessage({ type: "QAF_TIMELINE_APPEND", entries: toSend })
+    .catch(() => {});
+}
 
 /** Linha bruta vinda do `page-bridge` (URL ainda não sanitizada). */
 export type BridgeNetworkRow = {
@@ -96,6 +120,7 @@ function onSnap(ev: Event): void {
     runtimeErrors: (d.runtimeErrors ?? []).slice(-CAPTURE_LIMITS.issueRuntimeErrorEntries),
     performanceSignals: d.performanceSignals,
   };
+  flushTimelineAppendToSw(d.interactionTimeline ?? []);
 }
 
 /**
@@ -305,12 +330,27 @@ function captureTargetDomHint(el: Element | null): TargetDomHintV1 | undefined {
   };
 }
 
+export async function fetchSessionTimelineForSubmit(): Promise<InteractionTimelineEntryV1[]> {
+  try {
+    const r = (await chrome.runtime.sendMessage({ type: "QAF_TIMELINE_GET_FOR_SUBMIT" })) as {
+      ok?: boolean;
+      entries?: InteractionTimelineEntryV1[];
+    };
+    if (r?.ok && Array.isArray(r.entries)) return r.entries;
+  } catch {
+    /* contexto invalidado / sem SW */
+  }
+  return [];
+}
+
 export function buildCapturedIssueContext(params: {
   lastTarget: Element | null;
   bridge: BridgeSnapshot;
   captureMode?: CaptureModeV1;
+  /** Timeline acumulada no service worker (multi-URL na mesma aba). */
+  sessionInteractionTimeline?: InteractionTimelineEntryV1[];
 }): CapturedIssueContextV1 {
-  const { lastTarget, bridge, captureMode: captureModeRaw } = params;
+  const { lastTarget, bridge, captureMode: captureModeRaw, sessionInteractionTimeline } = params;
   const captureMode = normalizeCaptureMode(captureModeRaw);
   const url = sanitizeUrl(window.location.href);
   const route = resolvePageRouteInfo(window.location);
@@ -338,7 +378,13 @@ export function buildCapturedIssueContext(params: {
     responseContentType: r.contentType ? truncate(r.contentType, 80) : undefined,
   }));
 
-  const anchor = lastMeaningfulTimelineAnchor(bridge.interactionTimeline);
+  const mergedInteractionTimeline = mergeSessionAndBridgeTimelines(
+    sessionInteractionTimeline,
+    bridge.interactionTimeline,
+    CAPTURE_LIMITS.issueTimelineEntries,
+  );
+
+  const anchor = lastMeaningfulTimelineAnchor(mergedInteractionTimeline);
   const correlatedSummaries = attachNetworkRequestCorrelation(
     mappedSummaries,
     anchor,
@@ -417,9 +463,9 @@ export function buildCapturedIssueContext(params: {
       ? { performanceSignals: bridge.performanceSignals }
       : {}),
     ...(networkRequestSummaries ? { networkRequestSummaries } : {}),
-    ...(bridge.interactionTimeline.length
+    ...(mergedInteractionTimeline.length
       ? {
-          interactionTimeline: bridge.interactionTimeline.map((t) => ({
+          interactionTimeline: mergedInteractionTimeline.map((t) => ({
             at: t.at,
             kind: t.kind,
             summary: truncate(t.summary, 220),

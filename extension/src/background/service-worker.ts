@@ -30,6 +30,13 @@ import {
   resolveJiraBoardIdForCreate,
 } from "../shared/jira-boards-list-for-feedback";
 import { parseTabSnapshotFromStoredValue } from "../shared/feedback-ui-session";
+import type { InteractionTimelineEntryV1 } from "../shared/types";
+import {
+  timelineSessionAppend,
+  timelineSessionEnd,
+  timelineSessionGetForSubmit,
+  timelineSessionStart,
+} from "./timeline-tab-session";
 
 const SCRIPT_ID = "qa-feedback-content";
 
@@ -39,6 +46,7 @@ function qafTabUiStorageKey(tabId: number): string {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void chrome.storage.session.remove(qafTabUiStorageKey(tabId));
+  void timelineSessionEnd(tabId);
 });
 
 async function filterGrantedPatterns(patterns: string[]): Promise<string[]> {
@@ -186,6 +194,10 @@ type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
 type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB" };
+type QafTimelineSessionStartMessage = { type: "QAF_TIMELINE_SESSION_START"; sessionId?: string };
+type QafTimelineAppendMessage = { type: "QAF_TIMELINE_APPEND"; entries: InteractionTimelineEntryV1[] };
+type QafTimelineGetForSubmitMessage = { type: "QAF_TIMELINE_GET_FOR_SUBMIT" };
+type QafTimelineSessionEndMessage = { type: "QAF_TIMELINE_SESSION_END" };
 
 type Messages =
   | CreateIssueMessage
@@ -198,7 +210,11 @@ type Messages =
   | OpenOptionsMessage
   | StartNetworkDiagnosticMessage
   | StopNetworkDiagnosticMessage
-  | CaptureVisibleTabMessage;
+  | CaptureVisibleTabMessage
+  | QafTimelineSessionStartMessage
+  | QafTimelineAppendMessage
+  | QafTimelineGetForSubmitMessage
+  | QafTimelineSessionEndMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
@@ -469,6 +485,66 @@ chrome.runtime.onMessage.addListener(
               : chrome.runtime.lastError?.message ?? "Falha ao capturar o separador.";
           sendResponse({ ok: false, message: msg });
         }
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_TIMELINE_SESSION_START") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false });
+          return;
+        }
+        const m = message as QafTimelineSessionStartMessage;
+        const sid =
+          (m.sessionId && String(m.sessionId).trim()) ||
+          (typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `qaf-${Date.now()}`);
+        await timelineSessionStart(tabId, sid);
+        sendResponse({ ok: true as const, sessionId: sid });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_TIMELINE_APPEND") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false });
+          return;
+        }
+        const m = message as QafTimelineAppendMessage;
+        const entries = Array.isArray(m.entries) ? m.entries : [];
+        await timelineSessionAppend(tabId, entries);
+        sendResponse({ ok: true as const });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_TIMELINE_GET_FOR_SUBMIT") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false as const, entries: [] });
+          return;
+        }
+        const entries = await timelineSessionGetForSubmit(tabId);
+        sendResponse({ ok: true as const, entries });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_TIMELINE_SESSION_END") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false });
+          return;
+        }
+        await timelineSessionEnd(tabId);
+        sendResponse({ ok: true as const });
       })();
       return true;
     }

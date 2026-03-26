@@ -12,6 +12,13 @@ export const CAPTURE_LIMITS = {
   /** Buffer no MAIN world para a linha do tempo antes do slice */
   bridgeTimelineBuffer: 50,
 
+  /**
+   * Linha do tempo contínua (mesma aba, multi-URL) — teto no service worker antes do slice para a issue.
+   */
+  swTimelineSessionMaxEntries: 400,
+  /** Sem atividade neste intervalo (ms) a sessão SW expira e descarta entradas. */
+  swTimelineSessionTtlMs: 2 * 60 * 60 * 1000,
+
   /** Buffer no MAIN world antes do slice enviado ao content script (console) */
   bridgeConsoleBuffer: 20,
   /** Buffer no MAIN world para pedidos falhados */
