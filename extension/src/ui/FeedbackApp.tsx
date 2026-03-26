@@ -175,6 +175,8 @@ export function FeedbackApp() {
     jira?: string;
     /** Só quando `jira` aponta ao quadro: link /browse/KEY */
     jiraIssueBrowse?: string;
+    /** ID numérico do quadro Jira usado na criação (validado no service worker). */
+    jiraBoardIdUsed?: string;
     warnings?: string[];
   } | null>(null);
   const [repoTargets, setRepoTargets] = useState<RepoOption[]>([]);
@@ -614,6 +616,7 @@ export function FeedbackApp() {
         githubUrl?: string;
         jiraUrl?: string;
         jiraIssueBrowseUrl?: string;
+        jiraSoftwareBoardIdUsed?: string;
         warnings?: string[];
       };
 
@@ -622,6 +625,7 @@ export function FeedbackApp() {
           github: res.githubUrl,
           jira: res.jiraUrl,
           jiraIssueBrowse: res.jiraIssueBrowseUrl,
+          jiraBoardIdUsed: res.jiraSoftwareBoardIdUsed,
           warnings: res.warnings,
         });
       } else {
@@ -889,6 +893,18 @@ export function FeedbackApp() {
                     </div>
                     <h3 className="qaf-success-title">Evidência criada</h3>
                   </div>
+                  {postSubmit.jiraBoardIdUsed ? (
+                    <p className="qaf-success-board-meta" role="status">
+                      Issue Jira criada no quadro ID <strong>{postSubmit.jiraBoardIdUsed}</strong>
+                      {selectedJiraBoardId.trim() &&
+                      selectedJiraBoardId.trim() !== postSubmit.jiraBoardIdUsed.trim() ? (
+                        <span className="qaf-success-board-meta-warn">
+                          {" "}
+                          (seleção no formulário era {selectedJiraBoardId.trim()})
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
                   <div className="qaf-success-cards">
                     {postSubmit.github ? (
                       <div className="qaf-success-card">

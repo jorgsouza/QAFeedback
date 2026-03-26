@@ -1038,6 +1038,18 @@ export const shadowCss = `
   color: var(--qaf-m-text);
 }
 
+.qaf-success-board-meta {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: var(--qaf-m-muted);
+  line-height: 1.45;
+}
+
+.qaf-success-board-meta-warn {
+  color: #b45309;
+  font-weight: 600;
+}
+
 .qaf-success-cards {
   display: flex;
   flex-direction: column;

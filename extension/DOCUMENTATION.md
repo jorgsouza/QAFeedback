@@ -168,9 +168,9 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 | Tipo | Uso |
 |------|-----|
-| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`** filtrados pela allowlist de build, ou **`jiraBoardsError`**. |
+| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`**: lista **todos** os quadros Software visíveis ao token, depois filtro **`builtInJiraBoardAllowlistIds()`** se o build tiver allowlist (igual à validação em **`CREATE_ISSUE`**). |
 | `OPEN_OPTIONS` | Abre a página de opções. |
-| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). Opcional **`jiraSoftwareBoardId`**: quadro usado só nesse envio (validado face à lista filtrada). |
+| `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). Opcional **`jiraSoftwareBoardId`** no payload: escolha explícita do modal — **sem fallback silencioso** para o quadro das opções se o ID não estiver na lista permitida (erro claro). Em sucesso com Jira, pode devolver **`jiraSoftwareBoardIdUsed`**. |
 | `START_NETWORK_DIAGNOSTIC` | Com opção ativa: anexa CDP à aba do remetente e inicia `Network.enable`. |
 | `STOP_NETWORK_DIAGNOSTIC` | Desliga o depurador na aba do remetente (cancelar/fechar modal). |
 | `CAPTURE_VISIBLE_TAB` | Devolve `dataUrl` PNG do viewport (`chrome.tabs.captureVisibleTab(windowId, …)` — usa `sender.tab.windowId`, não `tabId`). |
@@ -205,8 +205,8 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 
 ## Jira: quadro no modal, allowlist e tipo Bug → Task
 
-1. **Lista de quadros** no painel vem do mesmo fluxo que nas opções (`JIRA_TEST_AND_LIST_BOARDS` / `LIST_REPO_TARGETS`), filtrada por **`builtInJiraBoardAllowlistIds()`** quando o build define allowlist.
-2. **`CREATE_ISSUE`:** o content envia **`jiraSoftwareBoardId`** opcional; o service worker valida contra a lista conhecida e repassa a `createJiraIssue`.
+1. **Lista de quadros** no painel usa **`listFilteredJiraBoardsForFeedback`** (via `LIST_REPO_TARGETS`): API Agile sem `projectKey` (todos os quadros), depois allowlist de build se existir — alinhado à página de opções com listagem global.
+2. **`CREATE_ISSUE`:** o modal envia **`jiraSoftwareBoardId`** no payload quando o utilizador escolhe um quadro; **`pickJiraBoardIdForCreate`** exige que esse ID esteja na mesma lista permitida (**erro** se não estiver). Só usa o quadro «predefinido» das opções quando **não** há ID explícito no pedido.
 3. **`resolveJiraBoardFieldsForIssueCreate`** lê o JQL do filtro do quadro (`type IN (...)` ou `issuetype = …`). Se o tipo nas opções for **Bug**, o filtro **não** incluir Bug mas **incluir Task**, o tipo efetivo passa a **Task** (`effectiveIssueTypeName` na resposta). O POST `/issue` usa esse nome.
 4. Se o **POST /issue** falhar com erro típico de **issue type** e o tipo tentado for **Bug**, há **uma repetição** automática com **Task** (útil quando não houve resolução completa do filtro).
 

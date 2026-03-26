@@ -478,6 +478,8 @@ chrome.runtime.onMessage.addListener(
         let githubUrl: string | undefined;
         let jiraUrl: string | undefined;
         let jiraIssueBrowseUrl: string | undefined;
+        /** ID de quadro efetivo no Jira após validação (para resposta ao modal). */
+        let jiraBoardIdUsedForResponse: string | undefined;
 
         if (wantGh) {
           if (!s.githubToken.trim()) {
@@ -563,6 +565,14 @@ chrome.runtime.onMessage.addListener(
             return;
           }
           const effectiveJiraBoardId = boardPick.boardIdStr;
+          console.info(
+            "[QA Feedback] CREATE_ISSUE Jira board",
+            JSON.stringify({
+              requestedBoardId: requestedBoardId ?? null,
+              effectiveJiraBoardId,
+              usedExplicitSelection: boardPick.usedExplicitSelection,
+            }),
+          );
           /** Overrides de filtro guardados nas opções só fazem sentido para o quadro «padrão»; outro quadro no modal evita sobrescrever o JQL certo. */
           const storageBoardId = (s.jiraSoftwareBoardId ?? "").trim();
           const boardMatchesSavedOptions =
@@ -631,6 +641,7 @@ chrome.runtime.onMessage.addListener(
             });
             jiraUrl = boardLink ?? browse;
             jiraIssueBrowseUrl = boardLink ? browse : undefined;
+            jiraBoardIdUsedForResponse = effectiveJiraBoardId;
             if (jr.warning) warnings.push(jr.warning);
           } else {
             warnings.push(`Jira: ${jr.message}`);
@@ -650,6 +661,9 @@ chrome.runtime.onMessage.addListener(
           githubUrl,
           jiraUrl,
           jiraIssueBrowseUrl,
+          ...(jiraBoardIdUsedForResponse
+            ? { jiraSoftwareBoardIdUsed: jiraBoardIdUsedForResponse }
+            : {}),
           warnings: warnings.length ? warnings : undefined,
         });
       })();
