@@ -483,6 +483,7 @@ export const shadowCss = `
   box-sizing: border-box;
 }
 
+/* Bloco Textarea Figma (~161px com label+gap 4): área útil ~137px de altura mínima. */
 .qaf-textarea-with-mic {
   position: relative;
   display: block;
@@ -493,8 +494,8 @@ export const shadowCss = `
   display: block;
   width: 100%;
   min-width: 0;
-  min-height: 88px;
-  padding-bottom: 48px;
+  min-height: 137px;
+  padding: 8px 44px 8px 12px;
   box-sizing: border-box;
   resize: vertical;
 }
@@ -515,11 +516,11 @@ export const shadowCss = `
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-/* 32×32 como Figma / protótipo AIStudio (w-8 h-8). */
+/* Título: microfone centrado na altura do campo 48px (Trust sm-icon 32×32). */
 .qaf-dictation-mic-btn--inline {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 8px;
   transform: translateY(-50%);
   z-index: 2;
   width: 32px;
@@ -528,16 +529,26 @@ export const shadowCss = `
   min-height: 32px;
 }
 
+/* Descreva o problema: canto superior direito dentro da caixa (prints / Figma), sem padding-bottom extra. */
 .qaf-dictation-mic-btn--textarea {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
+  bottom: auto;
   z-index: 2;
   width: 32px;
   height: 32px;
   min-width: 32px;
   min-height: 32px;
   margin: 0;
+}
+
+.qaf-dictation-mic-img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .qaf-dictation-mic-btn:hover {

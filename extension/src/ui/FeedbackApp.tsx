@@ -55,6 +55,7 @@ function CollapseSheetIcon() {
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+const MIC_ICON_URL = tryGetExtensionResourceUrl("mic.png");
 
 function CopyIcon() {
   return (
@@ -111,13 +112,27 @@ function SuccessCheckGlyph() {
   );
 }
 
+/** Ícone do microfone: asset Figma/DS (`mic.png` em public/) ou fallback SVG. */
 function MicIcon() {
+  if (MIC_ICON_URL) {
+    return (
+      <img
+        src={MIC_ICON_URL}
+        alt=""
+        width={16}
+        height={16}
+        className="qaf-dictation-mic-img"
+        draggable={false}
+        aria-hidden
+      />
+    );
+  }
   return (
     <svg
       className="qaf-dictation-mic-svg"
       viewBox="0 0 24 24"
-      width={20}
-      height={20}
+      width={16}
+      height={16}
       aria-hidden
       focusable="false"
     >
