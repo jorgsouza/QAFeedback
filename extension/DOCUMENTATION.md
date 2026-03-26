@@ -2,6 +2,8 @@
 
 Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM** com **Formulário** / **Preview**, envio para **GitHub** e/ou **Jira Cloud**. Tokens e chamadas às APIs rodam no **service worker**; o content script não recebe PAT nem API token do Jira.
 
+**Linguagem ubíqua (glossário de domínio):** [prd/LINGUAGEM-UBIQUA.md](../prd/LINGUAGEM-UBIQUA.md) — alinha termos de produto, QA e código (`CapturedIssueContextV1`, timeline, achados sensíveis, etc.).
+
 ---
 
 ## Índice
@@ -19,6 +21,7 @@ Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM*
 11. [Jira: quadro no modal, allowlist e tipo Bug → Task](#jira-quadro-no-modal-allowlist-e-tipo-bug--task)
 12. [Linha do tempo contínua (mesma aba)](#linha-do-tempo-contínua-mesma-aba)
 13. [Referência rápida de scripts](#referência-rápida-de-scripts)
+14. [Linguagem ubíqua](#linguagem-ubíqua)
 
 ---
 
@@ -255,3 +258,9 @@ Especificação e análise de execução: [PRD-010 — pasta `prd/PRD-010-linha-
 | `npm run dev` | Igual ao `build` (legado) |
 
 Mais detalhes de primeiro uso: **[README.md](./README.md)**.
+
+---
+
+## Linguagem ubíqua
+
+Vocabulário alinhado entre produto, QA e nomes no código (timeline, contexto capturado, achados sensíveis, modos de captura, destinos GitHub/Jira, etc.): **[prd/LINGUAGEM-UBIQUA.md](../prd/LINGUAGEM-UBIQUA.md)**.

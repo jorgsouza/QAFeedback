@@ -6,6 +6,8 @@ Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **
 
 **PRDs e planos numerados (produto):** [`prd/INDEX.md`](../prd/INDEX.md) (raiz do repositório).
 
+**Linguagem ubíqua (domínio):** [`prd/LINGUAGEM-UBIQUA.md`](../prd/LINGUAGEM-UBIQUA.md).
+
 ---
 
 ## O que a extensão faz

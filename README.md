@@ -89,6 +89,7 @@ Carregar **`extension/dist`** em **chrome://extensions** (modo desenvolvedor). A
 | [extension/README.md](extension/README.md) | Funcionalidades completas, tokens, build, permissões, estrutura principal dos arquivos do código |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico: opções, SW, page-bridge, mensagens (`QAF_TIMELINE_*`, sessão por aba), resolução de problemas, Jira/ADF |
 | [prd/INDEX.md](prd/INDEX.md) | **Índice de PRD-001 … PRD-011** (estado, links para `prd.md` / `plan.md` / `execution-plan.md`) |
+| [prd/LINGUAGEM-UBIQUA.md](prd/LINGUAGEM-UBIQUA.md) | **Linguagem ubíqua** — glossário de domínio (feedback, contexto, timeline, Jira/GitHub, modos de captura) |
 | [prd/PRD-010-linha-tempo-continua/](prd/PRD-010-linha-tempo-continua/) | Linha do tempo contínua (mesma aba, multi-URL) — especificação + análise de execução |
 | [prd/PRD-011-maturidade-produto/](prd/PRD-011-maturidade-produto/) | Maturidade do produto (debug interno, segurança pragmática) — plano + plano de execução por fases |
 | [plans/README.md](plans/README.md) | Redirecionamento para `prd/` |

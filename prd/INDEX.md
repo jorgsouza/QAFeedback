@@ -16,6 +16,10 @@ Documentação de produto e planos de implementação vivem em **`prd/`**, numer
 | **PRD-010** | Linha do tempo contínua na mesma aba (multi-URL) | [prd.md](PRD-010-linha-tempo-continua/prd.md), [analise-execucao.md](PRD-010-linha-tempo-continua/analise-execucao.md) | Implementado na `main` (sessão por `tabId` no SW + append incremental) |
 | **PRD-011** | Maturidade do produto — debug interno, segurança pragmática (OWASP-aware) | [plan.md](PRD-011-maturidade-produto/plan.md), [execution-plan.md](PRD-011-maturidade-produto/execution-plan.md) (fases verticais) | Plano ativo; Etapas 1–7 (preview consistente fora de âmbito) após PRD-009; [OWASP](https://owasp.org/) |
 
+## Linguagem ubíqua (vocabulário do domínio)
+
+Termos partilhados entre produto, QA e código — [LINGUAGEM-UBIQUA.md](LINGUAGEM-UBIQUA.md).
+
 ## Recursos partilhados
 
 - **Ícone / mascote:** [assets/capiQA.png](assets/capiQA.png) — usado pelo script `extension/scripts/roundify-capiqa.mjs` no build.
