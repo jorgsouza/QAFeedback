@@ -137,9 +137,41 @@ export const shadowCss = `
   transform: translateY(0) scale(0.97);
 }
 
-.qaf-mini-actions {
+.qaf-fab-cluster {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.qaf-fab-dismiss {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.qaf-fab-dismiss:hover {
+  background: rgba(127, 29, 29, 0.92);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.qaf-fab-dismiss:active {
+  transform: scale(0.94);
 }
 
 .qaf-link {

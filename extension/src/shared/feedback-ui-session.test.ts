@@ -18,7 +18,6 @@ describe("feedback-ui-session v2", () => {
     const snap = buildTabSnapshotV2({
       open: true,
       sheetCollapsed: false,
-      minimized: false,
       repoIndex: 2,
       selectedJiraBoardId: "42",
       panelTab: "preview",

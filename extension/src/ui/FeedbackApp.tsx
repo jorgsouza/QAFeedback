@@ -254,11 +254,10 @@ function destinationDefaults(githubOk: boolean, jiraOk: boolean): IssueFormState
 
 const initialForm = (): IssueFormState => destinationDefaults(false, false);
 
-function readInitialUiState(): { minimized: boolean; sheetCollapsed: boolean; open: boolean } {
+function readInitialUiState(): { sheetCollapsed: boolean; open: boolean } {
   const s = readTabSnapshotFromSession();
-  if (!s) return { minimized: false, sheetCollapsed: false, open: false };
+  if (!s) return { sheetCollapsed: false, open: false };
   return {
-    minimized: s.minimized,
     sheetCollapsed: s.sheetCollapsed,
     open: s.open,
   };
@@ -281,7 +280,6 @@ function initialFormFromSnapshot(): IssueFormState {
 
 export function FeedbackApp() {
   const [initialUi] = useState(readInitialUiState);
-  const [minimized, setMinimized] = useState(initialUi.minimized);
   /** Painel tipo sheet recolhido: formulário mantém-se; FAB reabre. */
   const [sheetCollapsed, setSheetCollapsed] = useState(initialUi.sheetCollapsed);
   const [open, setOpen] = useState(initialUi.open);
@@ -357,11 +355,9 @@ export function FeedbackApp() {
           if (fromExt.open && (!sess || !sess.open)) {
             setOpen(true);
             setSheetCollapsed(fromExt.sheetCollapsed);
-            setMinimized(fromExt.minimized);
           } else if (!sess) {
             setOpen(fromExt.open);
             setSheetCollapsed(fromExt.sheetCollapsed);
-            setMinimized(fromExt.minimized);
           }
           const sessDraftEmpty =
             !sess || (!(sess.title ?? "").trim() && !(sess.whatHappened ?? "").trim());
@@ -401,7 +397,6 @@ export function FeedbackApp() {
     const snap = buildTabSnapshotV2({
       open,
       sheetCollapsed,
-      minimized,
       repoIndex,
       selectedJiraBoardId,
       panelTab: tab,
@@ -412,7 +407,7 @@ export function FeedbackApp() {
       persistTabSnapshotToExtensionTab(snap);
     }, 250);
     return () => clearTimeout(h);
-  }, [open, sheetCollapsed, minimized, repoIndex, selectedJiraBoardId, tab, form, tabUiHydrated]);
+  }, [open, sheetCollapsed, repoIndex, selectedJiraBoardId, tab, form, tabUiHydrated]);
 
   const [routeRevision, setRouteRevision] = useState(0);
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
@@ -686,11 +681,39 @@ export function FeedbackApp() {
     setTab("form");
   };
 
-  const closeModal = () => {
+  /** Fecha o fluxo, limpa rascunho/imagens e grava estado vazio na sessão da aba (sessionStorage + SW). */
+  const closeModal = useCallback(() => {
+    void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
+    setNetworkDiagError(null);
+    setLastTarget(null);
+    const fresh = destinationDefaults(githubTokenConfigured, jiraTokenConfigured);
+    setPendingImages((prev) => {
+      for (const x of prev) URL.revokeObjectURL(x.url);
+      return [];
+    });
+    setForm(fresh);
+    setError(null);
+    setPostSubmit(null);
+    setTab("form");
     setOpen(false);
     setSheetCollapsed(false);
-    resetFlow();
-  };
+    setRepoIndex(0);
+    setSelectedJiraBoardId("");
+    const snap = buildTabSnapshotV2({
+      open: false,
+      sheetCollapsed: false,
+      repoIndex: 0,
+      selectedJiraBoardId: "",
+      panelTab: "form",
+      form: fresh,
+    });
+    writeTabSnapshotToSession(snap);
+    persistTabSnapshotToExtensionTab(snap);
+  }, [githubTokenConfigured, jiraTokenConfigured]);
+
+  const collapseToFab = useCallback(() => {
+    setSheetCollapsed(true);
+  }, []);
 
   const copyText = async (text: string) => {
     try {
@@ -800,33 +823,25 @@ export function FeedbackApp() {
     <>
       <style>{shadowCss}</style>
       <div className="qaf-wrap">
-        {!minimized ? (
-          <>
-            <button
-              type="button"
-              className="qaf-fab qaf-fab-icon-only"
-              onClick={openOrExpandFeedback}
-              aria-label="Abrir feedback"
-            >
-              <FeedbackFabIcon />
-            </button>
-            <button type="button" className="qaf-link" onClick={() => setMinimized(true)}>
-              Minimizar
-            </button>
-          </>
-        ) : (
-          <div className="qaf-mini-actions">
-            <button
-              type="button"
-              className="qaf-fab qaf-fab-icon-only"
-              title="Abrir feedback"
-              aria-label="Restaurar botão de feedback"
-              onClick={() => setMinimized(false)}
-            >
-              <FeedbackFabIcon />
-            </button>
-          </div>
-        )}
+        <div className="qaf-fab-cluster">
+          <button
+            type="button"
+            className="qaf-fab qaf-fab-icon-only"
+            onClick={openOrExpandFeedback}
+            aria-label="Abrir feedback"
+          >
+            <FeedbackFabIcon />
+          </button>
+          <button
+            type="button"
+            className="qaf-fab-dismiss"
+            onClick={closeModal}
+            aria-label="Fechar e limpar"
+            title="Fechar e limpar rascunho e estado guardados nesta aba"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {open && !sheetCollapsed && (
@@ -834,8 +849,9 @@ export function FeedbackApp() {
           <button
             type="button"
             className="qaf-backdrop qaf-backdrop--sheet"
-            aria-label="Fechar"
-            onClick={closeModal}
+            aria-label="Recolher painel"
+            title="Recolher para o botão flutuante"
+            onClick={collapseToFab}
           />
           <div
             className="qaf-modal qaf-modal--dock"
@@ -885,15 +901,6 @@ export function FeedbackApp() {
                   title="Configurações"
                 >
                   <HeaderSettingsIcon />
-                </button>
-                <button
-                  type="button"
-                  className="qaf-modal-close"
-                  onClick={closeModal}
-                  aria-label="Fechar e limpar"
-                  title="Fechar e limpar"
-                >
-                  ×
                 </button>
               </div>
             </div>
@@ -1493,7 +1500,7 @@ export function FeedbackApp() {
                       </label>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={collapseToFab}>
                             Cancelar
                           </button>
                           <button
@@ -1519,7 +1526,7 @@ export function FeedbackApp() {
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={closeModal}>
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={collapseToFab}>
                             Cancelar
                           </button>
                           <button

@@ -117,7 +117,6 @@ export function persistTabSnapshotToExtensionTab(s: FeedbackTabSnapshotV2): void
 export function buildTabSnapshotV2(params: {
   open: boolean;
   sheetCollapsed: boolean;
-  minimized: boolean;
   repoIndex: number;
   selectedJiraBoardId: string;
   panelTab: "form" | "preview";
@@ -128,7 +127,7 @@ export function buildTabSnapshotV2(params: {
     v: 2,
     open: rest.open,
     sheetCollapsed: rest.sheetCollapsed,
-    minimized: rest.minimized,
+    minimized: false,
     repoIndex: rest.repoIndex,
     selectedJiraBoardId: rest.selectedJiraBoardId.trim() || undefined,
     panelTab: rest.panelTab,
