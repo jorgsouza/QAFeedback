@@ -55,6 +55,9 @@ function CollapseSheetIcon() {
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+const CHECK_POSITIVO_URL = tryGetExtensionResourceUrl("check_positivo.svg");
+const JIRA_BOARD_ICON_URL = tryGetExtensionResourceUrl("jiraBoard.svg");
+const JIRA_ISSUE_ICON_URL = tryGetExtensionResourceUrl("jiraIssue.svg");
 
 function CopyIcon() {
   return (
@@ -109,6 +112,56 @@ function SuccessCheckGlyph() {
       <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
     </svg>
   );
+}
+
+/** Ilustração {DS} (Figma); fallback ao glifo inline se o asset não existir. */
+function SuccessCheckIllustration() {
+  if (CHECK_POSITIVO_URL) {
+    return (
+      <img
+        src={CHECK_POSITIVO_URL}
+        alt=""
+        width={80}
+        height={80}
+        className="qaf-success-check-img"
+        draggable={false}
+      />
+    );
+  }
+  return <SuccessCheckGlyph />;
+}
+
+/** Ícones 24×24 {DS}-Icons (Figma); fallback aos SVGs inline. */
+function JiraBoardCardIcon() {
+  if (JIRA_BOARD_ICON_URL) {
+    return (
+      <img
+        src={JIRA_BOARD_ICON_URL}
+        alt=""
+        width={24}
+        height={24}
+        className="qaf-ds-icon-img"
+        draggable={false}
+      />
+    );
+  }
+  return <LayoutDashboardIcon />;
+}
+
+function JiraIssueCardIcon() {
+  if (JIRA_ISSUE_ICON_URL) {
+    return (
+      <img
+        src={JIRA_ISSUE_ICON_URL}
+        alt=""
+        width={24}
+        height={24}
+        className="qaf-ds-icon-img"
+        draggable={false}
+      />
+    );
+  }
+  return <TaskIssueIcon />;
 }
 
 /**
@@ -949,8 +1002,15 @@ export function FeedbackApp() {
               {postSubmit ? (
                 <div className="qaf-success">
                   <div className="qaf-success-hero">
-                    <div className="qaf-success-check" aria-hidden>
-                      <SuccessCheckGlyph />
+                    <div
+                      className={
+                        CHECK_POSITIVO_URL
+                          ? "qaf-success-check qaf-success-check--illustration"
+                          : "qaf-success-check"
+                      }
+                      aria-hidden
+                    >
+                      <SuccessCheckIllustration />
                     </div>
                     <h3 className="qaf-success-title">Evidência criada</h3>
                     {postSubmit.jiraBoardIdUsed ? (
@@ -1001,7 +1061,7 @@ export function FeedbackApp() {
                         <div className="qaf-success-card-row">
                           <div className="qaf-success-card-head">
                             <span className="qaf-success-card-icon" aria-hidden>
-                              <LayoutDashboardIcon />
+                              <JiraBoardCardIcon />
                             </span>
                             <span className="qaf-success-card-label">Jira Board</span>
                           </div>
@@ -1030,7 +1090,7 @@ export function FeedbackApp() {
                         <div className="qaf-success-card-row">
                           <div className="qaf-success-card-head">
                             <span className="qaf-success-card-icon" aria-hidden>
-                              <TaskIssueIcon />
+                              <JiraIssueCardIcon />
                             </span>
                             <span className="qaf-success-card-label">Jira Issue</span>
                           </div>

@@ -38,7 +38,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["page-bridge.js", "qa.png"],
+      "resources": [
+        "page-bridge.js",
+        "qa.png",
+        "check_positivo.svg",
+        "jiraBoard.svg",
+        "jiraIssue.svg"
+      ],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]

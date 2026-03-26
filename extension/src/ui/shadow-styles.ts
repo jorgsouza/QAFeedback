@@ -538,7 +538,7 @@ export const shadowCss = `
 /* Descreva o problema: dentro do campo, canto superior direito (abaixo da borda superior). */
 .qaf-dictation-mic-btn--textarea {
   position: absolute;
-  top: 10px;
+  top: 110px;
   right: 10px;
   bottom: auto;
   z-index: 2;
@@ -1079,7 +1079,29 @@ export const shadowCss = `
   flex-shrink: 0;
 }
 
+/* Ilustração {DS} check_positivo (Figma Ilustração 2060:140) — SVG com arte embutida. */
+.qaf-success-check--illustration {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.qaf-success-check-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
+}
+
 .qaf-success-check svg {
+  display: block;
+}
+
+/* Ícones 24×24 exportados do {DS}-Icons (Figma). */
+.qaf-ds-icon-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
   display: block;
 }
 
