@@ -12,7 +12,7 @@
 | **1** — Achados sensíveis | **Concluída** |
 | **2** — Modos de captura | **Concluída** |
 | **3** — Contexto da aplicação | **Concluída** |
-| **4** — Correlação ação ↔ rede ↔ erro | Pendente |
+| **4** — Correlação ação ↔ rede ↔ erro | **Concluída** |
 | **5** — Timeline mais rica | Pendente |
 | **6** — Preview alinhado ao submit | Pendente |
 | **7** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
@@ -123,10 +123,20 @@ Janela temporal e regras de priorização sobre timeline + rede + erros + visual
 
 ### Critérios de aceite
 
-- [ ] Requests/errors mais relevantes sobem na narrative em cenários de teste sintéticos.
-- [ ] Copy da issue não diz “causado por” quando só há correlação temporal.
-- [ ] Regressão: issues continham os mesmos blocos obrigatórios anteriores.
-- [ ] Testes de narrative / collector cobrem ordenação e tie-breaks.
+- [x] Requests/errors mais relevantes sobem na narrative em cenários de teste sintéticos.
+- [x] Copy da issue não diz “causado por” quando só há correlação temporal (linguagem explícita de correlação).
+- [x] Regressão: issues continham os mesmos blocos obrigatórios anteriores.
+- [x] Testes de narrative / collector cobrem ordenação e tie-breaks.
+
+### O que foi entregue (implementação)
+
+- `extension/src/shared/session-correlation.ts` + `session-correlation.test.ts`: âncoras `click` / `submit` / `navigate`, correlação de rede na janela `correlationWindowAfterActionMs`, enriquecimento e escolha do erro “principal” com reordenação (último = destacado no builder).
+- `context-limits.ts`: `correlationWindowAfterActionMs` (12s).
+- `types.ts`: `NetworkRequestSummaryEntryV1` (`deltaToLastActionMs`, `correlationTriggerKind`, `isCorrelated`); `RuntimeErrorSnapshotV1.deltaToLastActionMs`; ordem dos tipos timeline ajustada.
+- `network-summary.ts`: desempate na escolha dos pedidos — correlacionados e mais próximos da âncora sobem.
+- `context-collector.ts`: liga correlação antes de `pickNetworkSummariesForIssue`; runtime errors via `enrichAndOrderRuntimeErrors`.
+- `issue-narrative.ts`: `buildCorrelationHypothesisMarkdown` + destaque em “Leitura rápida” (sem causalidade forte).
+- `issue-builder.ts`: rede e erro principal com notas de correlação temporal.
 
 ---
 
@@ -201,7 +211,7 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 Executar **na ordem das fases 1 → 8** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline e preview; por fim UX e gancho IA.
 
-**Próximo passo sugerido:** **Fase 4** (correlação ação ↔ request ↔ erro ↔ estado visual).
+**Próximo passo sugerido:** **Fase 5** (timeline de interação mais rica e legível).
 
 ---
 

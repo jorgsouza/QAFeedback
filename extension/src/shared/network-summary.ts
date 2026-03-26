@@ -26,6 +26,14 @@ export function pickNetworkSummariesForIssue(
 
   scored.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
+    const ac = a.e.isCorrelated ? 0 : 1;
+    const bc = b.e.isCorrelated ? 0 : 1;
+    if (ac !== bc) return ac - bc;
+    const ad = a.e.deltaToLastActionMs;
+    const bd = b.e.deltaToLastActionMs;
+    if (ad != null && bd != null && ad !== bd) return ad - bd;
+    if (ad != null && bd == null) return -1;
+    if (ad == null && bd != null) return 1;
     return b.t - a.t;
   });
 

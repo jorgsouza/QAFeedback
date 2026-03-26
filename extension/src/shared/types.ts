@@ -25,6 +25,21 @@ export type FailedRequestEntry = {
   message: string;
 };
 
+/** Phase 1 — linha do tempo de interação (MAIN world → issue). */
+export type InteractionTimelineKindV1 =
+  | "click"
+  | "submit"
+  | "input"
+  | "change"
+  | "keydown"
+  | "navigate";
+
+export type InteractionTimelineEntryV1 = {
+  at: string;
+  kind: InteractionTimelineKindV1;
+  summary: string;
+};
+
 /** Phase 2 — resumo de pedido HTTP (fetch/XHR) para a issue. */
 export type NetworkRequestSummaryEntryV1 = {
   at: string;
@@ -38,6 +53,15 @@ export type NetworkRequestSummaryEntryV1 = {
   requestId?: string;
   correlationId?: string;
   responseContentType?: string;
+  /**
+   * PRD-010 Fase 4 — ms entre o instante deste pedido e a última âncora da timeline (clique/submit/navegação),
+   * só quando o pedido ocorre **depois** da âncora e dentro da janela configurada.
+   */
+  deltaToLastActionMs?: number;
+  /** Tipo da última âncora usada para `deltaToLastActionMs` / `isCorrelated`. */
+  correlationTriggerKind?: InteractionTimelineKindV1;
+  /** True quando o pedido cai na janela temporal após a âncora (correlação, não causalidade). */
+  isCorrelated?: boolean;
 };
 
 export type ElementContext = {
@@ -89,6 +113,10 @@ export type RuntimeErrorSnapshotV1 = {
    * Cálculo feito no content script (quando existe click).
    */
   deltaToLastClickMs?: number;
+  /**
+   * PRD-010 Fase 4 — ms após a última âncora (clique/submit/navegação) quando o erro ocorre depois dela.
+   */
+  deltaToLastActionMs?: number;
 };
 
 /** PRD-010 Fase 3 — par chave/valor (ex.: feature flag) para a issue; valores sempre truncados na captura. */
@@ -128,21 +156,6 @@ export type PerformanceSignalsSnapshotV1 = {
     longestMs?: number;
     lastAt?: string;
   };
-};
-
-/** Phase 1 — linha do tempo de interação (MAIN world → issue). */
-export type InteractionTimelineKindV1 =
-  | "click"
-  | "submit"
-  | "input"
-  | "change"
-  | "keydown"
-  | "navigate";
-
-export type InteractionTimelineEntryV1 = {
-  at: string;
-  kind: InteractionTimelineKindV1;
-  summary: string;
 };
 
 /**

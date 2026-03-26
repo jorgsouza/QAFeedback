@@ -28,6 +28,11 @@ export const CAPTURE_LIMITS = {
   issueNetworkSummaryMax: 20,
   /** Duração a partir da qual o pedido conta como “lento” no resumo */
   networkSlowThresholdMs: 3000,
+  /**
+   * PRD-010 Fase 4 — janela após última ação “forte” (clique/submit/navegação) para marcar pedidos
+   * de rede como correlacionados (ordenação e narrative; não é prova causal).
+   */
+  correlationWindowAfterActionMs: 12_000,
 
   /** Eventos de runtime (error/unhandledrejection) incluídos na issue */
   issueRuntimeErrorEntries: 3,

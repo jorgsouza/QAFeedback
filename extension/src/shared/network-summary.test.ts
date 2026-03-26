@@ -47,6 +47,31 @@ describe("pickNetworkSummariesForIssue", () => {
     expect(out).toHaveLength(1);
     expect(out[0].url).toContain("a.test");
   });
+
+  it("prefers correlated 500 over non-correlated 500 when same priority", () => {
+    const t0 = "2025-01-01T12:00:00.000Z";
+    const list = [
+      e({
+        method: "GET",
+        url: "https://a.test/late",
+        status: 500,
+        durationMs: 50,
+        at: "2025-01-01T12:00:02.000Z",
+      }),
+      e({
+        method: "GET",
+        url: "https://a.test/soon",
+        status: 500,
+        durationMs: 60,
+        at: "2025-01-01T12:00:00.100Z",
+        isCorrelated: true,
+        deltaToLastActionMs: 100,
+      }),
+    ];
+    const out = pickNetworkSummariesForIssue(list, 10, 3000);
+    expect(out[0].url).toContain("/soon");
+    expect(out[1].url).toContain("/late");
+  });
 });
 
 describe("summariesToFailedRequests", () => {

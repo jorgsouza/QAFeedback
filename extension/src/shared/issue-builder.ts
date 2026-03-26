@@ -134,7 +134,13 @@ function formatRuntimePrincipalError(err: RuntimeErrorSnapshotV1, captureMode: C
     const pos = err.line ? `:${err.line}${err.col ? `:${err.col}` : ""}` : "";
     lines.push(`- Local: ${truncate(err.file, 120)}${pos}`);
   }
-  if (err.deltaToLastClickMs != null) lines.push(`- Δ desde último clique: ${Math.round(err.deltaToLastClickMs)}ms`);
+  if (err.deltaToLastActionMs != null) {
+    lines.push(
+      `- Δ desde última ação relevante (timeline): **${Math.round(err.deltaToLastActionMs)} ms** — correlação temporal, não causalidade.`,
+    );
+  } else if (err.deltaToLastClickMs != null) {
+    lines.push(`- Δ desde último clique (timeline): ${Math.round(err.deltaToLastClickMs)}ms`);
+  }
   if (captureMode === "debug-interno" && err.stack) {
     lines.push(`- Stack (truncado): \`${truncate(err.stack, 320)}\``);
   }
@@ -239,6 +245,11 @@ function formatNetworkRelevant(
       if (showIds && e.requestId) bits.push(`x-request-id: \`${truncate(e.requestId, 48)}\``);
       if (showIds && e.correlationId) bits.push(`x-correlation-id: \`${truncate(e.correlationId, 48)}\``);
       if (e.responseContentType) bits.push(`content-type: ${e.responseContentType}`);
+      if (e.isCorrelated && e.deltaToLastActionMs != null && e.correlationTriggerKind) {
+        bits.push(
+          `≈ **${Math.round(e.deltaToLastActionMs)} ms** após ${timelineKindLabelPt(e.correlationTriggerKind)} (correlação)`,
+        );
+      }
       return `- ${bits.join(" · ")}`;
     })
     .join("\n");

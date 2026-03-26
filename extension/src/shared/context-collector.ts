@@ -9,6 +9,11 @@ import type {
 } from "./types";
 import { CAPTURE_LIMITS } from "./context-limits";
 import { pickNetworkSummariesForIssue, summariesToFailedRequests } from "./network-summary";
+import {
+  attachNetworkRequestCorrelation,
+  enrichAndOrderRuntimeErrors,
+  lastMeaningfulTimelineAnchor,
+} from "./session-correlation";
 import { tryGetExtensionResourceUrl } from "./extension-runtime";
 import { resolvePageRouteInfo } from "./page-route-context";
 import { sanitizeElementAttributes, sanitizeUrl, truncate } from "./sanitizer";
@@ -333,8 +338,15 @@ export function buildCapturedIssueContext(params: {
     responseContentType: r.contentType ? truncate(r.contentType, 80) : undefined,
   }));
 
-  const picked = pickNetworkSummariesForIssue(
+  const anchor = lastMeaningfulTimelineAnchor(bridge.interactionTimeline);
+  const correlatedSummaries = attachNetworkRequestCorrelation(
     mappedSummaries,
+    anchor,
+    CAPTURE_LIMITS.correlationWindowAfterActionMs,
+  );
+
+  const picked = pickNetworkSummariesForIssue(
+    correlatedSummaries,
     CAPTURE_LIMITS.issueNetworkSummaryMax,
     CAPTURE_LIMITS.networkSlowThresholdMs,
   );
@@ -342,22 +354,13 @@ export function buildCapturedIssueContext(params: {
   const networkRequestSummaries = picked.length ? picked : undefined;
   const failedRequests = summariesToFailedRequests(picked, CAPTURE_LIMITS.issueFailedRequests);
 
-  const lastClickAtIso =
-    bridge.interactionTimeline
-      .slice()
-      .reverse()
-      .find((t) => t.kind === "click")?.at ?? undefined;
-  const lastClickAtMs = lastClickAtIso ? new Date(lastClickAtIso).getTime() : undefined;
-
-  let runtimeErrors: RuntimeErrorSnapshotV1[] | undefined = bridge.runtimeErrors?.length
-    ? bridge.runtimeErrors.map((e) => ({ ...e }))
-    : undefined;
-  if (runtimeErrors?.length && lastClickAtMs != null && Number.isFinite(lastClickAtMs)) {
-    const lastIdx = runtimeErrors.length - 1;
-    const errAtMs = new Date(runtimeErrors[lastIdx]!.at).getTime();
-    if (Number.isFinite(errAtMs)) {
-      runtimeErrors[lastIdx]!.deltaToLastClickMs = Math.max(0, errAtMs - lastClickAtMs);
-    }
+  let runtimeErrors: RuntimeErrorSnapshotV1[] | undefined;
+  if (bridge.runtimeErrors?.length) {
+    runtimeErrors = enrichAndOrderRuntimeErrors(
+      bridge.runtimeErrors.map((e) => ({ ...e })),
+      anchor,
+      CAPTURE_LIMITS.correlationWindowAfterActionMs,
+    );
   }
 
   let appEnvironment: CapturedIssueContextV1["appEnvironment"];
