@@ -40,4 +40,12 @@ export const CAPTURE_LIMITS = {
   performanceEmitMinMs: 500,
   /** Long tasks: quantos IDs/ocorrências manter (best-effort) */
   longTaskEntriesMax: 10,
+
+  /** PRD-010 Fase 3 — campos string do snapshot de ambiente da app */
+  appEnvFieldMax: 120,
+  appEnvCommitMax: 40,
+  /** Máximo de pares key/value em featureFlags / experiments */
+  appEnvFlagsMax: 12,
+  appEnvFlagKeyMax: 48,
+  appEnvFlagValueMax: 64,
 } as const;

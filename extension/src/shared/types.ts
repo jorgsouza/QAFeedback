@@ -91,6 +91,28 @@ export type RuntimeErrorSnapshotV1 = {
   deltaToLastClickMs?: number;
 };
 
+/** PRD-010 Fase 3 — par chave/valor (ex.: feature flag) para a issue; valores sempre truncados na captura. */
+export type AppEnvironmentKeyValueV1 = {
+  key: string;
+  value: string;
+};
+
+/**
+ * PRD-010 Fase 3 — metadados best-effort da aplicação (build, tenant, flags quando expostos).
+ * Campos opcionais; omitir o objeto inteiro quando não houver sinais.
+ */
+export type AppEnvironmentSnapshotV1 = {
+  appName?: string;
+  environmentName?: string;
+  buildId?: string;
+  release?: string;
+  commitSha?: string;
+  tenant?: string;
+  role?: string;
+  featureFlags?: AppEnvironmentKeyValueV1[];
+  experiments?: AppEnvironmentKeyValueV1[];
+};
+
 export type PerformanceSignalsSnapshotV1 = {
   /** Largest Contentful Paint (best-effort). */
   lcpMs?: number;
@@ -180,6 +202,8 @@ export type TechnicalContextPayload = {
    * Nunca incluir valores completos de segredos; usar `samplePreview` truncado.
    */
   sensitiveFindings?: SensitiveFindingV1[];
+  /** PRD-010 Fase 3 — ambiente da app quando a página expõe sinais (meta, globais, storage allowlist). */
+  appEnvironment?: AppEnvironmentSnapshotV1;
   /** Modo aplicado na montagem do contexto (auditoria + builder). */
   captureMode?: CaptureModeV1;
 };

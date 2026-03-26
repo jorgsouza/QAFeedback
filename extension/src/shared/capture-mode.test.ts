@@ -70,6 +70,20 @@ describe("applyCaptureModeToContext", () => {
     expect(out.runtimeErrors?.[0].stack).toBeTruthy();
   });
 
+  it("trims appEnvironment in producao-sensivel", () => {
+    const ctx: CapturedIssueContextV1 = {
+      ...minimalCtx(),
+      appEnvironment: {
+        appName: "Nome bem comprido ".repeat(10),
+        featureFlags: Array.from({ length: 12 }, (_, i) => ({ key: `f${i}`, value: "v".repeat(80) })),
+      },
+    };
+    const out = applyCaptureModeToContext(ctx, "producao-sensivel");
+    expect(out.appEnvironment?.appName?.length).toBeLessThan(ctx.appEnvironment!.appName!.length);
+    expect((out.appEnvironment?.featureFlags?.length ?? 0)).toBeLessThanOrEqual(6);
+    expect(out.appEnvironment?.featureFlags?.[0].value.length).toBeLessThanOrEqual(36);
+  });
+
   it("tightens payload in producao-sensivel", () => {
     const ctx = minimalCtx();
     const out = applyCaptureModeToContext(ctx, "producao-sensivel");

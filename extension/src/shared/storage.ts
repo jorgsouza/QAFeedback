@@ -3,7 +3,7 @@ import type { ExtensionSettings } from "./types";
 
 const KEY = "qaFeedbackSettings";
 
-export const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1"];
+export const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "www.reclameaqui.com.br"];
 
 export const emptySettings = (): ExtensionSettings => ({
   githubToken: "",

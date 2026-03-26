@@ -53,6 +53,30 @@ describe("buildIssueBody", () => {
     expect(md).not.toContain("## Contexto técnico");
   });
 
+  it("includes Contexto da aplicação when appEnvironment is present", () => {
+    const md = buildIssueBody(
+      payload({
+        includeTechnicalContext: true,
+        capturedContext: {
+          version: 1,
+          page: { ...pageCtx },
+          console: [],
+          failedRequests: [],
+          appEnvironment: {
+            buildId: "b-99",
+            environmentName: "staging",
+            featureFlags: [{ key: "x", value: "1" }],
+          },
+        },
+      }),
+    );
+    expect(md).toContain("## Contexto da aplicação");
+    expect(md).toContain("Build ID:");
+    expect(md).toContain("b-99");
+    expect(md).toContain("staging");
+    expect(md).toContain("Feature flags");
+  });
+
   it("includes technical context block when enabled and context is provided", () => {
     const md = buildIssueBody(
       payload({
@@ -74,11 +98,12 @@ describe("buildIssueBody", () => {
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
     expect(md).toContain("Schema de contexto (extensão): **v1**");
-    expect(md).toContain("Phase 3");
+    expect(md).toContain("ambiente da app (best-effort)");
     expect(md).toContain("- Modo de captura:");
     expect(md).toContain("Debug interno");
     expect(md).not.toContain("## Leitura rápida da sessão");
     expect(md).not.toContain("## Achados sensíveis");
+    expect(md).not.toContain("## Contexto da aplicação");
   });
 
   it("includes Achados sensíveis when context has sensitiveFindings", () => {

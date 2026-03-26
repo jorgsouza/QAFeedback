@@ -1,4 +1,5 @@
 import type {
+  AppEnvironmentSnapshotV1,
   CaptureModeV1,
   CreateIssuePayload,
   ElementContext,
@@ -37,6 +38,32 @@ function findingSeverityLabelPt(s: SensitiveFindingSeverityV1): string {
     high: "alta",
   };
   return labels[s];
+}
+
+function formatAppEnvironment(env: AppEnvironmentSnapshotV1, mode: CaptureModeV1): string {
+  const smax = mode === "producao-sensivel" ? 72 : 200;
+  const vmax = mode === "producao-sensivel" ? 48 : 80;
+  const lines: string[] = [];
+  if (env.appName) lines.push(`- App / produto: ${truncate(env.appName, smax)}`);
+  if (env.environmentName) lines.push(`- Ambiente: ${truncate(env.environmentName, smax)}`);
+  if (env.buildId) lines.push(`- Build ID: \`${truncate(env.buildId, smax)}\``);
+  if (env.release) lines.push(`- Release / versão: ${truncate(env.release, smax)}`);
+  if (env.commitSha) lines.push(`- Commit (curto): \`${truncate(env.commitSha, 40)}\``);
+  if (env.tenant) lines.push(`- Tenant: ${truncate(env.tenant, mode === "producao-sensivel" ? 48 : smax)}`);
+  if (env.role) lines.push(`- Papel / role: ${truncate(env.role, mode === "producao-sensivel" ? 48 : smax)}`);
+  if (env.featureFlags?.length) {
+    lines.push("- Feature flags (amostra):");
+    for (const f of env.featureFlags) {
+      lines.push(`  - \`${truncate(f.key, 48)}\`: \`${truncate(f.value, vmax)}\``);
+    }
+  }
+  if (env.experiments?.length) {
+    lines.push("- Experimentos (amostra):");
+    for (const f of env.experiments) {
+      lines.push(`  - \`${truncate(f.key, 48)}\`: \`${truncate(f.value, vmax)}\``);
+    }
+  }
+  return lines.join("\n");
 }
 
 function formatSensitiveFindings(findings: SensitiveFindingV1[]): string {
@@ -241,6 +268,13 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
       md += `${formatSensitiveFindings(ctx.sensitiveFindings)}\n\n`;
     }
 
+    if (ctx.appEnvironment && formatAppEnvironment(ctx.appEnvironment, captureMode).trim()) {
+      md += "## Contexto da aplicação\n\n";
+      md +=
+        "> Metadados best-effort (meta tags, globais como `__APP_CONFIG__`, `__INITIAL_STATE__` (só chaves de topo), `__NEXT_DATA__.buildId`, ou chaves allowlist em `localStorage` / `sessionStorage`); páginas sem sinais não mostram esta secção.\n\n";
+      md += `${formatAppEnvironment(ctx.appEnvironment, captureMode)}\n\n`;
+    }
+
     const p = ctx.page;
     md += "## Contexto técnico\n";
     const modoLine =
@@ -257,7 +291,7 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Viewport (janela): ${p.viewport}\n`;
     md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
-    md += `- Schema de contexto (extensão): **v${ctx.version}** — Phase 3 (narrativa + timeline + rede resumida)\n\n`;
+    md += `- Schema de contexto (extensão): **v${ctx.version}** — narrativa, timeline, rede resumida, ambiente da app (best-effort)\n\n`;
 
     const tl = formatInteractionTimeline(ctx.interactionTimeline ?? [], captureMode);
     if (tl) {

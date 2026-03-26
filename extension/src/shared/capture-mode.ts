@@ -1,4 +1,5 @@
-import type { CapturedIssueContextV1, CaptureModeV1 } from "./types";
+import type { AppEnvironmentSnapshotV1, CapturedIssueContextV1, CaptureModeV1 } from "./types";
+import { CAPTURE_LIMITS } from "./context-limits";
 import { truncate } from "./sanitizer";
 
 export function normalizeCaptureMode(value: unknown): CaptureModeV1 {
@@ -15,6 +16,44 @@ export function applyCaptureModeToContext(
 ): CapturedIssueContextV1 {
   const tagged: CapturedIssueContextV1 = { ...ctx, captureMode: mode };
   if (mode === "debug-interno") return tagged;
+
+  const envTrim = (e: AppEnvironmentSnapshotV1 | undefined): AppEnvironmentSnapshotV1 | undefined => {
+    if (!e) return undefined;
+    const maxScalar = 72;
+    const maxFlagVal = 36;
+    const maxFlags = Math.min(6, CAPTURE_LIMITS.appEnvFlagsMax);
+    const scalar = (s: string | undefined, m: number) => (s ? truncate(s, m) : undefined);
+    const flags = e.featureFlags?.slice(0, maxFlags).map((x) => ({
+      key: truncate(x.key, CAPTURE_LIMITS.appEnvFlagKeyMax),
+      value: truncate(x.value, maxFlagVal),
+    }));
+    const exps = e.experiments?.slice(0, maxFlags).map((x) => ({
+      key: truncate(x.key, CAPTURE_LIMITS.appEnvFlagKeyMax),
+      value: truncate(x.value, maxFlagVal),
+    }));
+    const out: AppEnvironmentSnapshotV1 = {
+      appName: scalar(e.appName, maxScalar),
+      environmentName: scalar(e.environmentName, maxScalar),
+      buildId: scalar(e.buildId, maxScalar),
+      release: scalar(e.release, maxScalar),
+      commitSha: scalar(e.commitSha, CAPTURE_LIMITS.appEnvCommitMax),
+      tenant: scalar(e.tenant, 48),
+      role: scalar(e.role, 48),
+      ...(flags?.length ? { featureFlags: flags } : {}),
+      ...(exps?.length ? { experiments: exps } : {}),
+    };
+    const hasAny =
+      Boolean(out.appName) ||
+      Boolean(out.environmentName) ||
+      Boolean(out.buildId) ||
+      Boolean(out.release) ||
+      Boolean(out.commitSha) ||
+      Boolean(out.tenant) ||
+      Boolean(out.role) ||
+      (out.featureFlags?.length ?? 0) > 0 ||
+      (out.experiments?.length ?? 0) > 0;
+    return hasAny ? out : undefined;
+  };
 
   return {
     ...tagged,
@@ -71,5 +110,6 @@ export function applyCaptureModeToContext(
             : tagged.targetDomHint.selectorHint,
         }
       : undefined,
+    appEnvironment: envTrim(tagged.appEnvironment),
   };
 }

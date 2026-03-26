@@ -1073,7 +1073,7 @@ export function FeedbackApp() {
                           role="listitem"
                           title={
                             fullNetworkDiagnosticEnabled
-                              ? "Captura HAR / diagnóstico de rede ativo nas opções."
+                              ? "HAR ativo: só esta aba entra no .har. O aviso de «debugging» do Chrome pode aparecer noutras abas — é global ao navegador."
                               : "HAR: ative o diagnóstico de rede nas opções para anexar HAR ao Jira."
                           }
                         >

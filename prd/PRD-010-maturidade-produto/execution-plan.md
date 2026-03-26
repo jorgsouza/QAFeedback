@@ -5,6 +5,26 @@
 
 ---
 
+## Estado do plano (atualização)
+
+| Fase | Situação |
+|------|-----------|
+| **1** — Achados sensíveis | **Concluída** |
+| **2** — Modos de captura | **Concluída** |
+| **3** — Contexto da aplicação | **Concluída** |
+| **4** — Correlação ação ↔ rede ↔ erro | Pendente |
+| **5** — Timeline mais rica | Pendente |
+| **6** — Preview alinhado ao submit | Pendente |
+| **7** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
+| **8** — Base para IA | Pendente |
+
+**Entregas transversais já feitas (ligadas ao PRD-010, fora da numeração estrita):**
+
+- **Painel — carregamento de integrações:** estado `idle` / `loading` / `done` para `LIST_REPO_TARGETS`, evitando falso “sem token” enquanto repos/flags carregam; feedback visual no FAB (`FeedbackApp`, estilos shadow).
+- **HAR × lista de domínios:** validação defensiva com `urlMatchesAllowedHosts` antes de anexar o depurador e antes de consumir HAR no Jira (`host-patterns.ts`, `service-worker.ts`); texto nas **Opções** e tooltip do badge **HAR** explicando que o aviso global do Chrome (“started debugging…”) não implica captura de outras abas.
+
+---
+
 ## Decisões arquiteturais (duráveis)
 
 Aplicam-se a todas as fases; as fases só variam **comportamento**, não estes alicerces.
@@ -28,11 +48,18 @@ Pipeline que, a partir do snapshot já agregado (rede resumida, console, runtime
 
 ### Critérios de aceite
 
-- [ ] Achados derivam apenas de fontes já presentes na captura; ausência de dados não quebra o fluxo.
-- [ ] Tipos estáveis para achado (espécie, severidade sugerida, fonte, local/resumo, preview truncado, fingerprint opcional).
-- [ ] Secção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
-- [ ] Nenhum token/segredo completo no corpo principal por defeito.
-- [ ] Testes cobrem casos representativos (JWT-like, Bearer, PII óbvia, mensagem de erro “suspeita” com flag de baixa confiança).
+- [x] Achados derivam apenas de fontes já presentes na captura; ausência de dados não quebra o fluxo.
+- [x] Tipos estáveis para achado (espécie, severidade sugerida, fonte, local/resumo, preview truncado, fingerprint opcional).
+- [x] Secção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
+- [x] Nenhum token/segredo completo no corpo principal por defeito.
+- [x] Testes cobrem casos representativos (JWT-like, Bearer, PII óbvia, mensagem de erro “suspeita” com flag de baixa confiança).
+
+### O que foi entregue (implementação)
+
+- `extension/src/shared/sensitive-findings.ts` + `sensitive-findings.test.ts`: heurísticas e normalização de achados.
+- Tipos em `types.ts` (`TechnicalContextPayload` / achados versão estáveis).
+- `context-collector.ts`: agrega achados a partir do snapshot existente.
+- `issue-builder.ts`: secção dedicada na issue + testes atualizados.
 
 ---
 
@@ -46,10 +73,17 @@ Definir modo persistido (ex.: `debug-interno` | `producao-sensivel`) com default
 
 ### Critérios de aceite
 
-- [ ] Modo configurável em opções (e migrado de `emptySettings` / load com fallback).
-- [ ] Comparação lado a lado: mesmo contexto bruto produz markdown diferente entre modos onde previsto, sem perda de narrativa essencial.
-- [ ] Modo default não reduz capacidade atual de debugging.
-- [ ] Testes de builder ou snapshots de texto cobrem os dois modos.
+- [x] Modo configurável em opções (e migrado de `emptySettings` / load com fallback).
+- [x] Comparação lado a lado: mesmo contexto bruto produz markdown diferente entre modos onde previsto, sem perda de narrativa essencial.
+- [x] Modo default não reduz capacidade atual de debugging.
+- [x] Testes de builder ou snapshots de texto cobrem os dois modos.
+
+### O que foi entregue (implementação)
+
+- `extension/src/shared/capture-mode.ts` + `capture-mode.test.ts`: `debug-interno` | `producao-sensivel`, normalização no load.
+- `storage.ts` / `types.ts`: campo `captureMode` com default `debug-interno`.
+- `context-collector.ts` e `issue-builder.ts`: comportamento por modo (truncagem / fingerprint / texto).
+- `OptionsApp.tsx`: radio “Debug interno” / “Produção sensível”; `FeedbackApp.tsx` + `service-worker.ts`: exposição do modo onde necessário (ex.: `LIST_REPO_TARGETS`).
 
 ---
 
@@ -63,10 +97,19 @@ Coleta best-effort de meta tags / globais conhecidos / storage allowlist → cam
 
 ### Critérios de aceite
 
-- [ ] Campo opcional; páginas sem sinais não geram erros nem secção vazia ruidosa.
-- [ ] Não vazar storage inteiro; apenas chaves allowlist ou estratégia documentada no código.
-- [ ] Issue mostra só o que é útil e legível (sem dumps gigantes).
-- [ ] Testes com HTML/mocks mínimos validam extração e ausência de crash.
+- [x] Campo opcional; páginas sem sinais não geram erros nem secção vazia ruidosa.
+- [x] Não vazar storage inteiro; apenas chaves allowlist ou estratégia documentada no código.
+- [x] Issue mostra só o que é útil e legível (sem dumps gigantes).
+- [x] Testes com HTML/mocks mínimos validam extração e ausência de crash.
+
+### O que foi entregue (implementação)
+
+- Novo `extension/src/shared/app-environment-capture.ts` + `app-environment-capture.test.ts`: meta tags (incl. `feature-flag-*` / `experiment-*`), globais string (`__BUILD_ID__`, etc.), `__NEXT_DATA__.buildId` apenas, `__APP_CONFIG__` e **`__INITIAL_STATE__` só no nível topo** (mesmas chaves escalares / flags rasas — sem percorrer árvore Redux), `localStorage` / `sessionStorage` só via **`APP_ENV_STORAGE_KEYS_ALLOWLIST`** (documentado no módulo).
+- `context-limits.ts`: limites `appEnvFieldMax`, `appEnvCommitMax`, `appEnvFlagsMax`, chaves/valores de flags.
+- `types.ts`: `AppEnvironmentSnapshotV1` / `AppEnvironmentKeyValueV1`, campo opcional `appEnvironment` em `TechnicalContextPayload`.
+- `context-collector.ts`: `captureAppEnvironment(window)` em `try/catch`; omite campo se vazio.
+- `issue-builder.ts`: secção **Contexto da aplicação** (após achados sensíveis, antes do contexto técnico); linha de schema sem referência obsoleta a “Phase 3”.
+- `capture-mode.ts`: em `producao-sensivel`, truncagem mais agressiva de `appEnvironment` (menos flags / valores mais curtos).
 
 ---
 
@@ -157,6 +200,8 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 ## Ordem de execução
 
 Executar **na ordem das fases 1 → 8** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline e preview; por fim UX e gancho IA.
+
+**Próximo passo sugerido:** **Fase 4** (correlação ação ↔ request ↔ erro ↔ estado visual).
 
 ---
 

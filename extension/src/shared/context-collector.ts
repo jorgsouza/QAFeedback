@@ -17,6 +17,7 @@ import { detectSensitiveFindings } from "./sensitive-findings";
 import type { CaptureModeV1 } from "./types";
 import { buildViewModeHint } from "./view-layout-hint";
 import { elementIsInsideExtensionUi } from "./extension-constants";
+import { captureAppEnvironment } from "./app-environment-capture";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
 
@@ -359,6 +360,13 @@ export function buildCapturedIssueContext(params: {
     }
   }
 
+  let appEnvironment: CapturedIssueContextV1["appEnvironment"];
+  try {
+    appEnvironment = captureAppEnvironment(window);
+  } catch {
+    appEnvironment = undefined;
+  }
+
   const captured: CapturedIssueContextV1 = {
     version: 1 as const,
     page: {
@@ -415,6 +423,7 @@ export function buildCapturedIssueContext(params: {
           })),
         }
       : {}),
+    ...(appEnvironment ? { appEnvironment } : {}),
   };
   const sensitiveFindings = detectSensitiveFindings(captured);
   const merged: CapturedIssueContextV1 = sensitiveFindings.length

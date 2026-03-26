@@ -31,3 +31,31 @@ export function matchPatternsForAllowedHost(host: string): string[] {
   }
   return patterns;
 }
+
+/**
+ * Mesma noção de host permitido que `matchPatternsForAllowedHost`: exato ou subdomínio
+ * (sem wildcard para localhost / 127.0.0.1).
+ */
+export function hostnameAllowedByList(hostname: string, allowedHosts: string[]): boolean {
+  const h = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!h) return false;
+  for (const raw of allowedHosts) {
+    const base = normalizeHost(raw).toLowerCase();
+    if (!base) continue;
+    if (h === base) return true;
+    if (base === "localhost" || base === "127.0.0.1") continue;
+    if (base.includes(".") && h.endsWith(`.${base}`)) return true;
+  }
+  return false;
+}
+
+/** Só `http:`/`https:`; URLs inválidas ou não HTTP(S) → false. */
+export function urlMatchesAllowedHosts(pageUrl: string, allowedHosts: string[]): boolean {
+  try {
+    const u = new URL(pageUrl);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    return hostnameAllowedByList(u.hostname, allowedHosts);
+  } catch {
+    return false;
+  }
+}

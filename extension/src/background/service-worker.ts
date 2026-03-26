@@ -16,7 +16,11 @@ import {
 } from "../shared/jira-client";
 import { networkHarJiraDescriptionMarkdown } from "../shared/network-har-jira-help";
 import { isJiraMotivoAbertura } from "../shared/jira-motivo";
-import { BUILTIN_MATCH_PATTERNS, matchPatternsForAllowedHost } from "../shared/host-patterns";
+import {
+  BUILTIN_MATCH_PATTERNS,
+  matchPatternsForAllowedHost,
+  urlMatchesAllowedHosts,
+} from "../shared/host-patterns";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
 import { loadSettings } from "../shared/storage";
 import { normalizeGitHubRepoRef } from "../shared/github-repo-normalize";
@@ -406,6 +410,12 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ ok: false, message: "Aba desconhecida.", active: false });
             return;
           }
+          const tab = await chrome.tabs.get(tabId);
+          const pageUrl = tab.url ?? tab.pendingUrl ?? "";
+          if (!urlMatchesAllowedHosts(pageUrl, s.allowedHosts)) {
+            sendResponse({ ok: true, active: false });
+            return;
+          }
           const r = await startNetworkDiagnosticForTab(tabId);
           sendResponse({ ok: r.ok, message: r.message, active: r.active });
         } catch (err) {
@@ -584,14 +594,18 @@ chrome.runtime.onMessage.addListener(
           const jiraAttachments = [...(p.jiraImageAttachments ?? [])];
           if (s.fullNetworkDiagnostic && tabId != null) {
             try {
-              const har = await consumeNetworkHarForTab(tabId);
-              if (har) {
-                jiraAttachments.push({
-                  fileName: har.fileName,
-                  mimeType: "application/json",
-                  base64: har.base64,
-                });
-                appendHarHelp = networkHarJiraDescriptionMarkdown(har.fileName);
+              const tabForHar = await chrome.tabs.get(tabId);
+              const harUrl = tabForHar.url ?? tabForHar.pendingUrl ?? "";
+              if (urlMatchesAllowedHosts(harUrl, s.allowedHosts)) {
+                const har = await consumeNetworkHarForTab(tabId);
+                if (har) {
+                  jiraAttachments.push({
+                    fileName: har.fileName,
+                    mimeType: "application/json",
+                    base64: har.base64,
+                  });
+                  appendHarHelp = networkHarJiraDescriptionMarkdown(har.fileName);
+                }
               }
             } catch (e) {
               warnings.push(

@@ -1116,11 +1116,14 @@ export function OptionsApp() {
                 lineHeight: 1.55,
               }}
             >
-              Com o modal de feedback aberto, a extensão regista o tráfego HTTP da aba e pode anexar um ficheiro{" "}
-              <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>.har</code> ao criar a issue
-              no Jira. Requer a permissão de <strong>depurador</strong> do Chrome; se a captura falhar, feche o{" "}
-              <strong>DevTools nesta aba</strong> e tente de novo. Cabeçalhos como Cookie e Authorization são substituídos
-              por <code>[REDACTED]</code> no ficheiro exportado.
+              Com o modal de feedback aberto, a extensão regista o tráfego HTTP <strong>só da aba onde o modal está</strong>{" "}
+              e pode anexar um ficheiro{" "}
+              <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>.har</code> ao criar a issue no
+              Jira. Requer a permissão de <strong>depurador</strong> do Chrome: por limitação do navegador, o aviso «…
+              started debugging this browser» pode aparecer em <strong>todas as janelas/abas</strong> enquanto o depurador
+              estiver ligado — isso <strong>não</strong> significa que o Chat ou outros sites estão a ser gravados no HAR.
+              Se a captura falhar, feche o <strong>DevTools nesta aba</strong> e tente de novo. Cabeçalhos como Cookie e
+              Authorization são substituídos por <code>[REDACTED]</code> no ficheiro exportado.
             </span>
           </span>
         </label>
