@@ -174,6 +174,8 @@ export const shadowCss = `
   --qaf-m-border: #e2e8f0;
   --qaf-m-text: #0f172b;
   --qaf-m-muted: #62748e;
+  /* Rota (path) na faixa de estado — mais forte que o slug, sem chegar ao texto principal */
+  --qaf-route-path-strong: #3d4e64;
   --qaf-m-input: #ffffff;
   --qaf-m-input-border: #cad5e2;
   --qaf-m-placeholder: #94a3b8;
@@ -255,7 +257,7 @@ export const shadowCss = `
   min-width: 0;
 }
 
-/* SheetHeader — text-lg/semibold (RA Inspector-QA / Figma body_dialog). */
+/* SheetHeader — text-lg/semibold (Figma body_dialog). */
 .qaf-modal-title {
   margin: 0 0 8px 0;
   font-size: 18px;
@@ -272,6 +274,15 @@ export const shadowCss = `
   font-weight: 500;
   line-height: 20px;
   letter-spacing: 0.043em;
+  color: #62748e;
+}
+
+.qaf-modal-subtitle-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
   color: #62748e;
 }
 
@@ -771,72 +782,79 @@ export const shadowCss = `
 }
 
 .qaf-status-strip {
+  margin: 0 0 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.qaf-status-strip-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.qaf-status-strip-row--top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 24px;
-  margin: 0 0 16px;
+  width: 100%;
+  min-width: 0;
 }
 
-.qaf-route-chip {
+.qaf-route-slug {
   font-size: 12px;
   line-height: 1.3;
   color: var(--qaf-m-muted);
-  max-width: min(340px, 72vw);
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 1;
 }
 
-.qaf-status-strip-trailing {
+.qaf-route-path-line {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--qaf-route-path-strong);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.qaf-status-badges {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   flex-shrink: 0;
-}
-
-.qaf-status-strip-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.qaf-token-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: #22c55e;
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+.qaf-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
 }
 
-.qaf-info-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  margin: 0;
-  border: none;
-  background: transparent;
-  color: var(--qaf-m-muted);
-  cursor: help;
-  border-radius: 6px;
-  line-height: 0;
-}
-
-.qaf-info-trigger:hover {
+.qaf-status-badge--on {
   color: var(--qaf-m-primary);
-  background: rgba(15, 118, 110, 0.08);
+  background: rgba(0, 77, 55, 0.08);
+  box-shadow: 0 0 0 1px rgba(0, 77, 55, 0.22) inset;
 }
 
-.qaf-info-trigger:focus-visible {
-  outline: 2px solid var(--qaf-m-primary);
-  outline-offset: 2px;
+.qaf-status-badge--off {
+  color: var(--qaf-m-placeholder);
+  background: var(--qaf-m-surface);
+  box-shadow: 0 0 0 1px var(--qaf-m-border) inset;
 }
 
 .qaf-config-missing {
