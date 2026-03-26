@@ -390,13 +390,13 @@ export const shadowCss = `
   background: var(--qaf-m-bg);
 }
 
-/* Estado «Evidência criada» (Figma QA Automation — plugin / Trust-DS: superfície 24px, fluxo vertical). */
+/* Estado «Evidência criada» — Figma node 5:16262 / _SheetContent: gap 16 após header. */
 .qaf-body--post-submit {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 12px 24px 24px;
+  padding: 16px 24px 24px;
 }
 
 .qaf-field {
@@ -989,12 +989,15 @@ export const shadowCss = `
 }
 
 .qaf-success {
-  --qaf-success-ring: #bbf7d0;
-  --qaf-success-fill: #ecfdf5;
-  --qaf-success-icon: #166534;
+  /* check_positivo: cículo ~80px; verde sucesso alinhado a Trust secondary-600 / nota Figma #63991D */
+  --qaf-success-ring: #b6d06f;
+  --qaf-success-fill: #e2edc5;
+  --qaf-success-icon: #407d18;
 
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
   flex: 1;
   min-height: 0;
   background: transparent;
@@ -1006,17 +1009,21 @@ export const shadowCss = `
   font-size: 14px;
 }
 
+/* body_sucess Figma: coluna centrada, padding vertical 32/24, gap 20 — aqui o bloco hero concentra check+título+meta */
 .qaf-success-hero {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 20px;
+  text-align: center;
+  gap: 20px;
+  width: 100%;
+  padding: 16px 0 0;
   flex-shrink: 0;
 }
 
 .qaf-success-check {
-  width: 44px;
-  height: 44px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: var(--qaf-success-fill);
   box-shadow: 0 0 0 1px var(--qaf-success-ring) inset;
@@ -1024,25 +1031,36 @@ export const shadowCss = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
   flex-shrink: 0;
 }
 
+.qaf-success-check svg {
+  display: block;
+}
+
+/* Typography/title secondary — Evidência criada */
 .qaf-success-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--qaf-m-text);
+  line-height: 32px;
+  letter-spacing: 0.025em;
+  color: #000000;
 }
 
 .qaf-success-board-meta {
-  margin: -8px 0 16px;
-  font-size: 13px;
-  color: var(--qaf-m-muted);
-  line-height: 1.45;
+  margin: 0;
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.025em;
+  color: #62748e;
+}
+
+.qaf-success-board-meta strong {
+  font-weight: 700;
+  color: #0f172b;
 }
 
 .qaf-success-board-meta-warn {
@@ -1053,33 +1071,62 @@ export const shadowCss = `
 .qaf-success-cards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 0 0 8px;
+  gap: 14px;
+  margin: 0;
   flex-shrink: 0;
 }
 
+/* Card Figma: row, space-between, padding 24×22, border #E2E8F0, radius 12 */
 .qaf-success-card {
-  border: 1px solid var(--qaf-m-border);
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--qaf-m-bg);
+  padding: 24px 22px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.qaf-success-card-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 .qaf-success-card-head {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--qaf-m-text);
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+
+.qaf-success-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: #000000;
+}
+
+.qaf-success-card-label {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.025em;
+  color: #000000;
 }
 
 .qaf-success-card-actions {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  align-items: flex-end;
+  gap: 16px;
 }
 
 .qaf-success-card-actions a.qaf-btn {
@@ -1087,12 +1134,12 @@ export const shadowCss = `
   box-sizing: border-box;
 }
 
-/* «Acessar»: texto primário (verde #004d37) sobre contorno neutro — alinhado ao frame Figma. */
+/* «Acessar»: primário #004D37 (Trust primary-700) sobre secondary outline — paridade com print / marca. */
 .qaf-btn-access {
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-bg);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
   color: var(--qaf-m-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .qaf-btn-access:hover {
@@ -1102,17 +1149,33 @@ export const shadowCss = `
 }
 
 .qaf-btn-sm {
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.025em;
   border-radius: 8px;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+.qaf-success-card-actions .qaf-btn-secondary {
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
+  font-weight: 500;
+}
+
+.qaf-success-card-actions .qaf-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .qaf-success-card-actions .qaf-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .qaf-footer-eq {
@@ -1150,9 +1213,27 @@ export const shadowCss = `
   padding: 8px 16px;
   font-weight: 500;
   font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.025em;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.qaf-success-footer .qaf-btn-submit {
+  background: #004d37;
+  color: #f8fafc;
+}
+
+.qaf-success-footer .qaf-btn-secondary {
+  background: #ffffff;
+  border: 1px solid #cad5e2;
+  color: #0f172b;
+}
+
+.qaf-success-footer .qaf-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .qaf-footer-eq-row--stack .qaf-btn {
