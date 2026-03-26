@@ -494,47 +494,14 @@ Ajustar throttles e ruído.
 
 ---
 
-## ETAPA 6 — Melhorar preview e consistência do snapshot
-
-### Objetivo
-Garantir que o preview mostre algo mais próximo do que será enviado.
-
-### O que implementar
-
-#### 6.1. Extrair builder de payload atual
-Criar helper compartilhado para preview e submit.
-
-#### 6.2. Refresh controlado do snapshot
-Atualizar snapshot quando:
-- abrir preview;
-- houver nova request relevante;
-- surgir erro relevante;
-- houver nova ação importante.
-
-#### 6.3. Indicador opcional de “contexto atualizado”
-Opcional:
-- timestamp
-- botão “Atualizar contexto”
-
-### Arquivos a tocar
-- `extension/src/ui/FeedbackApp.tsx`
-- novo: `extension/src/shared/build-current-issue-payload.ts`
-
-### Critérios de aceite
-- preview e submit usam a mesma base;
-- menos chance de divergência;
-- sem excesso de rerender.
-
----
-
-## ETAPA 7 — Atualizar UX e comunicação da ferramenta
+## ETAPA 6 — Atualizar UX e comunicação da ferramenta
 
 ### Objetivo
 Fazer a UI refletir melhor o poder real do produto.
 
 ### O que implementar
 
-#### 7.1. Atualizar texto de “Incluir contexto técnico”
+#### 6.1. Atualizar texto de “Incluir contexto técnico”
 Novo texto deve refletir:
 - rota e ambiente técnico;
 - timeline;
@@ -543,17 +510,17 @@ Novo texto deve refletir:
 - runtime/performance;
 - achados sensíveis, quando encontrados.
 
-#### 7.2. Atualizar linguagem do preview
+#### 6.2. Atualizar linguagem do preview
 Deixar claro que:
 - o sistema resume automaticamente contexto;
 - anexos e HAR são apoio;
 - achados sensíveis podem ser sinalizados.
 
-#### 7.3. Remover menções de fase defasadas
+#### 6.3. Remover menções de fase defasadas
 Trocar “Phase 3” por algo neutro como:
 - `Schema de contexto: v1`
 
-#### 7.4. Melhorar UX de confiança
+#### 6.4. Melhorar UX de confiança
 Mostrar quando:
 - rede está sendo capturada;
 - modo atual é debug interno ou produção sensível;
@@ -569,7 +536,7 @@ Mostrar quando:
 
 ---
 
-## ETAPA 8 — Preparar base para IA e classificação automática
+## ETAPA 7 — Preparar base para IA e classificação automática
 
 ### Objetivo
 Deixar a arquitetura pronta para:
@@ -581,17 +548,17 @@ Deixar a arquitetura pronta para:
 
 ### O que implementar
 
-#### 8.1. Separar melhor contexto bruto e contexto para narrativa
+#### 7.1. Separar melhor contexto bruto e contexto para narrativa
 Criar estruturas claras:
 - contexto bruto;
 - contexto resumido;
 - output de issue.
 
-#### 8.2. Criar helper de input para IA
+#### 7.2. Criar helper de input para IA
 Novo módulo:
 - `extension/src/shared/ai-issue-input-builder.ts`
 
-#### 8.3. Incluir findings de segurança no input
+#### 7.3. Incluir findings de segurança no input
 A IA futura deve receber:
 - action principal
 - request principal
@@ -600,7 +567,7 @@ A IA futura deve receber:
 - app environment
 - sensitive findings
 
-#### 8.4. Não integrar IA agora
+#### 7.4. Não integrar IA agora
 Só preparar a base.
 
 ### Arquivos a tocar
@@ -625,9 +592,10 @@ Executar nesta ordem:
 3. **Etapa 3 — Captura de ambiente da aplicação**
 4. **Etapa 4 — Correlação entre sinais**
 5. **Etapa 5 — Timeline mais rica**
-6. **Etapa 6 — Preview consistente**
-7. **Etapa 7 — UX e comunicação**
-8. **Etapa 8 — Preparação para IA**
+6. **Etapa 6 — UX e comunicação**
+7. **Etapa 7 — Preparação para IA**
+
+**Nota:** A antiga etapa «Preview consistente» (helper partilhado preview/submit, refresh ao abrir preview) foi **retirada do âmbito**: o separador Preview será descontinuado; não há trabalho planejado nessa linha.
 
 ## Justificativa
 - primeiro reforçar valor em segurança sem destruir contexto;
@@ -704,6 +672,5 @@ Comece pela Etapa 1 deste plano (**PRD-010**).
 - [ ] Etapa 3 — Captura de ambiente da aplicação
 - [ ] Etapa 4 — Correlação entre sinais
 - [ ] Etapa 5 — Timeline mais rica
-- [ ] Etapa 6 — Preview consistente
-- [ ] Etapa 7 — UX e comunicação atualizadas
-- [ ] Etapa 8 — Base preparada para IA
+- [ ] Etapa 6 — UX e comunicação atualizadas
+- [ ] Etapa 7 — Base preparada para IA

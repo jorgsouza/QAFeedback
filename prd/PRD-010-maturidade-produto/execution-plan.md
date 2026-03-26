@@ -14,9 +14,10 @@
 | **3** — Contexto da aplicação | **Concluída** |
 | **4** — Correlação ação ↔ rede ↔ erro | **Concluída** |
 | **5** — Timeline mais rica | **Concluída** |
-| **6** — Preview alinhado ao submit | Pendente |
-| **7** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
-| **8** — Base para IA | Pendente |
+| **6** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
+| **7** — Base para IA | Pendente |
+
+**Fora do plano de execução:** alinhamento Preview ↔ submit (antiga Fase 6) — o separador Preview será removido; não há trabalho planejado nessa linha.
 
 **Entregas transversais já feitas (ligadas ao PRD-010, fora da numeração estrita):**
 
@@ -166,24 +167,7 @@ Eventos adicionais ou refinados no bridge + timeline + limites: scroll com limia
 
 ---
 
-## Fase 6 — Preview alinhado ao submit
-
-**Histórias / objetivos:** o que o QA vê no preview é o mesmo núcleo de payload que segue para Jira/GitHub (menos divergência).
-
-### O quê construir (vertical)
-
-Um caminho único para montar “issue atual” usado por preview e envio; refresh em momentos definidos (abrir preview, request relevante nova, erro relevante, ação importante); opcional: indicador de “contexto atualizado”.
-
-### Critérios de aceite
-
-- [ ] Preview e submit partilham helper/builder comum.
-- [ ] Casos manuais: alterar rede/erro após abrir preview comporta-se como especificado.
-- [ ] Sem loops de renderização ou custo excessivo no painel.
-- [ ] Testes cobrem o builder partilhado.
-
----
-
-## Fase 7 — UX e comunicação
+## Fase 6 — UX e comunicação
 
 **Histórias / objetivos:** UI reflete capacidades reais (contexto técnico, achados, modos, rede).
 
@@ -193,14 +177,14 @@ Copys em `FeedbackApp` / labels: o que é capturado, avisos de achados sensívei
 
 ### Critérios de aceite
 
-- [ ] Textos alinhados ao comportamento pós-fases 1–6.
+- [ ] Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
 - [ ] Utilizador percebe modo ativo e se houve achados (sem alarmismo).
 - [ ] Não há promessas que o código não cumpre.
 - [ ] Revisão rápida visual (smoke) nos fluxos principais.
 
 ---
 
-## Fase 8 — Base para IA (sem integração externa)
+## Fase 7 — Base para IA (sem integração externa)
 
 **Histórias / objetivos:** estrutura explícita “bruto vs resumido vs saída” + objeto estável para futura classificação/título.
 
@@ -218,9 +202,9 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 ## Ordem de execução
 
-Executar **na ordem das fases 1 → 8** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline e preview; por fim UX e gancho IA.
+Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline; por fim UX e gancho IA. A etapa de preview consistente foi retirada do âmbito.
 
-**Próximo passo sugerido:** **Fase 6** (preview alinhado ao submit).
+**Próximo passo sugerido:** **Fase 6** (UX e comunicação).
 
 ---
 

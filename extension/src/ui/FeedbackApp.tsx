@@ -476,7 +476,7 @@ export function FeedbackApp() {
   }, []);
 
   const onRegionScreenshot = useCallback(async () => {
-    if (!jiraTokenConfigured || !form.sendToJira) return;
+    if (!jiraTokenConfigured) return;
     if (pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES) {
       setError(`Limite de ${JIRA_FEEDBACK_MAX_IMAGES} imagens.`);
       return;
@@ -505,7 +505,7 @@ export function FeedbackApp() {
     } finally {
       setRegionScreenshotBusy(false);
     }
-  }, [addImageFiles, form.sendToJira, jiraTokenConfigured, pendingImages.length]);
+  }, [addImageFiles, jiraTokenConfigured, pendingImages.length]);
 
   const loadRepoTargets = useCallback(async () => {
     const gen = ++integrationsLoadGenRef.current;
@@ -825,12 +825,18 @@ export function FeedbackApp() {
       };
 
       if (res && res.ok && (res.githubUrl || res.jiraUrl)) {
+        const warnings = [...(res.warnings ?? [])];
+        if (!form.sendToJira && pendingImages.length > 0) {
+          warnings.push(
+            "Há imagens anexadas, mas só são enviadas ao Jira. Marque «Enviar para Jira» e envie de novo para as incluir.",
+          );
+        }
         setPostSubmit({
           github: res.githubUrl,
           jira: res.jiraUrl,
           jiraIssueBrowse: res.jiraIssueBrowseUrl,
           jiraBoardIdUsed: res.jiraSoftwareBoardIdUsed,
-          warnings: res.warnings,
+          warnings: warnings.length ? warnings : undefined,
         });
       } else {
         setError((res as { message?: string }).message ?? "Falha ao enviar feedback.");
@@ -1433,7 +1439,7 @@ export function FeedbackApp() {
                             value={form.whatHappened}
                             onChange={onField("whatHappened")}
                             onPaste={(e) => {
-                              if (!jiraTokenConfigured || !form.sendToJira) return;
+                              if (!jiraTokenConfigured) return;
                               const items = e.clipboardData?.items;
                               if (!items?.length) return;
                               const files: File[] = [];
@@ -1491,7 +1497,7 @@ export function FeedbackApp() {
                           </button>
                         </div>
                       </div>
-                      {jiraTokenConfigured && form.sendToJira ? (
+                      {jiraTokenConfigured ? (
                         <div className="qaf-img-field">
                           <span className="qaf-label">
                             Prints do problema (opcional) - {pendingImages.length}/{JIRA_FEEDBACK_MAX_IMAGES}
@@ -1542,9 +1548,12 @@ export function FeedbackApp() {
                               </button>
                             </div>
                             <p className="qaf-img-hint">
+                              {!form.sendToJira
+                                ? "As imagens só são enviadas ao marcar «Enviar para Jira». "
+                                : null}
                               Até {JIRA_FEEDBACK_MAX_IMAGES} imagens, {JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB
                               cada. «Capturar área» esconde o botão de feedback, permite arrastar um retângulo na página
-                              visível e anexa o recorte. Colar captura (Ctrl+V) também funciona.
+                              visível e anexa o recorte. Colar captura (Ctrl+V) na descrição também funciona.
                             </p>
                           </div>
                           {pendingImages.length > 0 ? (
