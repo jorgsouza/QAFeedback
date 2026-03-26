@@ -10,7 +10,7 @@
 
 Melhorar a **experiência de configuração** da extensão (página de opções) com **refactor de baixo risco**: reorganizar informação, clarificar fluxos e feedback visual **sem alterar o contrato de dados nem quebrar integrações** (GitHub, Jira, permissões, allowlist de quadros).
 
-## 2. Fora de âmbito (neste PRD)
+## 2. Fora de escopo (neste PRD)
 
 - Mudar o formato persistido de `ExtensionSettings` ou campos armazenados em `chrome.storage.local`.
 - Remover ou reescrever do zero o fluxo de `saveSettings` / permissões.
@@ -18,11 +18,11 @@ Melhorar a **experiência de configuração** da extensão (página de opções)
 
 ## 3. Princípio de risco
 
-**Fase 1** = só UI (layout, secções, accordion, rótulos, badges). **Sem** mudar quando disparamos load de quadros ou quando gravamos.
+**Fase 1** = só UI (layout, seções, accordion, rótulos, badges). **Sem** mudar quando disparamos load de quadros ou quando gravamos.
 
 **Fase 2** = decisão de produto sobre **feedback** vs **botão explícito**; se houver botão, implementar com cuidado para não regressar descoberta automática.
 
-**Fase 3** = estados e mensagens por secção; ainda assim, **preservar** os pontos listados na §6.
+**Fase 3** = estados e mensagens por seção; ainda assim, **preservar** os pontos listados na §6.
 
 ---
 
@@ -34,9 +34,9 @@ Melhorar a **experiência de configuração** da extensão (página de opções)
 
 | Entrega | Detalhe |
 |---------|---------|
-| Accordion | Esconder **“Como criar token”** (GitHub e/ou Jira conforme existir hoje) dentro de um **accordion** fechado por defeito. |
+| Accordion | Esconder **“Como criar token”** (GitHub e/ou Jira conforme existir hoje) dentro de um **accordion** fechado por padrão. |
 | Jira em blocos | Separar **Conexão** (e-mail, token, site se aplicável) de **Board padrão** (quadro Software / backlog destino). |
-| Secções dedicadas | **Captura avançada** (ex.: modo diagnóstico HAR, opções de rede) numa secção própria; **Domínios permitidos** noutra secção clara. |
+| Seções dedicadas | **Captura avançada** (ex.: modo diagnóstico HAR, opções de rede) numa seção própria; **Domínios permitidos** em outra seção clara. |
 | Microcopy | Melhorar **rótulos**, descrições curtas e textos de ajuda (clareza > volume). |
 | Badges de estado | Mostrar **badges** de estado (ex.: token GitHub OK, Jira conectado, permissões pendentes) alinhados ao que o código já sabe (`jiraCredsReady`, testes de conexão, etc.). |
 
@@ -51,19 +51,19 @@ Melhorar a **experiência de configuração** da extensão (página de opções)
 
 > **Atenção:** trocar para só botão **altera** a lógica de descoberta automática; exige testes manuais em opções “antes de salvar” vs “depois de salvar”, e não pode quebrar `sendJiraTestAndListBoards` / `onJiraBoardSelect`.
 
-**Critério de aceite Fase 2:** utilizador percebe **quando** a app está a falar com o Jira e **qual** o resultado; allowlist continua a filtrar a lista como hoje.
+**Critério de aceite Fase 2:** usuário percebe **quando** a app está falando com o Jira e **qual** o resultado; allowlist continua filtrando a lista como hoje.
 
 ### Fase 3 — Estados internos e feedback previsível
 
 - Separar **status** em estados explícitos por área (ex.: `idle` | `loading` | `success` | `error` para bloco Jira, bloco GitHub, domínios).
-- Mensagens de **erro** e **sucesso** **por secção** (não um único banner genérico quando evitável).
+- Mensagens de **erro** e **sucesso** **por seção** (não um único banner genérico quando evitável).
 - Reduzir surpresas: o que acontece ao **Salvar** deve estar alinhado com copy e badges.
 
 **Critério de aceite Fase 3:** QA consegue percorrer happy path e falhas comuns sem ambiguidade sobre o estado de cada bloco.
 
 ---
 
-## 5. Ficheiros prováveis
+## 5. Arquivos prováveis
 
 - `extension/src/options/OptionsApp.tsx` (principal)
 - `extension/src/options/main.tsx` (se necessário para tema/layout)

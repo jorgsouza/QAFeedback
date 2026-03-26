@@ -5,7 +5,7 @@ Cada pasta contém um **`SKILL.md`** no formato de Agent Skills do Cursor (front
 | Pasta | Uso |
 |-------|-----|
 | `deep-modules` | Módulos profundos vs rasos (Ousterhout) |
-| `grill-me` | Stress-test de planos / decisões com o utilizador |
+| `grill-me` | Stress-test de planos / decisões com o usuário |
 | `interface-design` | Interfaces testáveis (DI, efeitos, superfície) |
 | `mocking` | O que mockar e como desenhar limites |
 | `prd-to-plan` | PRD → plano por fatias verticais em `./prd/PRD-NNN-…/plan.md` (ver `prd/INDEX.md`) |

@@ -7,7 +7,7 @@
 
 ## 1. Problema: SPA e URL sem reload
 
-Em apps que usam **History API** (`pushState` / `replaceState`), a barra de endereços muda **sem** recarregar o documento. Se o React só leu `window.location` no mount, o **rótulo na UI** e o **`useMemo` do payload** podem ficar **desatualizados** até o utilizador mexer noutro estado (ex.: campo do formulário).
+Em apps que usam **History API** (`pushState` / `replaceState`), a barra de endereços muda **sem** recarregar o documento. Se o React só leu `window.location` no mount, o **rótulo na UI** e o **`useMemo` do payload** podem ficar **desatualizados** até o usuário mexer em outro estado (ex.: campo do formulário).
 
 **Estado atual do código:** `payload` em `FeedbackApp.tsx` depende de `[form, lastTarget]` — **não** reage a mudanças de URL. Ou seja, hoje o **URL no contexto técnico** também pode ficar stale após navegação SPA com o modal aberto ou entre abrir o modal e enviar.
 
@@ -40,7 +40,7 @@ Não existe magia para URLs que **nunca** passam pelo `location` do top-level (e
 
 ### 3.1 Módulo puro: resolver rota → rótulo
 
-- Novo ficheiro, ex.: `extension/src/shared/page-route-context.ts` (nome ajustável).
+- Novo arquivo, ex.: `extension/src/shared/page-route-context.ts` (nome ajustável).
 - **`resolvePageRouteInfo(location: Pick<Location, "pathname" | "search" | "hostname">): { pathname: string; search: string; label: string; routeKey: string }`**
   - `pathname` / `search`: normalizados (trim, opcionalmente colapsar `//`).
   - Regras **ordenadas** (mais específico primeiro): prefixos e regex inspirados no que QA precisa (ex.: `/home`, `/empresa/`, padrões de reclamação — lista fechada inicial, expandir com o tempo).
@@ -49,8 +49,8 @@ Não existe magia para URLs que **nunca** passam pelo `location` do top-level (e
 
 ### 3.2 Subscrição à navegação (content / mesma janela)
 
-- Novo ficheiro, ex.: `extension/src/shared/location-subscription.ts`:
-  - `subscribeToLocationChanges(cb: () => void): () => void` — regista A+B+C+D, faz patch idempotente de `history` (flag em `WeakMap` por `window` ou `Symbol` no próprio `history`).
+- Novo arquivo, ex.: `extension/src/shared/location-subscription.ts`:
+  - `subscribeToLocationChanges(cb: () => void): () => void` — registra A+B+C+D, faz patch idempotente de `history` (flag em `WeakMap` por `window` ou `Symbol` no próprio `history`).
   - Documentar que o patch é **por frame** da página; se RA usar múltiplos documentos raros, um listener por instância do content script é suficiente.
 
 ### 3.3 UI (`FeedbackApp.tsx`)
@@ -67,7 +67,7 @@ Não existe magia para URLs que **nunca** passam pelo `location` do top-level (e
   - `routeLabel: string`
   - `routeKey: string` (opcional, para filtros internos)
 - `buildTechnicalContext` em `context-collector.ts`: chamar `resolvePageRouteInfo(window.location)` e preencher os campos.
-- `buildIssueBody` / secção Markdown do contexto técnico: uma linha tipo **Rota:** `label` (`pathname`).
+- `buildIssueBody` / seção Markdown do contexto técnico: uma linha tipo **Rota:** `label` (`pathname`).
 
 ### 3.5 Envio (camada E)
 

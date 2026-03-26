@@ -1,6 +1,8 @@
 # Linguagem ubíqua — QAFeedback
 
-Vocabulário **partilhado** entre produto, QA, suporte e engenharia. Objetivo: falar da mesma coisa com os **mesmos termos** no UI, nas issues, nos PRDs e no código (nomes estáveis aparecem em `tipo_código` quando úteis).
+Documento em **português do Brasil (pt-BR)**.
+
+Vocabulário **compartilhado** entre produto, QA, suporte e engenharia. Objetivo: falar da mesma coisa com os **mesmos termos** no UI, nas issues, nos PRDs e no código (nomes estáveis aparecem em `tipo_código` quando úteis).
 
 **Manutenção:** ao introduzir conceito novo na UI ou no contrato de contexto (`CapturedIssueContextV1`, etc.), atualize este arquivo em uma linha.
 
@@ -16,7 +18,7 @@ Vocabulário **partilhado** entre produto, QA, suporte e engenharia. Objetivo: f
 | **Chamado** (coloquial) | No dia a dia de QA, às vezes usado como sinônimo de **ticket Jira** ou **pedido registrado**; na documentação técnica preferimos **issue** ou **ticket Jira**. | — |
 | **Contexto técnico** | Bloco opcional de dados sobre a **página e a sessão** (URL, timeline, rede, erros, etc.) anexado à descrição em Markdown. | `includeTechnicalContext`; agregado em `CapturedIssueContextV1`. |
 | **Contexto capturado** | **Contrato versionado** (`version: 1`) com tudo o que pode ir para a issue após sanitização e modos. | `CapturedIssueContextV1` estende `TechnicalContextPayload`. |
-| **Rascunho** | Título, descrição e opções do formulário **antes** do envio; pode manter-se ao recolher o painel. | Estado local +, em parte, `chrome.storage.session` por aba. |
+| **Rascunho** | Título, descrição e opções do formulário **antes** do envio; pode permanecer ao recolher o painel. | Estado local +, em parte, `chrome.storage.session` por aba. |
 
 ---
 
@@ -61,7 +63,7 @@ Vocabulário **partilhado** entre produto, QA, suporte e engenharia. Objetivo: f
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
-| **Requisições relevantes** | Subconjunto de pedidos HTTP (fetch/XHR) escolhido para a issue: prioridade a **falhas** e **lentos**. | `networkRequestSummaries`; secção Markdown “Requisições relevantes”. |
+| **Requisições relevantes** | Subconjunto de pedidos HTTP (fetch/XHR) escolhido para a issue: prioridade a **falhas** e **lentos**. | `networkRequestSummaries`; seção Markdown “Requisições relevantes”. |
 | **Resumo de rede** | Uma linha por pedido: método, URL sanitizada, status, duração, IDs de correlação quando existem. | `NetworkRequestSummaryEntryV1`. |
 | **URL sanitizada** | URL **sem query nem hash** na exposição típica ao Markdown (reduz vazamento de dados na URL). | Campo `url` no resumo. |
 | **Pedido falhado** (legado / consola) | Entrada simples associada a falhas ainda útil quando não há resumo completo. | `FailedRequestEntry`. |
@@ -97,7 +99,7 @@ Vocabulário **partilhado** entre produto, QA, suporte e engenharia. Objetivo: f
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
-| **Rota técnica** | `pathname` (+ query quando aplicável) para identificar o sítio na página. | `TechnicalContextPayload.page`. |
+| **Rota técnica** | `pathname` (+ query quando aplicável) para identificar o site na página. | `TechnicalContextPayload.page`. |
 | **Slug de rota** | Identificador curto estável para UI (ex.: `ra-notifications`). | `routeSlug`. |
 | **Rótulo de rota** | Nome legível para humanos (ex.: “Home”). | `routeLabel`. |
 
@@ -132,7 +134,7 @@ Vocabulário **partilhado** entre produto, QA, suporte e engenharia. Objetivo: f
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
-| **Resumo / leitura rápida** | Texto derivado do contexto para humanos lerem antes do bloco técnico longo. | `issue-narrative.ts` / secções na issue. |
+| **Resumo / leitura rápida** | Texto derivado do contexto para humanos lerem antes do bloco técnico longo. | `issue-narrative.ts` / seções na issue. |
 
 ---
 

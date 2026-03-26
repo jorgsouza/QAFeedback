@@ -1,13 +1,13 @@
 # Plano: Modo diagnóstico de rede (HAR) + anexo Jira
 
-> Fonte: alinhamento em conversa (captura CDP na aba do feedback, anexo no Jira, redação sensível por defeito, sem truncamento inicial, sem filtro de hosts obrigatório).
+> Fonte: alinhamento em conversa (captura CDP na aba do feedback, anexo no Jira, redação sensível por padrão, sem truncamento inicial, sem filtro de hosts obrigatório).
 
 ## Decisões de arquitetura (duráveis)
 
-- **Mecanismo de captura:** `chrome.debugger` na **mesma aba** onde o modal de feedback corre, com Chrome DevTools Protocol — domínio **Network** (eventos + leitura de corpos quando aplicável). Não há API para “ler o histórico do painel Network”; o ficheiro exportado reflete o que a extensão gravou enquanto estava anexada.
-- **Formato do ficheiro:** **HAR 1.2** (compatível com import no Chrome DevTools → Network), nome sugerido `qa-feedback-network.har` ou com timestamp.
+- **Mecanismo de captura:** `chrome.debugger` na **mesma aba** onde o modal de feedback corre, com Chrome DevTools Protocol — domínio **Network** (eventos + leitura de corpos quando aplicável). Não há API para “ler o histórico do painel Network”; o arquivo exportado reflete o que a extensão gravou enquanto estava anexada.
+- **Formato do arquivo:** **HAR 1.2** (compatível com import no Chrome DevTools → Network), nome sugerido `qa-feedback-network.har` ou com timestamp.
 - **Destino:** reutilizar o fluxo atual de **anexos Jira** após criar a issue (multipart, base64 no payload entre UI e service worker), tal como imagens — novo anexo com `mimeType` adequado para `.har` (tipicamente `application/json`).
-- **Permissão:** `debugger` no manifest; **pedido explícito** ao utilizador na primeira utilização do modo (ou ao gravar), com texto claro sobre o que faz.
+- **Permissão:** `debugger` no manifest; **pedido explícito** ao usuário na primeiro uso do modo (ou ao gravar), com texto claro sobre o que faz.
 - **Privacidade (default):** **redigir** headers e campos equivalentes sensíveis (ex.: `Cookie`, `Authorization`, `Set-Cookie`, variantes comuns) no HAR exportado; opção futura ou sub-toggle “incluir dados sensíveis” apenas se o produto precisar (fora do MVP se não for exigido já na primeira entrega).
 - **Tamanho:** **sem truncamento** na primeira versão; monitorizar falhas de upload Jira / memória e rever se necessário.
 - **Filtro de hosts:** **não obrigatório** no MVP (uso apenas em ambientes já alinhados).
@@ -26,7 +26,7 @@
 - Opção nas **definições** (guardada em `chrome.storage`) que ativa o modo diagnóstico.
 - Ao abrir o fluxo de feedback numa aba elegível, se o modo estiver ligado: solicitar **permissão `debugger`** se ainda não concedida; em seguida **anexar** o depurador à aba, **ativar** o domínio Network e **desanexar** ao fechar o modal / após envio / em caso de erro fatal — sem vazar sessões órfãs.
 - Indicador simples no modal (estado: a capturar / erro / desligado) e o aviso sobre **DevTools na mesma aba**.
-- Entrega verificável: com o modo ligado, o attach funciona na maioria dos sites `http(s)`; com DevTools aberto, o utilizador vê falha ou aviso conforme comportamento real do Chrome testado.
+- Entrega verificável: com o modo ligado, o attach funciona na maioria dos sites `http(s)`; com DevTools aberto, o usuário vê falha ou aviso conforme comportamento real do Chrome testado.
 
 ### Critérios de aceitação
 
@@ -57,9 +57,9 @@
 
 ---
 
-## Fase 3: Serialização HAR 1.2 + redação por defeito
+## Fase 3: Serialização HAR 1.2 + redação por padrão
 
-**Histórias:** Como organização, quero que o anexo predefinido minimize vazamento de credenciais; como dev, quero importar o ficheiro no DevTools.
+**Histórias:** Como organização, quero que o anexo predefinido minimize vazamento de credenciais; como dev, quero importar o arquivo no DevTools.
 
 ### O que construir
 
@@ -69,7 +69,7 @@
 
 ### Critérios de aceitação
 
-- [ ] Ficheiro gerado abre no Chrome DevTools → Import HAR sem erro em caso de uso feliz.
+- [ ] Arquivo gerado abre no Chrome DevTools → Import HAR sem erro em caso de uso feliz.
 - [ ] Headers redigidos não aparecem com valores originais no JSON final (testes cobrem casos principais).
 - [ ] Comentário ou campo `comment` no HAR opcional indicando que passou por redação (útil para o dev).
 
@@ -82,14 +82,14 @@
 ### O que construir
 
 - Incluir o HAR serializado no **mesmo pipeline** de anexos pós-criação da issue (paralelo às imagens), com nome e tipo MIME corretos.
-- Acrescentar à **descrição** (ou primeiro comentário, conforme for mais simples no código existente) um bloco curto em Markdown: o que é o ficheiro, como importar no DevTools, aviso de dados operacionais/redigidos.
+- Acrescentar à **descrição** (ou primeiro comentário, conforme for mais simples no código existente) um bloco curto em Markdown: o que é o arquivo, como importar no DevTools, aviso de dados operacionais/redigidos.
 - Se o upload do anexo falhar (ex.: limite de tamanho Jira), **avisar** no resultado do envio (já existe padrão de `warnings` no fluxo).
 
 ### Critérios de aceitação
 
 - [ ] Com Jira selecionado e modo diagnóstico ligado, issue criada contém anexo `.har` quando houve captura (ou política definida para “sessão vazia” — ex.: não anexar ou anexar HAR vazio mínimo; **decisão explícita na implementação**).
 - [ ] Texto de ajuda visível no Jira no caso escolhido (descrição vs comentário).
-- [ ] Falha de anexo não impede criação da issue; utilizador vê aviso.
+- [ ] Falha de anexo não impede criação da issue; usuário vê aviso.
 
 ---
 
@@ -99,14 +99,14 @@
 
 ### O que construir
 
-- Copiar de UI revisado: toggle, explicação do modo, aviso DevTools, explicação da redação por defeito.
+- Copiar de UI revisado: toggle, explicação do modo, aviso DevTools, explicação da redação por padrão.
 - Comportamento definido para: aba não injetável, recarregar página durante o modal, mudança de tab (se aplicável), timeout do service worker MV3 (persistência ou reattach — **decisão técnica** documentada no código).
 - Atualizar `extension/README.md` (ou documentação existente do projeto) com: permissão debugger, privacidade, limites conhecidos (Jira, memória).
 
 ### Critérios de aceitação
 
 - [ ] Fluxos acima têm comportamento definido e testado manualmente (checklist no PR).
-- [ ] Documentação utilizador-alvo atualizada de forma sucinta.
+- [ ] Documentação usuário-alvo atualizada de forma sucinta.
 
 ---
 

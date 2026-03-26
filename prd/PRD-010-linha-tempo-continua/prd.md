@@ -182,4 +182,4 @@ Resultado esperado:
 ### Ver também
 
 - **Análise de execução** (estado no código): [analise-execucao.md](analise-execucao.md).
-- **Documentação técnica da extensão:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) — secção *Linha do tempo contínua (mesma aba)* e tabela de mensagens do service worker.
+- **Documentação técnica da extensão:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) — seção *Linha do tempo contínua (mesma aba)* e tabela de mensagens do service worker.

@@ -30,10 +30,10 @@
 
 Aplicam-se a todas as fases; as fases só variam **comportamento**, não estes alicerces.
 
-- **Sanitização**: manter postura **leve por defeito** (URL sem query/hash; atributos sensíveis por nome; sem endurecimento agressivo global). Reforços são **por modo**, não default cego.
+- **Sanitização**: manter postura **leve por padrão** (URL sem query/hash; atributos sensíveis por nome; sem endurecimento agressivo global). Reforços são **por modo**, não default cego.
 - **Schema de contexto**: evoluções são **incrementais** em `CapturedIssueContext` (ou equivalente): campos opcionais, versão estável, compatível com issues já geradas.
-- **Issue (Markdown/ADF)**: novas secções são **aditivas**; texto continua legível sem ferramentas externas; **nunca** imprimir segredos completos no corpo principal — apenas tipo, fonte, severidade sugerida, preview truncado, fingerprint quando fizer sentido.
-- **Detecção de segurança**: heurísticas sobre **dados já capturados**; saída sempre **probabilística** (“possível”, “indício”, confiança baixa onde aplicável); fora de âmbito: pentest automático, ASVS completo, análise de servidor.
+- **Issue (Markdown/ADF)**: novas seções são **aditivas**; texto continua legível sem ferramentas externas; **nunca** imprimir segredos completos no corpo principal — apenas tipo, fonte, severidade sugerida, preview truncado, fingerprint quando fizer sentido.
+- **Detecção de segurança**: heurísticas sobre **dados já capturados**; saída sempre **probabilística** (“possível”, “indício”, confiança baixa onde aplicável); fora de escopo: pentest automático, ASVS completo, análise de servidor.
 - **Armazenamento de preferências**: `chrome.storage.local` + objeto `ExtensionSettings` existente; novos campos com defaults que **não empobrecem** o modo debug interno.
 - **Superfícies de integração**: `context-collector` consolida; `issue-builder` / narrative renderizam; UI de feedback e página de opções refletem estado e modo sem duplicar regras de negócio.
 
@@ -45,14 +45,14 @@ Aplicam-se a todas as fases; as fases só variam **comportamento**, não estes a
 
 ### O quê construir (vertical)
 
-Pipeline que, a partir do snapshot já agregado (rede resumida, console, runtime, DOM alvo, URLs sanitizadas), produz **lista normalizada de achados** e uma secção dedicada na issue (“Achados sensíveis / segurança”), com preview controlado e linguagem não conclusiva.
+Pipeline que, a partir do snapshot já agregado (rede resumida, console, runtime, DOM alvo, URLs sanitizadas), produz **lista normalizada de achados** e uma seção dedicada na issue (“Achados sensíveis / segurança”), com preview controlado e linguagem não conclusiva.
 
 ### Critérios de aceite
 
 - [x] Achados derivam apenas de fontes já presentes na captura; ausência de dados não quebra o fluxo.
 - [x] Tipos estáveis para achado (espécie, severidade sugerida, fonte, local/resumo, preview truncado, fingerprint opcional).
-- [x] Secção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
-- [x] Nenhum token/segredo completo no corpo principal por defeito.
+- [x] Seção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
+- [x] Nenhum token/segredo completo no corpo principal por padrão.
 - [x] Testes cobrem casos representativos (JWT-like, Bearer, PII óbvia, mensagem de erro “suspeita” com flag de baixa confiança).
 
 ### O que foi entregue (implementação)
@@ -60,7 +60,7 @@ Pipeline que, a partir do snapshot já agregado (rede resumida, console, runtime
 - `extension/src/shared/sensitive-findings.ts` + `sensitive-findings.test.ts`: heurísticas e normalização de achados.
 - Tipos em `types.ts` (`TechnicalContextPayload` / achados versão estáveis).
 - `context-collector.ts`: agrega achados a partir do snapshot existente.
-- `issue-builder.ts`: secção dedicada na issue + testes atualizados.
+- `issue-builder.ts`: seção dedicada na issue + testes atualizados.
 
 ---
 
@@ -94,11 +94,11 @@ Definir modo persistido (ex.: `debug-interno` | `producao-sensivel`) com default
 
 ### O quê construir (vertical)
 
-Coleta best-effort de meta tags / globais conhecidos / storage allowlist → campo estruturado no contexto → secção “Contexto da aplicação” na issue; limites e truncagem alinhados a `context-limits`.
+Coleta best-effort de meta tags / globais conhecidos / storage allowlist → campo estruturado no contexto → seção “Contexto da aplicação” na issue; limites e truncagem alinhados a `context-limits`.
 
 ### Critérios de aceite
 
-- [x] Campo opcional; páginas sem sinais não geram erros nem secção vazia ruidosa.
+- [x] Campo opcional; páginas sem sinais não geram erros nem seção vazia ruidosa.
 - [x] Não vazar storage inteiro; apenas chaves allowlist ou estratégia documentada no código.
 - [x] Issue mostra só o que é útil e legível (sem dumps gigantes).
 - [x] Testes com HTML/mocks mínimos validam extração e ausência de crash.
@@ -109,7 +109,7 @@ Coleta best-effort de meta tags / globais conhecidos / storage allowlist → cam
 - `context-limits.ts`: limites `appEnvFieldMax`, `appEnvCommitMax`, `appEnvFlagsMax`, chaves/valores de flags.
 - `types.ts`: `AppEnvironmentSnapshotV1` / `AppEnvironmentKeyValueV1`, campo opcional `appEnvironment` em `TechnicalContextPayload`.
 - `context-collector.ts`: `captureAppEnvironment(window)` em `try/catch`; omite campo se vazio.
-- `issue-builder.ts`: secção **Contexto da aplicação** (após achados sensíveis, antes do contexto técnico); linha de schema sem referência obsoleta a “Phase 3”.
+- `issue-builder.ts`: seção **Contexto da aplicação** (após achados sensíveis, antes do contexto técnico); linha de schema sem referência obsoleta a “Phase 3”.
 - `capture-mode.ts`: em `producao-sensivel`, truncagem mais agressiva de `appEnvironment` (menos flags / valores mais curtos).
 
 ---
@@ -143,7 +143,7 @@ Janela temporal e regras de priorização sobre timeline + rede + erros + visual
 
 ## Fase 5 — Timeline de interação mais rica e legível
 
-**Histórias / objetivos:** fluxo reprodutível (scroll significativo, modais, troca de secções) sem ruído da própria extensão.
+**Histórias / objetivos:** fluxo reprodutível (scroll significativo, modais, troca de seções) sem ruído da própria extensão.
 
 ### O quê construir (vertical)
 
@@ -178,7 +178,7 @@ Copys em `FeedbackApp` / labels: o que é capturado, avisos de achados sensívei
 ### Critérios de aceite
 
 - [ ] Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
-- [ ] Utilizador percebe modo ativo e se houve achados (sem alarmismo).
+- [ ] Usuário percebe modo ativo e se houve achados (sem alarmismo).
 - [ ] Não há promessas que o código não cumpre.
 - [ ] Revisão rápida visual (smoke) nos fluxos principais.
 
@@ -202,7 +202,7 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 ## Ordem de execução
 
-Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline; por fim UX e gancho IA. A etapa de preview consistente foi retirada do âmbito.
+Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline; por fim UX e gancho IA. A etapa de preview consistente foi fora de escopo.
 
 **Próximo passo sugerido:** **Fase 6** (UX e comunicação).
 

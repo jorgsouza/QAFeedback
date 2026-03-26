@@ -1,5 +1,7 @@
 # Documentação — QA Feedback → GitHub e Jira
 
+**Idioma:** português do Brasil (pt-BR).
+
 Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM** com **Formulário** / **Preview**, envio para **GitHub** e/ou **Jira Cloud**. Tokens e chamadas às APIs rodam no **service worker**; o content script não recebe PAT nem API token do Jira.
 
 **Linguagem ubíqua (glossário de domínio):** [prd/LINGUAGEM-UBIQUA.md](../prd/LINGUAGEM-UBIQUA.md) — alinha termos de produto, QA e código (`CapturedIssueContextV1`, timeline, achados sensíveis, etc.).
@@ -206,8 +208,8 @@ Token ou escopos Issues (fine-grained) incorretos.
 - **Interceptar** **`fetch`** e **registrar** respostas **não OK**.
 - **Linha do tempo** (Phase 1): cliques, `submit`, `change` em campos, `input` com throttle (~2s por campo), teclas Enter/Tab/Escape, `popstate` e `history.pushState`/`replaceState` (SPA). Eventos dentro da UI da extensão (`#qa-feedback-extension-root`) são ignorados. Limites em `context-limits.ts`. O bridge só vê o **documento atual**; para manter histórico após **navegação completa na mesma aba**, o `context-collector` envia **deltas** ao SW (`QAF_TIMELINE_APPEND`) e o submit usa **`QAF_TIMELINE_GET_FOR_SUBMIT`** antes de aplicar limites de exibição — ver [Linha do tempo contínua](#linha-do-tempo-contínua-mesma-aba) e [PRD-010](../prd/PRD-010-linha-tempo-continua/prd.md).
 - **Rede resumida** (Phase 2): cada **`fetch`** e **`XMLHttpRequest`** gera uma linha com método, URL (sanitizada na montagem do contexto), status, duração (ms), e cabeçalhos de correlação quando legíveis (`x-request-id`, `x-correlation-id`, etc.). Respostas **opacas** (CORS) podem vir com status `0` sem headers. A issue usa **`## Requisições relevantes`** (prioridade: erros, depois lentas ≥3s, depois outras; máx. 20 linhas). O HAR (CDP) continua opcional e separado.
-- **Runtime e performance** (Phase 5): `window` **`error`** e **`unhandledrejection`** (mensagem, stack, ficheiro/linha quando existir, dedupe por chave); **`PerformanceObserver`** para LCP, layout-shift (CLS), `longtask` e INP (best-effort). O **`context-collector`** pode preencher **`deltaToLastClickMs`** no último erro face ao último clique da timeline. No corpo da issue: **`## Erro de runtime principal`** e **`## Sinais de performance`** quando há dados.
-- **Estado visual e DOM alvo** (Phase 4): obtidos no **`context-collector`** no momento do envio (heurísticas no DOM: diálogos/modais, busy, abas ativas; dicas de seletor / `role` / texto para o alvo), não no bridge. Secções **`## Estado visual no momento do bug`** e **`## Elemento relacionado`** quando aplicável.
+- **Runtime e performance** (Phase 5): `window` **`error`** e **`unhandledrejection`** (mensagem, stack, arquivo/linha quando existir, dedupe por chave); **`PerformanceObserver`** para LCP, layout-shift (CLS), `longtask` e INP (best-effort). O **`context-collector`** pode preencher **`deltaToLastClickMs`** no último erro em relação ao último clique da timeline. No corpo da issue: **`## Erro de runtime principal`** e **`## Sinais de performance`** quando há dados.
+- **Estado visual e DOM alvo** (Phase 4): obtidos no **`context-collector`** no momento do envio (heurísticas no DOM: diálogos/modais, busy, abas ativas; dicas de seletor / `role` / texto para o alvo), não no bridge. Seções **`## Estado visual no momento do bug`** e **`## Elemento relacionado`** quando aplicável.
 
 Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a stack pode incluir `page-bridge.js`; o Chrome pode mostrar isso na página **Errors** da extensão **sem** ser um bug do QAFeedback.
 
@@ -224,7 +226,7 @@ Quando um script do **site** (ex.: DataLive, analytics) chama `console.warn`, a 
 ## Jira: quadro no modal, allowlist e tipo Bug → Task
 
 1. **Lista de quadros** no painel usa **`listFilteredJiraBoardsForFeedback`** (via `LIST_REPO_TARGETS`): API Agile sem `projectKey` (todos os quadros), depois allowlist de build se existir — alinhado à página de opções com listagem global.
-2. **`CREATE_ISSUE`:** o modal envia **`jiraSoftwareBoardId`** no payload quando o utilizador escolhe um quadro; **`pickJiraBoardIdForCreate`** exige que esse ID esteja na mesma lista permitida (**erro** se não estiver). Só usa o quadro «predefinido» das opções quando **não** há ID explícito no pedido.
+2. **`CREATE_ISSUE`:** o modal envia **`jiraSoftwareBoardId`** no payload quando o usuário escolhe um quadro; **`pickJiraBoardIdForCreate`** exige que esse ID esteja na mesma lista permitida (**erro** se não estiver). Só usa o quadro "predefinido" das opções quando **não** há ID explícito no pedido.
 3. **`resolveJiraBoardFieldsForIssueCreate`** lê o JQL do filtro do quadro (`type IN (...)` ou `issuetype = …`). Se o tipo nas opções for **Bug**, o filtro **não** incluir Bug mas **incluir Task**, o tipo efetivo passa a **Task** (`effectiveIssueTypeName` na resposta). O POST `/issue` usa esse nome.
 4. Se o **POST /issue** falhar com erro típico de **issue type** e o tipo tentado for **Bug**, há **uma repetição** automática com **Task** (útil quando não houve resolução completa do filtro).
 

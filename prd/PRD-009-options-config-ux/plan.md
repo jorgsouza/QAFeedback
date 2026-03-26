@@ -27,18 +27,18 @@ Este plano traduz o PRD-009 em **fatias verticais** verificáveis: cada fase ent
 
 ## Fase 1: Hierarquia visual e microcopy (sem mudar lógica)
 
-**Cobertura do PRD:** Fase 1 do PRD (accordion ajuda, blocos Jira, secções dedicadas, badges, rótulos).
+**Cobertura do PRD:** Fase 1 do PRD (accordion ajuda, blocos Jira, seções dedicadas, badges, rótulos).
 
 ### O que construir
 
 1. **Accordion “Como criar o token”**  
-   O conteúdo longo de GitHub (e o equivalente de Jira, se existir como bloco sempre visível) passa para **`<details>` fechado por defeito** (ou um único accordion “Ajuda: tokens” com subsecções). O utilizador expande só quando precisa; campos de token e ações **permanecem** visíveis fora do accordion.
+   O conteúdo longo de GitHub (e o equivalente de Jira, se existir como bloco sempre visível) passa para **`<details>` fechado por padrão** (ou um único accordion “Ajuda: tokens” com subseções). O usuário expande só quando precisa; campos de token e ações **permanecem** visíveis fora do accordion.
 
 2. **Jira em dois blocos visuais**  
-   - **Conexão:** e-mail, API token, secção “Avançado” (site, etc.) se já existir agrupada — só **ordem e títulos** (`<h2>` / landmarks), não novos campos.  
+   - **Conexão:** e-mail, API token, seção “Avançado” (site, etc.) se já existir agrupada — só **ordem e títulos** (`<h2>` / landmarks), não novos campos.  
    - **Board padrão:** `<select>` de quadro + copy que explica backlog destino e allowlist de build.
 
-3. **Secções dedicadas**  
+3. **Seções dedicadas**  
    - **Captura avançada:** agrupar opções como modo diagnóstico HAR / rede completa (o que hoje já existe) sob cabeçalho e eventual `details` opcional.  
    - **Domínios permitidos:** textarea + explicação de permissão num bloco próprio, separado visualmente de GitHub/Jira.
 
@@ -52,7 +52,7 @@ Este plano traduz o PRD-009 em **fatias verticais** verificáveis: cada fase ent
 
 - [ ] Salvar, testar GitHub, preencher Jira, escolher quadro e allowlist comportam-se **igual** ao antes (happy path manual).
 - [ ] Permissões: ao salvar com hosts novos, o fluxo de `chrome.permissions.request` ainda corre e as mensagens fazem sentido.
-- [ ] Ajuda de criação de token **não** ocupa a dobra inteira com a página aberta (accordion fechado por defeito).
+- [ ] Ajuda de criação de token **não** ocupa a dobra inteira com a página aberta (accordion fechado por padrão).
 - [ ] Estrutura semântica clara: cabeçalhos por área (GitHub, Jira — Conexão / Board, Captura avançada, Domínios).
 
 ### Verificação manual mínima
@@ -76,13 +76,13 @@ Este plano traduz o PRD-009 em **fatias verticais** verificáveis: cada fase ent
 - Garantir que falhas de `sendJiraTestAndListBoards` **continuam** visíveis e que `onJiraBoardSelect` não fica bloqueado silenciosamente.
 
 **Caminho B (opcional — maior risco)**  
-- Remover ou condicionar o auto-fetch: lista vazia até o utilizador clicar **“Conectar Jira”** ou **“Atualizar quadros”**.  
+- Remover ou condicionar o auto-fetch: lista vazia até o usuário clicar **“Conectar Jira”** ou **“Atualizar quadros”**.  
 - O clique chama a **mesma** função que hoje o efeito chama (mesma mensagem ao SW).  
 - Tratar **antes de salvar**: credenciais só no estado local devem permitir o botão de teste sem persistir tudo (se já for possível hoje, documentar; se não, alinhar com PRD e não quebrar `onSave`).
 
 ### Critérios de aceite
 
-- [ ] Utilizador identifica **quando** há pedido em curso ao Jira e **qual** o resultado (sucesso / erro / lista vazia por allowlist).
+- [ ] Usuário identifica **quando** há pedido em curso ao Jira e **qual** o resultado (sucesso / erro / lista vazia por allowlist).
 - [ ] `sendJiraTestAndListBoards` e `onJiraBoardSelect` permanecem funcionais; allowlist intacta.
 - [ ] Se Caminho B: regressão testada em “credenciais novas sem salvar” vs “após salvar”.
 
@@ -94,7 +94,7 @@ Este plano traduz o PRD-009 em **fatias verticais** verificáveis: cada fase ent
 
 ---
 
-## Fase 3: Estados por secção e feedback previsível
+## Fase 3: Estados por seção e feedback previsível
 
 **Cobertura do PRD:** Fase 3 do PRD.
 
@@ -103,17 +103,17 @@ Este plano traduz o PRD-009 em **fatias verticais** verificáveis: cada fase ent
 1. **Modelo de UI (máquina de estados leve)**  
    Para cada área relevante (GitHub, Jira, Domínios — e opcionalmente “Salvar global”), manter estados do tipo: `idle` | `loading` | `success` | `error`, **derivados** de `testing`, `testingJira`, `jiraBoardsLoading`, resultado de `onSave`, etc. Evitar duplicar fonte de verdade: um hook ou objeto `sectionStatus` calculado a partir dos flags existentes.
 
-2. **Mensagens por secção**  
-   Reduzir dependência de um único `status` string para tudo; preferir **blocos** abaixo de cada secção (ou `role="status"` por região) com a última mensagem **dessa** operação. O botão Salvar pode manter um resumo curto global se útil.
+2. **Mensagens por seção**  
+   Reduzir dependência de um único `status` string para tudo; preferir **blocos** abaixo de cada seção (ou `role="status"` por região) com a última mensagem **dessa** operação. O botão Salvar pode manter um resumo curto global se útil.
 
 3. **Alinhamento com “Salvar”**  
    Copy explicando que permissões de host são pedidas ao salvar; badges após salvo bem-sucedido coerentes com o que ficou persistido.
 
 ### Critérios de aceite
 
-- [ ] QA percorre happy path e 2–3 falhas (token GitHub vazio, Jira falha API, domínios vazios) **sem ambiguidade** de qual secção falhou.
+- [ ] QA percorre happy path e 2–3 falhas (token GitHub vazio, Jira falha API, domínios vazios) **sem ambiguidade** de qual seção falhou.
 - [ ] Nenhuma regressão nos contratos da § “não quebrar” do [prd.md](./prd.md).
-- [ ] Acessibilidade: foco e leitores de ecrã recebem anúncio de erro na região correta (mínimo: `aria-live` por secção ou uma região live por prioridade).
+- [ ] Acessibilidade: foco e leitores de tela recebem anúncio de erro na região correta (mínimo: `aria-live` por seção ou uma região live por prioridade).
 
 ### Verificação manual mínima
 
@@ -140,6 +140,6 @@ Após Fase 1 estável: atualizar trechos relevantes em `extension/DOCUMENTATION.
 
 | Fase | Fatia vertical | Demonstrável quando |
 |------|----------------|----------------------|
-| **1** | Nova hierarquia + accordion + badges + secções | Abrir opções, colapsar ajuda, configurar e salvar sem mudança de dados |
+| **1** | Nova hierarquia + accordion + badges + seções | Abrir opções, colapsar ajuda, configurar e salvar sem mudança de dados |
 | **2** | Jira: feedback claro ou botão explícito | Ver estado de ligação/listagem Jira de ponta a ponta |
-| **3** | Estados e mensagens por secção | Simular erros por bloco e salvar com feedback claro |
+| **3** | Estados e mensagens por seção | Simular erros por bloco e salvar com feedback claro |

@@ -1,5 +1,7 @@
 # QA Feedback — GitHub e Jira (Chrome MV3)
 
+**Idioma da documentação:** português do Brasil (pt-BR).
+
 Extensão Chrome **Manifest V3**: envia feedback da **página em teste** para **GitHub Issues** e/ou **Jira Cloud** sem abrir outra **aba**. Tokens e chamadas às APIs ficam no **service worker**; a UI **roda** em **Shadow DOM** para não misturar CSS com o site.
 
 **Documentação técnica completa:** [DOCUMENTATION.md](./DOCUMENTATION.md)
@@ -48,7 +50,7 @@ Com **Incluir contexto técnico** ativo, o relatório Markdown inclui, entre out
 - URL, título da página, data/hora, **User-Agent**.
 - **Viewport** (janela) e **tela** (`screen`), **DPR**, **maxTouchPoints**, **pointer fine/coarse**.
 - **Indício automático** de vista desktop vs móvel vs **possível emulação no DevTools** (heurística — não há API oficial para o toggle de dispositivo).
-- **Linha do tempo da interação** (cliques, navegação SPA, inputs relevantes — exceto UI da extensão), via **page-bridge**; em **navegações completas na mesma aba**, o histórico é **acumulado no service worker** por `tabId` e fundido no envio (ver secção dedicada em [DOCUMENTATION.md](./DOCUMENTATION.md#linha-do-tempo-contínua-mesma-aba) e [PRD-010](../prd/PRD-010-linha-tempo-continua/prd.md)).
+- **Linha do tempo da interação** (cliques, navegação SPA, inputs relevantes — exceto UI da extensão), via **page-bridge**; em **navegações completas na mesma aba**, o histórico é **acumulado no service worker** por `tabId` e fundido no envio (ver seção dedicada em [DOCUMENTATION.md](./DOCUMENTATION.md#linha-do-tempo-contínua-mesma-aba) e [PRD-010](../prd/PRD-010-linha-tempo-continua/prd.md)).
 - **Requisições relevantes** (`fetch` e **XHR**): método, URL sanitizada, status, duração, IDs de correlação quando legíveis; prioridade erros e pedidos lentos.
 - **Estado visual** (diálogos/modais, busy, abas ativas) e **elemento relacionado** (dicas de seletor / `role`), quando detetados.
 - **Erro de runtime principal** e **sinais de performance** (LCP, CLS, long tasks, INP em browsers que suportam), quando houver dados.

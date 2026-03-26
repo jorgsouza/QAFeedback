@@ -1,5 +1,7 @@
 # QAFeedback
 
+Documentação deste repositório em **português do Brasil (pt-BR)**.
+
 Extensão para **Google Chrome** (Manifest V3) que ajuda equipes de **QA**, desenvolvimento e produto a **abrir issues no GitHub** e/ou no **Jira Cloud** **sem sair da página** em que estão testando. O objetivo é **menos cliques** entre “encontrei um problema aqui” e “ficou **registrado** no sistema”.
 
 ---

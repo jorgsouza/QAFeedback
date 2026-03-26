@@ -44,7 +44,7 @@ Sinais esperados:
 
 ### Critério secundário
 
-**Confiabilidade**
+**Conconfiabilidade**
 
 Sinais esperados:
 

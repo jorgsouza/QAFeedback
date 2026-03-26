@@ -29,7 +29,7 @@ Ou seja: o cenário Reclame AQUI (várias URLs na **mesma aba**) perdia eventos 
 
 ## Por que a solução proposta encaixa
 
-1. **Service worker por `tabId`:** O SW já usa `sender.tab?.id` noutros fluxos (`chrome.storage.session` por aba, rede, etc.). Mensagens `QAF_TIMELINE_APPEND` a partir do content script podem omitir `tabId` no payload e usar **`sender.tab.id`** no handler (menos spoofing).
+1. **Service worker por `tabId`:** O SW já usa `sender.tab?.id` em outros fluxos (`chrome.storage.session` por aba, rede, etc.). Mensagens `QAF_TIMELINE_APPEND` a partir do content script podem omitir `tabId` no payload e usar **`sender.tab.id`** no handler (menos spoofing).
 
 2. **`chrome.storage.session`:** Já existe padrão semelhante em `feedback-ui-session.ts` / chaves `qafTabUiV1_*`. Espelhar a timeline na session storage mitiga **restarts do SW** (MV3).
 
@@ -71,6 +71,6 @@ Ou seja: o cenário Reclame AQUI (várias URLs na **mesma aba**) perdia eventos 
 - `extension/src/shared/context-collector.ts` — append incremental a partir de snapshots do bridge.
 - `extension/src/ui/FeedbackApp.tsx` — `SESSION_START` / `SESSION_END` e leitura da timeline no submit.
 
-Fila de capturas de ecrã por aba e persistência em `chrome.storage.session` (prints pendentes) é trabalho relacionado à mesma linha (fiabilidade sob navegação), mas é separável da timeline em si.
+Fila de capturas de tela por aba e persistência em `chrome.storage.session` (prints pendentes) é trabalho relacionado à mesma linha (confiabilidade sob navegação), mas é separável da timeline em si.
 
-**Documentação técnica:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) (secção *Linha do tempo contínua (mesma aba)* e mensagens `QAF_TIMELINE_*`).
+**Documentação técnica:** [extension/DOCUMENTATION.md](../../extension/DOCUMENTATION.md) (seção *Linha do tempo contínua (mesma aba)* e mensagens `QAF_TIMELINE_*`).

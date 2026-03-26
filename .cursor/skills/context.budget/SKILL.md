@@ -2,7 +2,7 @@
 name: context-budget
 description: >-
   Reduz consumo de tokens e créditos no Cursor com leitura mínima de contexto.
-  Use quando o utilizador pedir para "ler só o necessário", diminuir custo,
+  Use quando o usuário pedir para "ler só o necessário", diminuir custo,
   definir .cursorignore/.gitignore, limitar escopo, ou trabalhar com contexto grande.
 ---
 

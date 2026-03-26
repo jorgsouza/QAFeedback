@@ -1,6 +1,6 @@
 # Plano: contexto rico para issues (**PRD-003**)
 
-> **Fonte:** [PRD-002 — `features.md`](../PRD-002-features-context-spec/features.md) — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de âmbito por agora:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
+> **Fonte:** [PRD-002 — `features.md`](../PRD-002-features-context-spec/features.md) — oito eixos (timeline, rede, estado visual, runtime, ambiente, performance, DOM, privacidade) + narrativa da issue. **Fora de escopo por enquanto:** qualquer etapa do PRD sobre IA / sugestões automáticas de título ou triagem.  
 > **Objetivo:** evoluir a extensão QA Feedback de “contexto técnico básico” para um **relato estruturado e seguro**, alinhado ao PRD, sem despejar telemetria crua.
 
 **Integração na `main`:** Phases **0–5** mergeadas via [PR #6](https://github.com/jorgsouza/QAFeedback/pull/6) (março/2026). **Phase 6** (privacidade / toggles) é opcional e independente de **documentar** ambiente/convenções do host (ver §3 e §8).
@@ -13,7 +13,7 @@
 |-------|------|--------|
 | **0** | Contrato `CapturedIssueContextV1`, `capturedContext`, `context-limits.ts` | **Feito** (na `main`) |
 | **1** | Linha do tempo (`interaction-timeline`, `page-bridge`) | **Feito** |
-| **2** | Rede resumida fetch + XHR, duração, IDs, secção Markdown | **Feito** |
+| **2** | Rede resumida fetch + XHR, duração, IDs, seção Markdown | **Feito** |
 | **3** | Narrativa (`issue-narrative` + Markdown → ADF Jira) | **Feito** (MVP: Resumo, leitura rápida, Jira com headings/listas) |
 | **4** | Estado visual + DOM alvo (`visualState`, `targetDomHint`, heurísticas no `context-collector`) | **Feito** |
 | **5** | Runtime + performance (`page-bridge` + `performanceSignals`, `deltaToLastClickMs`) | **Feito** |
@@ -49,7 +49,7 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 ### 2.2 `page-bridge.ts` (MAIN world)
 
 - Console, **fetch** (todas as conclusões + erros rede), **XHR** (`open`/`send` + `loadend`), linha do tempo (Phase 1).
-- **Phase 5:** `window` `error` e `unhandledrejection` (mensagem, stack, ficheiro/linha quando existir, dedupe); `PerformanceObserver` para LCP, layout-shift (CLS), `longtask` e INP (best-effort, conforme o browser).
+- **Phase 5:** `window` `error` e `unhandledrejection` (mensagem, stack, arquivo/linha quando existir, dedupe); `PerformanceObserver` para LCP, layout-shift (CLS), `longtask` e INP (best-effort, conforme o navegador).
 - Emite `CustomEvent` com `networkSummaries`; bridge antigo só com `failedRequests` ainda é aceite no `context-collector` (síntese temporária).
 
 ### 2.3 `context-collector.ts` + `network-summary.ts`
@@ -61,7 +61,7 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 
 ### 2.4 `issue-builder.ts` + `issue-narrative.ts` + `jira-markdown-adf.ts`
 
-- `## Resumo`, `## O que aconteceu`, `## Leitura rápida da sessão` (quando há dados), depois contexto técnico e demais secções.
+- `## Resumo`, `## O que aconteceu`, `## Leitura rápida da sessão` (quando há dados), depois contexto técnico e demais seções.
 - `## Requisições relevantes` quando há summaries; senão `## Requests com falha`.
 - Schema de contexto na issue: **Phase 3** (narrativa + timeline + rede).
 - Jira: `markdownIssueBodyToAdf(buildIssueBody(...))` para descrição em ADF.
@@ -78,13 +78,13 @@ Estas decisões devem guiar todas as fases; revisar só com motivo forte.
 |---|-----------|--------|
 | 1 | Timeline de ações | **Coberto** (Phase 1) |
 | 2 | XHR/fetch ricos | **Coberto** (Phase 2): duração, status, IDs quando legíveis; opacos → status 0 |
-| 3 | Estado visual | **Coberto** (Phase 4): diálogos, busy, abas ativas; secção Markdown quando há dados |
+| 3 | Estado visual | **Coberto** (Phase 4): diálogos, busy, abas ativas; seção Markdown quando há dados |
 | 4 | Runtime ricos | **Coberto** (Phase 5): `error` / `unhandledrejection`, dedupe, `deltaToLastClickMs` |
 | 5 | Ambiente/sessão | **Só documentação** (opcional): descrever no PRD / `DOCUMENTATION.md` como o *host* pode expor convenções (ex. `data-*`, meta) — **não depende da Phase 6** nem exige toggles de privacidade |
 | 6 | Performance | **Coberto** (Phase 5, best-effort): LCP, CLS, long tasks, INP quando suportado |
 | 7 | DOM/selector | **Coberto** (Phase 4): `targetDomHint`, `## Elemento relacionado` |
 | 8 | Privacidade | Pendente (**só Phase 6**): pipeline + toggles |
-| — | Narrativa | **MVP** (Phase 3): secções Resumo + Leitura rápida; Jira via `markdownIssueBodyToAdf` |
+| — | Narrativa | **MVP** (Phase 3): seções Resumo + Leitura rápida; Jira via `markdownIssueBodyToAdf` |
 
 ---
 
@@ -104,7 +104,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [x] Tipos exportados e usados em `issue-builder` sem regressão nas secções atuais.
+- [x] Tipos exportados e usados em `issue-builder` sem regressão nas seções atuais.
 - [x] Testes unitários nos tipos “shape” (ex.: fixture mínima serializável JSON).
 - [x] Nenhum aumento descontrolado de tamanho do payload (teste com snapshot grande truncado).
 
@@ -136,7 +136,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [x] Secção `## Requisições relevantes` com erros e lentas priorizados.
+- [x] Seção `## Requisições relevantes` com erros e lentas priorizados.
 - [x] IDs de correlação quando existem (truncados).
 - [x] URLs sem query na issue (`sanitizeUrl`).
 - [x] Testes: `network-summary.test.ts` + `issue-builder` (relevantes vs fallback falha).
@@ -156,8 +156,8 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### O que construir
 
-- Módulo dedicado que recebe `CapturedIssueContext` + texto livre do utilizador (`whatHappened`, título).
-- Gera ordem de secções alinhada ao PRD: resumo (derivado ou cópia do título + primeira frase), passos prováveis (da timeline + texto), observado/esperado (campos do formulário se existirem no futuro; hoje pode mapear só “o que aconteceu”), ambiente (subset de `page`), erro principal, requests, evidências (screenshot/HAR mencionados).
+- Módulo dedicado que recebe `CapturedIssueContext` + texto livre do usuário (`whatHappened`, título).
+- Gera ordem de seções alinhada ao PRD: resumo (derivado ou cópia do título + primeira frase), passos prováveis (da timeline + texto), observado/esperado (campos do formulário se existirem no futuro; hoje pode mapear só “o que aconteceu”), ambiente (subset de `page`), erro principal, requests, evidências (screenshot/HAR mencionados).
 - Manter **preview** editável no React sem duplicar lógica (funções puras; `buildIssueBody` continua a fonte única do Markdown).
 
 ### Critérios de aceite
@@ -169,7 +169,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Riscos
 
-- Issue fica longa — mitigação: caps por secção e link “detalhe técnico” colapsável no Markdown (opcional).
+- Issue fica longa — mitigação: caps por seção e link “detalhe técnico” colapsável no Markdown (opcional).
 
 ---
 
@@ -177,7 +177,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 **Cobre:** PRD §3 e §7 + Etapa 4.
 
-**Estado:** **concluído** na `main` — heurísticas em `context-collector.ts`, tipos em `types.ts`, secções `## Estado visual no momento do bug` e `## Elemento relacionado` em `issue-builder.ts`.
+**Estado:** **concluído** na `main` — heurísticas em `context-collector.ts`, tipos em `types.ts`, seções `## Estado visual no momento do bug` e `## Elemento relacionado` em `issue-builder.ts`.
 
 ### O que construir
 
@@ -188,7 +188,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [x] Nova secção `## Estado visual no momento do bug` (só quando houver dados não vazios).
+- [x] Nova seção `## Estado visual no momento do bug` (só quando houver dados não vazios).
 - [x] `## Elemento relacionado` com seletor sugerido quando houver testid/role útil.
 - [x] Não executar queries pesadas em DOM gigante — heurísticas limitadas (max dialogs/tabs/busy).
 
@@ -202,7 +202,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 **Cobre:** PRD §4 e §6 + Etapa 5.
 
-**Estado:** **concluído** na `main` — listeners e `PerformanceObserver` em `page-bridge.ts`; secções `## Erro de runtime principal` e `## Sinais de performance` em `issue-builder.ts`; `deltaToLastClickMs` no collector.
+**Estado:** **concluído** na `main` — listeners e `PerformanceObserver` em `page-bridge.ts`; seções `## Erro de runtime principal` e `## Sinais de performance` em `issue-builder.ts`; `deltaToLastClickMs` no collector.
 
 ### O que construir
 
@@ -213,7 +213,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 ### Critérios de aceite
 
-- [x] Secções `## Erro de runtime principal` e `## Sinais de performance` quando houver dados.
+- [x] Seções `## Erro de runtime principal` e `## Sinais de performance` quando houver dados.
 - [x] Não duplicar erros já vistos no console se forem o mesmo evento (dedupe por mensagem+stack no bridge).
 - [x] Degradação graciosa em browsers sem APIs (Safari gaps / PerformanceObserver unsupported).
 
@@ -238,7 +238,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 
 - [ ] Com safe mode, timeline e bodies não aparecem mesmo que implementados.
 - [ ] Testes unitários com strings que contêm email e tokens fictícios.
-- [ ] Paridade conceitual com `HAR_REDACTED_HEADER_NAMES` (uma lista partilhada ou import).
+- [ ] Paridade conceitual com `HAR_REDACTED_HEADER_NAMES` (uma lista compartilhada ou import).
 
 ### Riscos
 
@@ -278,7 +278,7 @@ Ordem adotada (sem IA): **modelo → timeline → rede → narrativa → visual/
 ## 8. Próximo passo operacional
 
 1. **Phase 6** (quando quiseres): pipeline de privacidade + toggles nas opções — **não é obrigatória** para fechar o checklist “ambiente / convenções do host” (isso é só doc).  
-2. Opcional **sem Phase 6:** secção em PRD ou `DOCUMENTATION.md` sobre convenções do *host* para ambiente/sessão (o que a app pode expor; o que a extensão já lê hoje).  
+2. Opcional **sem Phase 6:** seção em PRD ou `DOCUMENTATION.md` sobre convenções do *host* para ambiente/sessão (o que a app pode expor; o que a extensão já lê hoje).  
 3. Opcional: narrativa “observado/esperado” no `issue-narrative`; snapshot visual do Markdown no preview.  
 4. Opcional: marcar “nearAction” na rede com timestamp do último clique da timeline.  
 5. Opcional: toggles em opções para limite de linhas de rede / threshold de lentidão (podem ser parte da Phase 6 ou entregues antes só para rede, conforme desenho).

@@ -160,20 +160,20 @@ A issue precisa responder rapidamente:
 ## 4.3. Detecção de achados sensíveis e segurança
 A extensão deve ajudar a **sinalizar** indícios de problemas de segurança **no contexto do browser e da página** — o mesmo “tipo de preocupação” que guias OWASP para aplicações web ([OWASP Foundation](https://owasp.org/)), mas **de forma pragmática**: lista curta de **achados de alto valor**, não varredura exaustiva.
 
-**Âmbito intencional (MVP de detecção):** heurísticas sobre dados já capturados (rede resumida, headers visíveis, console, runtime, DOM alvo, URLs sanitizadas). **Fora de âmbito por agora:** pentest automatizado, análise de servidor, conformidade total ASVS/Top 10.
+**Escopo intencional (MVP de detecção):** heurísticas sobre dados já capturados (rede resumida, headers visíveis, console, runtime, DOM alvo, URLs sanitizadas). **Fora de escopo por enquanto:** pentest automatizado, análise de servidor, conformidade total ASVS/Top 10.
 
 **Categorias-alvo (inspiração OWASP; exemplos de o que procurar):**
 
 | Ângulo (referência OWASP) | O que a extensão pode tentar detetar (heurística) |
 |---------------------------|---------------------------------------------------|
-| **A02 — falhas criptográficas / segredos** | JWT-like, `Bearer`, API keys, segredos longos, credenciais em query (já removida da URL na issue — sinalizar se apareceu noutro sítio), material criptográfico em texto claro. |
+| **A02 — falhas criptográficas / segredos** | JWT-like, `Bearer`, API keys, segredos longos, credenciais em query (já removida da URL na issue — sinalizar se apareceu em outro lugar), material criptográfico em texto claro. |
 | **A05 — misconfiguration / headers** | `Set-Cookie` sem flags de segurança esperadas (ex.: `Secure`/`HttpOnly` em contexto HTTPS), headers de segurança ausentes ou fracos **se** estiverem no payload visível ao content script, CORS/reflected hints **apenas** se aparecerem em texto capturado. |
 | **A07 — falhas de identificação / sessão** | Cookies de sessão com nomes conhecidos, tokens em resposta/console, session fixation **não** — só exposição visível. |
 | **A03 — injeção (sinais fracos)** | Mensagens de erro de runtime/console com padrões típicos de SQL/HTML/JSON que **sugerem** input refletido ou erro de parser (marcar como *baixa confiança*, nunca como “confirmado”). |
 | **PII / dados sensíveis** | e-mail, CPF, outros identificadores em DOM, console ou corpo visível. |
 | **Transporte / conteúdo misto** | Indícios de recurso HTTP em página HTTPS se observável no texto capturado (best-effort). |
 
-**Saída esperada na issue:** secção dedicada com **tipo provável**, **fonte** (rede / console / DOM / erro), **severidade sugerida**, **preview truncado** — sem afirmar CVE nem “vulnerabilidade confirmada”.
+**Saída esperada na issue:** seção dedicada com **tipo provável**, **fonte** (rede / console / DOM / erro), **severidade sugerida**, **preview truncado** — sem afirmar CVE nem “vulnerabilidade confirmada”.
 
 Isso é diferente de apenas “sanitizar”: o produto **destaca** possíveis achados de segurança para o dev investigar, preservando o mínimo de contexto para reprodução.
 
@@ -595,7 +595,7 @@ Executar nesta ordem:
 6. **Etapa 6 — UX e comunicação**
 7. **Etapa 7 — Preparação para IA**
 
-**Nota:** A antiga etapa «Preview consistente» (helper partilhado preview/submit, refresh ao abrir preview) foi **retirada do âmbito**: o separador Preview será descontinuado; não há trabalho planejado nessa linha.
+**Nota:** A antiga etapa "Preview consistente" (helper compartilhado entre preview/submit, refresh ao abrir preview) **saiu do escopo**: o separador Preview será descontinuado; não há trabalho planejado nessa linha.
 
 ## Justificativa
 - primeiro reforçar valor em segurança sem destruir contexto;

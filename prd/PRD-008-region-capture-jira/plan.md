@@ -5,7 +5,7 @@
 ## Decisões
 
 - **API:** `chrome.tabs.captureVisibleTab` no service worker (já há `activeTab` + permissões de host nos sites permitidos).
-- **Área:** só o **viewport visível** (o que está no ecrã), alinhado ao que a API devolve.
+- **Área:** só o **viewport visível** (o que está na tela), alinhado ao que a API devolve.
 - **Seleção:** overlay **próprio** na página (arrastar retângulo), não o diálogo nativo do Ubuntu.
 - **Ordem crítica:** esconder host `#qa-feedback-extension-root` → remover overlay → `requestAnimationFrame` → capturar → recortar em canvas → mostrar host de novo.
 - **Mapeamento:** rect em coordenadas de viewport (CSS px) → pixels da imagem via `naturalWidth/Height` vs `innerWidth/innerHeight`.

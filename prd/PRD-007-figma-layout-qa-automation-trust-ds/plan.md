@@ -1,18 +1,18 @@
-# Plano: layout Figma «QA Automation — plugin» + Trust DS + PDF
+# Plano: layout Figma "QA Automation — plugin" + Trust DS + PDF
 
 > **Arquivo Figma:** [QA Automation — plugin](https://www.figma.com/design/6hLsb9blQzsbJglPIKwDci/QA-Automation---plugin)  
 > **Nó analisado (MCP):** `11:3550` (SECTION — artboard de documentação com variantes Mobile/Desktop, fluxo principal e sucesso).  
 > **Objetivo:** implementar na extensão Chrome a mesma hierarquia de informação do design e do PDF *QA Automation — plugin*, com aderência aos padrões **Trust DS** (componentes ou tokens espelhados no Shadow DOM).
 
-> **Nota (evolução):** além de UI, foi integrado o **quadro Jira no modal** e a **allowlist `BOARD_ID` / `VITE_JIRA_BOARD_ALLOWLIST`** (ver [PRD-005 — painel + board Jira](../PRD-005-jira-board-panel-filter/plan.md)). A regra automática do **título em quatro palavras** mantém-se como única mudança “inteligente” de conteúdo descrita abaixo; escolha de board é fluxo de dados explícito acordado depois deste PRD.
+> **Nota (evolução):** além de UI, foi integrado o **quadro Jira no modal** e a **allowlist `BOARD_ID` / `VITE_JIRA_BOARD_ALLOWLIST`** (ver [PRD-005 — painel + board Jira](../PRD-005-jira-board-panel-filter/plan.md)). A regra automática do **título em quatro palavras** permanece como única mudança “inteligente” de conteúdo descrita abaixo; escolha de board é fluxo de dados explícito acordado depois deste PRD.
 
 ### Escopo funcional (restrito)
 
 Até a introdução de **IA** no produto, a **única mudança de funcionalidade** prevista é:
 
-- **Título da issue:** preenchido **automaticamente** com as **quatro primeiras palavras** do texto da descrição («O que aconteceu» / campo equivalente), seja **digitado** ou **ditado** (Chrome ou ditado do sistema). Sempre que esse texto mudar, o título deve ser recalculado com a mesma regra (normalizar espaços em branco; considerar «palavra» como segmentos separados por espaço; se houver menos de quatro palavras, usar as que existirem).
+- **Título da issue:** preenchido **automaticamente** com as **quatro primeiras palavras** do texto da descrição ("O que aconteceu" / campo equivalente), seja **digitado** ou **ditado** (Chrome ou ditado do sistema). Sempre que esse texto mudar, o título deve ser recalculado com a mesma regra (normalizar espaços em branco; considerar "palavra" como segmentos separados por espaço; se houver menos de quatro palavras, usar as que existirem).
 
-Todo o restante neste documento (layout Figma, Trust DS, chips visuais, copy «RA Inspector», tela de sucesso, etc.) deve ser tratado como **mudança de interface e apresentação** em cima do comportamento **já existente** — **sem** novos fluxos de dados (ex.: board continua onde já está hoje nas Opções) até decisão futura com IA.
+Todo o restante neste documento (layout Figma, Trust DS, chips visuais, copy "RA Inspector", tela de sucesso, etc.) deve ser tratado como **mudança de interface e apresentação** em cima do comportamento **já existente** — **sem** novos fluxos de dados (ex.: board continua onde já está hoje nas Opções) até decisão futura com IA.
 
 ---
 
@@ -20,13 +20,13 @@ Todo o restante neste documento (layout Figma, Trust DS, chips visuais, copy «R
 
 A API do Figma respondeu com sucesso após atualização da chave. O nó `11:3550` é uma **SECTION** que agrega:
 
-- Cabeçalho promocional gigante «RA Inspector» com **pills** de contexto (ex.: «QA & Tech», «Em validação») e cores da **Brand system** Reclame AQUI (`cor-ra01`, `cor-ra14`, `cor-ra20`).
+- Cabeçalho promocional gigante "RA Inspector" com **pills** de contexto (ex.: "QA & Tech", "Em validação") e cores da **Brand system** Reclame AQUI (`cor-ra01`, `cor-ra14`, `cor-ra20`).
 - Marcadores **Mobile** / **Desktop** e screenshots de referência.
 - Frames de produto usáveis para implementação:
   - **Mobile:** `_SheetContent` (~**377×867** px), comportamento de **painel lateral / sheet** com borda esquerda.
   - Instância **`body_dialog`** (`componentId: 1:903`) — corpo do formulário.
   - Instância **`body_dialog_imagem`** — variante com contagem de prints (ex.: `6/8`).
-  - **`body_sucess`** (`11:772`) — estado pós-envio «Evidência criada».
+  - **`body_sucess`** (`11:772`) — estado pós-envio "Evidência criada".
 
 > **Nota de escala:** medidas no arquivo incluem arte de marketing em tamanho enorme (section ~12053×8139); para CSS da extensão use como referência os frames **Mobile 377px** e tokens relativos (padding, gap, tipografia), não o poster.
 
@@ -40,10 +40,10 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 |-------|----------------|------------|
 | Área do sheet | `padding: 24px`, `gap: 16px`, fundo `#FFFFFF`, borda esquerda `#E2E8F0` | Espelhar como container do modal/sidebar na extensão |
 | Avatar + header | Imagem 40×40, **RA Inspector** (`text-lg/semibold`, Inter Tight 600, 18px), subtítulo **Ferramenta de QA do Reclame AQUI** (description tertiary, `#62748E`) | Alinhar copy ao produto |
-| **Board** | `Select`: label «Board do Jira para vincular», placeholder «Selecione um board», trigger `8px 12px`, `border-radius: 12px`, borda `#CAD5E2` | **Só UI / paridade visual:** sem mudar onde o board é definido funcionalmente (Opções), salvo decisão posterior; pode ser read-only refletindo o board atual ou omitido no primeiro corte |
-| **Motivo** | Label «Motivo de abertura» + **Chips** (component set `Chips` / `1:182`): Desenvolvimento, Design, Requisito, Integração, Segurança, Em análise, Auto resolvido/Orientação | **Coincide** com `JIRA_MOTIVO_ABERTURA_OPTIONS` no código |
-| **Descrição** | «Descreva o problema» + textarea com placeholder «Aqui você pode relatar…» + **mic** em botão **Secondary**, **sm**, **icon** (`4:595`) | Já existe lógica de ditado; ajustar layout |
-| **Prints** | Label «Prints do problema (opcional) - 0/8» + dois botões **Secondary** com ícones **Upload** / **Camera**, `border-radius: 12px` | Igual ao PDF; variante `body_dialog_imagem` com `6/8` |
+| **Board** | `Select`: label "Board do Jira para vincular", placeholder "Selecione um board", trigger `8px 12px`, `border-radius: 12px`, borda `#CAD5E2` | **Só UI / paridade visual:** sem mudar onde o board é definido funcionalmente (Opções), salvo decisão posterior; pode ser read-only refletindo o board atual ou omitido no primeiro corte |
+| **Motivo** | Label "Motivo de abertura" + **Chips** (component set `Chips` / `1:182`): Desenvolvimento, Design, Requisito, Integração, Segurança, Em análise, Auto resolvido/Orientação | **Coincide** com `JIRA_MOTIVO_ABERTURA_OPTIONS` no código |
+| **Descrição** | "Descreva o problema" + textarea com placeholder "Aqui você pode relatar…" + **mic** em botão **Secondary**, **sm**, **icon** (`4:595`) | Já existe lógica de ditado; ajustar layout |
+| **Prints** | Label "Prints do problema (opcional) - 0/8" + dois botões **Secondary** com ícones **Upload** / **Camera**, `border-radius: 12px` | Igual ao PDF; variante `body_dialog_imagem` com `6/8` |
 | **Rodapé ações** | Três botões em linha (`layout_ELJWV8`, `gap: 8px`, fill horizontal): **Enviar** (variant Default, fill `#004D37`, texto `#F8FAFC`), **Copiar** (Secondary + ícone Copy), **Cancelar** (Ghost) | Ordem no Figma: **Enviar → Copiar → Cancelar** |
 | Chrome | Ícones `setting-2`, `PanelLeftClose` posicionados no topo direito | Mapear: configurações / recolher painel (decisão de produto) |
 
@@ -78,7 +78,7 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 
 - O **PDF** e o **Figma** descrevem o **mesmo fluxo** (board, chips de motivo com os sete valores, descrição, prints, três ações, sucesso com links).
 - O **repositório** já implementa envio Jira/GitHub, anexos, captura, motivos em `jira-motivo.ts` (**sem divergência de strings**).
-- **Gaps de UI** (não confundir com escopo funcional, cf. «Escopo funcional» acima): paridade com Figma/PDF — chips vs `<select>`, copy/branding «RA Inspector», rodapé e tela de sucesso conforme frames `body_sucess`, eventual **Sheet** direito 377px vs modal central atual; **board no painel** só se for apresentação, não novo fluxo de escolha.
+- **Gaps de UI** (não confundir com escopo funcional, cf. "Escopo funcional" acima): paridade com Figma/PDF — chips vs `<select>`, copy/branding "RA Inspector", rodapé e tela de sucesso conforme frames `body_sucess`, eventual **Sheet** direito 377px vs modal central atual; **board no painel** só se for apresentação, não novo fluxo de escolha.
 
 ---
 
@@ -116,7 +116,7 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 
 - [ ] Função pura ex.: `titleFromDescription(text: string): string` (4 primeiras palavras, edge cases: vazio, só espaços, pontuação colada à palavra).
 - [ ] Ligar ao state da descrição e aos caminhos de **ditado** (Chrome + SO) para manter título sincronizado.
-- [ ] UX: campo título **somente leitura**, oculto ou com hint «gerado da descrição» — alinhar ao design.
+- [ ] UX: campo título **somente leitura**, oculto ou com hint "gerado da descrição" — alinhar ao design.
 - [ ] Testes Vitest na função de extração; regressão em envio GitHub/Jira.
 
 ### Fase 2 — Shell do painel (UI)
@@ -127,7 +127,7 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 
 ### Fase 3 — Formulário (UI)
 
-- [ ] **Select** de board **apenas visual** ou omitido: não mudar onde o utilizador configura o quadro (Opções), salvo decisão futura com IA.
+- [ ] **Select** de board **apenas visual** ou omitido: não mudar onde o usuário configura o quadro (Opções), salvo decisão futura com IA.
 - [ ] **Chips** single-select para motivo (`Chip` Trust DS ou botões com `aria-pressed`).
 - [ ] Textarea + mic **Secondary sm** alinhado ao frame.
 - [ ] Bloco prints: label dinâmica `x/8`, botões com ícones upload/câmera.
@@ -139,7 +139,7 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 
 ### Fase 5 — Sucesso
 
-- [ ] Layout «Evidência criada» + dois cards (Board / Issue) com **Copiar** e **Acessar**.
+- [ ] Layout "Evidência criada" + dois cards (Board / Issue) com **Copiar** e **Acessar**.
 - [ ] **Criar novo** (limpa + volta ao form); **Fechar** fecha painel.
 
 ### Fase 6 — Responsividade
@@ -166,7 +166,7 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 | `@trust/ds` aumenta muito o `dist/` | Medir antes/depois; preferir B inicialmente |
 | Webfont (Inter Tight) | `font-face` embutido ou fallback system |
 | Título vazio (descrição vazia) | Bloquear envio ou título fallback acordado com UX |
-| Figma «Mobile» ≠ uso real desktop | Segunda variante de layout ou breakpoints no mesmo componente |
+| Figma "Mobile" ≠ uso real desktop | Segunda variante de layout ou breakpoints no mesmo componente |
 
 ---
 
@@ -185,4 +185,4 @@ A API do Figma respondeu com sucesso após atualização da chave. O nó `11:355
 
 1. Implementar **Fase 1** (título automático) na branch `feature/qa-automation-layout-trust-ds`.  
 2. Em paralelo, definir **sheet vs modal** para desktop (só UI).  
-3. Revisar com design se `#004D37` deve substituir totalmente `primary-700` Trust ou se há tema «RA» separado.
+3. Revisar com design se `#004D37` deve substituir totalmente `primary-700` Trust ou se há tema "RA" separado.
