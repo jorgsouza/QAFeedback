@@ -6,6 +6,7 @@ export const shadowCss = `
   font-size: 14px;
   line-height: 1.4;
   color: #0f172b;
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -254,21 +255,24 @@ export const shadowCss = `
   min-width: 0;
 }
 
+/* SheetHeader — text-lg/semibold (RA Inspector-QA / Figma body_dialog). */
 .qaf-modal-title {
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.033em;
-  color: var(--qaf-m-text);
+  line-height: 28px;
+  letter-spacing: 0.043em;
+  color: #0f172b;
 }
 
+/* Typography/description tertiary */
 .qaf-modal-subtitle {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.43;
+  line-height: 20px;
   letter-spacing: 0.043em;
-  color: var(--qaf-m-muted);
+  color: #62748e;
 }
 
 .qaf-modal-settings-link {
@@ -353,41 +357,45 @@ export const shadowCss = `
 
 .qaf-tabs {
   display: flex;
-  border-bottom: 1px solid var(--qaf-m-border);
+  border-bottom: 1px solid #e2e8f0;
   margin-top: 16px;
   padding: 0 24px;
   background: var(--qaf-m-bg);
 }
 
+/* Tabs estilo Trust / Figma: inativo slate, ativo primary-700 + indicador. */
 .qaf-tab {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 12px 12px 10px;
+  padding: 12px 8px 10px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--qaf-m-muted);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
+  color: #62748e;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .qaf-tab:hover {
-  color: var(--qaf-m-text);
+  color: #0f172b;
 }
 
 .qaf-tab-active {
-  color: var(--qaf-m-primary);
-  border-bottom-color: var(--qaf-m-primary);
+  color: #004d37;
+  border-bottom-color: #004d37;
+  font-weight: 600;
 }
 
-/* Corpo: gap 20px entre blocos (layout_LT7N9T Figma); padding lateral 24. */
+/* body_dialog Figma: gap 20 entre blocos; padding inferior 24; conteúdo alinhado à _SheetContent (24px laterais). */
 .qaf-body {
   padding: 16px 24px 24px;
   overflow: auto;
   flex: 1;
-  background: var(--qaf-m-bg);
+  background: #ffffff;
 }
 
 /* Estado «Evidência criada» — Figma node 5:16262 / _SheetContent: gap 16 após header. */
@@ -406,12 +414,13 @@ export const shadowCss = `
   margin-bottom: 20px;
 }
 
-/* text-sm/medium (Figma): Inter Tight 14 / medium */
+/* text-sm/medium — labels Select / campos (0,6px ≈ 0,043em a 14px). */
 .qaf-label {
   font-weight: 500;
   font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--qaf-m-text);
+  line-height: 20px;
+  letter-spacing: 0.043em;
+  color: #0f172b;
 }
 
 /* Label + chips: gap 14px no Figma (layout_66AZMO). */
@@ -423,12 +432,19 @@ export const shadowCss = `
 
 .qaf-input, .qaf-textarea, .qaf-select {
   width: 100%;
-  border: 1px solid var(--qaf-m-input-border);
+  border: 1px solid #cad5e2;
   border-radius: 12px;
   padding: 8px 12px;
   font: inherit;
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  background: #ffffff;
+  color: #0f172b;
+}
+
+/* _SelectTrigger / inputs: altura 48px (Figma). */
+.qaf-input,
+.qaf-select {
+  min-height: 48px;
+  line-height: 20px;
 }
 
 .qaf-input--readonly {
@@ -445,10 +461,10 @@ export const shadowCss = `
 .qaf-select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2362748e' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23000000' d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
 .qaf-textarea { min-height: 88px; resize: vertical; }
@@ -583,14 +599,16 @@ export const shadowCss = `
 }
 
 .qaf-btn-ghost {
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
   padding: 8px 12px;
   border-radius: 12px;
   font: inherit;
   font-weight: 500;
   font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -735,7 +753,7 @@ export const shadowCss = `
   justify-content: space-between;
   gap: 10px;
   min-height: 24px;
-  margin: 0 0 10px;
+  margin: 0 0 16px;
 }
 
 .qaf-route-chip {
@@ -885,8 +903,8 @@ export const shadowCss = `
 
 .qaf-btn-submit {
   border: none;
-  background: var(--qaf-m-primary);
-  color: var(--qaf-m-on-primary);
+  background: #004d37;
+  color: #f8fafc;
 }
 
 .qaf-btn-submit:hover:not(:disabled) {
@@ -899,9 +917,13 @@ export const shadowCss = `
 }
 
 .qaf-btn-secondary {
-  border: 1px solid var(--qaf-m-input-border);
-  background: transparent;
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
 }
 
 .qaf-btn-secondary:hover {
@@ -933,8 +955,8 @@ export const shadowCss = `
   font-size: 12px;
   line-height: 1.5;
   background: var(--qaf-m-surface);
-  border: 1px solid var(--qaf-m-border);
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 14px;
   max-height: 360px;
   overflow: auto;
@@ -1184,7 +1206,7 @@ export const shadowCss = `
   gap: 8px;
   margin-top: 8px;
   padding-top: 20px;
-  border-top: 1px solid var(--qaf-m-border);
+  border-top: 1px solid #e2e8f0;
 }
 
 .qaf-success-footer {
@@ -1214,10 +1236,17 @@ export const shadowCss = `
   font-weight: 500;
   font-size: 14px;
   line-height: 20px;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.043em;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
+}
+
+.qaf-footer-eq-row .qaf-btn-submit {
+  background: #004d37;
+  color: #f8fafc;
+  font-weight: 500;
 }
 
 .qaf-success-footer .qaf-btn-submit {
@@ -1245,7 +1274,7 @@ export const shadowCss = `
 .qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel {
   border: none;
   background: transparent;
-  color: var(--qaf-m-text);
+  color: #0f172b;
 }
 
 .qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel:hover {
@@ -1271,7 +1300,7 @@ export const shadowCss = `
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.05em;
-  line-height: 1.33;
+  line-height: 16px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
