@@ -48,8 +48,14 @@ function HeaderCollapseIcon() {
         stroke="currentColor"
         strokeWidth={1.5}
         strokeLinecap="round"
+        d="M8.5 5v14"
+      />
+      <path
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
         strokeLinejoin="round"
-        d="M15.75 19.5L8.25 12l7.5-7.5"
+        d="M16.25 8.25L12.5 12l3.75 3.75"
       />
     </svg>
   );
