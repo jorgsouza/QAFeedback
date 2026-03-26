@@ -1,4 +1,4 @@
-/** PRD-010 Fase 2 — como o texto técnico da issue é “fechado” para exposição. */
+/** PRD-011 Fase 2 — como o texto técnico da issue é “fechado” para exposição. */
 export type CaptureModeV1 = "debug-interno" | "producao-sensivel";
 
 export type IssueFormState = {
@@ -33,11 +33,11 @@ export type InteractionTimelineKindV1 =
   | "change"
   | "keydown"
   | "navigate"
-  /** PRD-010 Fase 5 — scroll vertical significativo (limiares no bridge). */
+  /** PRD-011 Fase 5 — scroll vertical significativo (limiares no bridge). */
   | "scroll"
-  /** PRD-010 Fase 5 — mudança em diálogo/modal visível. */
+  /** PRD-011 Fase 5 — mudança em diálogo/modal visível. */
   | "dialog"
-  /** PRD-010 Fase 5 — troca de aba/secção (role=tab selecionado). */
+  /** PRD-011 Fase 5 — troca de aba/secção (role=tab selecionado). */
   | "section";
 
 export type InteractionTimelineEntryV1 = {
@@ -60,7 +60,7 @@ export type NetworkRequestSummaryEntryV1 = {
   correlationId?: string;
   responseContentType?: string;
   /**
-   * PRD-010 Fase 4 — ms entre o instante deste pedido e a última âncora da timeline (clique/submit/navegação),
+   * PRD-011 Fase 4 — ms entre o instante deste pedido e a última âncora da timeline (clique/submit/navegação),
    * só quando o pedido ocorre **depois** da âncora e dentro da janela configurada.
    */
   deltaToLastActionMs?: number;
@@ -120,19 +120,19 @@ export type RuntimeErrorSnapshotV1 = {
    */
   deltaToLastClickMs?: number;
   /**
-   * PRD-010 Fase 4 — ms após a última âncora (clique/submit/navegação) quando o erro ocorre depois dela.
+   * PRD-011 Fase 4 — ms após a última âncora (clique/submit/navegação) quando o erro ocorre depois dela.
    */
   deltaToLastActionMs?: number;
 };
 
-/** PRD-010 Fase 3 — par chave/valor (ex.: feature flag) para a issue; valores sempre truncados na captura. */
+/** PRD-011 Fase 3 — par chave/valor (ex.: feature flag) para a issue; valores sempre truncados na captura. */
 export type AppEnvironmentKeyValueV1 = {
   key: string;
   value: string;
 };
 
 /**
- * PRD-010 Fase 3 — metadados best-effort da aplicação (build, tenant, flags quando expostos).
+ * PRD-011 Fase 3 — metadados best-effort da aplicação (build, tenant, flags quando expostos).
  * Campos opcionais; omitir o objeto inteiro quando não houver sinais.
  */
 export type AppEnvironmentSnapshotV1 = {
@@ -217,17 +217,17 @@ export type TechnicalContextPayload = {
   console: ConsoleEntry[];
   failedRequests: FailedRequestEntry[];
   /**
-   * PRD-010 — achados heurísticos (segurança/PII) sobre dados já capturados.
+   * PRD-011 — achados heurísticos (segurança/PII) sobre dados já capturados.
    * Nunca incluir valores completos de segredos; usar `samplePreview` truncado.
    */
   sensitiveFindings?: SensitiveFindingV1[];
-  /** PRD-010 Fase 3 — ambiente da app quando a página expõe sinais (meta, globais, storage allowlist). */
+  /** PRD-011 Fase 3 — ambiente da app quando a página expõe sinais (meta, globais, storage allowlist). */
   appEnvironment?: AppEnvironmentSnapshotV1;
   /** Modo aplicado na montagem do contexto (auditoria + builder). */
   captureMode?: CaptureModeV1;
 };
 
-/** PRD-010 — tipo estável de achado sensível (heurística, não confirmação). */
+/** PRD-011 — tipo estável de achado sensível (heurística, não confirmação). */
 export type SensitiveFindingKindV1 =
   | "secret_or_token"
   | "session_cookie"
@@ -313,7 +313,7 @@ export type ExtensionSettings = {
    */
   fullNetworkDiagnostic?: boolean;
   /**
-   * PRD-010 — debug interno (padrão) mantém mais texto na issue; produção sensível reduz brutos.
+   * PRD-011 — debug interno (padrão) mantém mais texto na issue; produção sensível reduz brutos.
    */
   captureMode?: CaptureModeV1;
 };

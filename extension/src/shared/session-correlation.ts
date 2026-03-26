@@ -1,5 +1,5 @@
 /**
- * PRD-010 Fase 4 — correlação temporal entre timeline, rede e erros (sem afirmar causalidade).
+ * PRD-011 Fase 4 — correlação temporal entre timeline, rede e erros (sem afirmar causalidade).
  */
 import type {
   InteractionTimelineEntryV1,

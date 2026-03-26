@@ -1,5 +1,5 @@
 /**
- * PRD-010 Fase 3 — captura best-effort de metadados da aplicação (build, ambiente, tenant, flags).
+ * PRD-011 Fase 3 — captura best-effort de metadados da aplicação (build, ambiente, tenant, flags).
  *
  * Fontes: meta tags, alguns `window.*` conhecidos, `__NEXT_DATA__.buildId`, `__APP_CONFIG__` (só chaves
  * permitidas e valores primitivos), e localStorage/sessionStorage com **allowlist** explícita

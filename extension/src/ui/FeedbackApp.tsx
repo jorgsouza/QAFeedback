@@ -347,7 +347,7 @@ export function FeedbackApp() {
   const [jiraBoardsListError, setJiraBoardsListError] = useState<string | null>(null);
   /** Opção nas definições: captura HAR com o modal aberto. */
   const [fullNetworkDiagnosticEnabled, setFullNetworkDiagnosticEnabled] = useState(false);
-  /** PRD-010 Fase 2 — modo de contexto na issue (vem das opções). */
+  /** PRD-011 Fase 2 — modo de contexto na issue (vem das opções). */
   const [captureMode, setCaptureMode] = useState<CaptureModeV1>("debug-interno");
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);

@@ -26,11 +26,11 @@ export const CAPTURE_LIMITS = {
 
   /** Ignorar novo evento se for igual ao último dentro deste intervalo (ms) */
   timelineDedupeMs: 400,
-  /** PRD-010 Fase 5 — mínimo de |ΔscrollY| (px) para registar scroll na timeline */
+  /** PRD-011 Fase 5 — mínimo de |ΔscrollY| (px) para registar scroll na timeline */
   timelineScrollMinDeltaPx: 120,
-  /** PRD-010 Fase 5 — intervalo mínimo entre entradas de scroll na timeline */
+  /** PRD-011 Fase 5 — intervalo mínimo entre entradas de scroll na timeline */
   timelineScrollThrottleMs: 900,
-  /** PRD-010 Fase 5 — debounce para agregar mutações DOM (modal/abas) */
+  /** PRD-011 Fase 5 — debounce para agregar mutações DOM (modal/abas) */
   timelineDomMutationDebounceMs: 280,
   /** Mínimo entre eventos `input` no mesmo campo (reduz ruído por tecla) */
   timelineInputThrottleMs: 2000,
@@ -42,7 +42,7 @@ export const CAPTURE_LIMITS = {
   /** Duração a partir da qual o pedido conta como “lento” no resumo */
   networkSlowThresholdMs: 3000,
   /**
-   * PRD-010 Fase 4 — janela após última ação “forte” (clique/submit/navegação) para marcar pedidos
+   * PRD-011 Fase 4 — janela após última ação “forte” (clique/submit/navegação) para marcar pedidos
    * de rede como correlacionados (ordenação e narrative; não é prova causal).
    * Não limita o buffer geral de rede/timeline — só o intervalo em que um pedido “conta como” próximo da âncora.
    */
@@ -60,7 +60,7 @@ export const CAPTURE_LIMITS = {
   /** Long tasks: quantos IDs/ocorrências manter (best-effort) */
   longTaskEntriesMax: 10,
 
-  /** PRD-010 Fase 3 — campos string do snapshot de ambiente da app */
+  /** PRD-011 Fase 3 — campos string do snapshot de ambiente da app */
   appEnvFieldMax: 120,
   appEnvCommitMax: 40,
   /** Máximo de pares key/value em featureFlags / experiments */

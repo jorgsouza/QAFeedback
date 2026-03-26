@@ -1,6 +1,6 @@
-# Plano de execução (tracer bullets): PRD-010 — Maturidade do produto
+# Plano de execução (tracer bullets): PRD-011 — Maturidade do produto
 
-> **Fonte:** [plan.md](plan.md) (PRD-010 — maturidade, debug interno, segurança pragmática OWASP-aware).  
+> **Fonte:** [plan.md](plan.md) (PRD-011 — maturidade, debug interno, segurança pragmática OWASP-aware).  
 > **Método:** fases em **fatias verticais** (cada fase entrega comportamento ponta-a-ponta: captura → tipos → issue → UI/opções quando aplicável → testes).
 
 ---
@@ -19,7 +19,7 @@
 
 **Fora do plano de execução:** alinhamento Preview ↔ submit (antiga Fase 6) — o separador Preview será removido; não há trabalho planejado nessa linha.
 
-**Entregas transversais já feitas (ligadas ao PRD-010, fora da numeração estrita):**
+**Entregas transversais já feitas (ligadas ao PRD-011, fora da numeração estrita):**
 
 - **Painel — carregamento de integrações:** estado `idle` / `loading` / `done` para `LIST_REPO_TARGETS`, evitando falso “sem token” enquanto repos/flags carregam; feedback visual no FAB (`FeedbackApp`, estilos shadow).
 - **HAR × lista de domínios:** validação defensiva com `urlMatchesAllowedHosts` antes de anexar o depurador e antes de consumir HAR no Jira (`host-patterns.ts`, `service-worker.ts`); texto nas **Opções** e tooltip do badge **HAR** explicando que o aviso global do Chrome (“started debugging…”) não implica captura de outras abas.
@@ -41,7 +41,7 @@ Aplicam-se a todas as fases; as fases só variam **comportamento**, não estes a
 
 ## Fase 1 — Detecção de achados sensíveis na issue
 
-**Histórias / objetivos do PRD-010:** sinalizar exposição indevida (segredos, sessão, PII, misconfiguration visível, injeção heurística fraca, mixed content) **sem** destruir contexto de diagnóstico.
+**Histórias / objetivos do PRD-011:** sinalizar exposição indevida (segredos, sessão, PII, misconfiguration visível, injeção heurística fraca, mixed content) **sem** destruir contexto de diagnóstico.
 
 ### O quê construir (vertical)
 

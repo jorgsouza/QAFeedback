@@ -75,7 +75,7 @@ Carregue a pasta **`extension/dist`** em **chrome://extensions** (modo desenvolv
 |---------|----------|
 | [extension/README.md](extension/README.md) | Funcionalidades completas, build, permissões, estrutura do código |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico detalhado, page-bridge, mensagens do SW |
-| [prd/](prd/) | **PRDs e planos numerados** — ver [`prd/INDEX.md`](prd/INDEX.md) (PRD-001 … PRD-010); ícone em [`prd/assets/capiQA.png`](prd/assets/capiQA.png) |
+| [prd/](prd/) | **PRDs e planos numerados** — ver [`prd/INDEX.md`](prd/INDEX.md) (PRD-001 … PRD-011); ícone em [`prd/assets/capiQA.png`](prd/assets/capiQA.png) |
 | [plans/](plans/) | Nota curta para quem ainda abre esta pasta → [`prd/INDEX.md`](prd/INDEX.md) |
 
 No Cursor: [`.cursor/skills/`](.cursor/skills/).

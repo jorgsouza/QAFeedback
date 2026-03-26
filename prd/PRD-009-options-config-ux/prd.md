@@ -100,4 +100,4 @@ Em qualquer fase, **não regressar** estes contratos e fluxos:
 
 ## 8. Relação com outros PRDs
 
-- **PRD-010** — maturidade do produto (segurança / detecção OWASP-aware, etc.) permanece **posterior** a este trabalho de UX de configuração.
+- **PRD-011** — maturidade do produto (segurança / detecção OWASP-aware, etc.) permanece **posterior** a este trabalho de UX de configuração.
