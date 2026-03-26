@@ -35,13 +35,16 @@ Vocabulário **compartilhado** entre produto, QA, suporte e engenharia. Objetivo
 
 ---
 
-## 3. Mundo da página vs extensão
+## 3. Onde o código roda (página × extensão)
+
+**“Mundo da página”** não é um termo de negócio — vem do inglês *world* na API do Chrome. Aqui significa: **o mesmo ambiente JavaScript em que o site executa** (na doc técnica: **MAIN world**). A extensão também usa um **contexto isolado** (*isolated world*) para o content script, separado do da página.
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
-| **Page bridge** | Script injectado no **MAIN world** da página: observa DOM, rede, console e emite **snapshots** para o content script. | `page-bridge.ts` → bundle `page-bridge.js`. |
+| **Contexto da página (MAIN world)** | Ambiente JS **compartilhado com os scripts do site**: o que roda aqui vê o DOM e a API da página como o site vê. O **page bridge** da extensão é injetado aqui de propósito. | Termo de API: *MAIN world*. |
+| **Page bridge** | Script **injetado** nesse contexto: observa DOM, rede, console e emite **snapshots** para o content script. | `page-bridge.ts` → bundle `page-bridge.js`. |
 | **Snapshot (bridge)** | Recorte coerente do estado observado no bridge **naquele documento** (timeline parcial, rede, etc.). | Evento `qa-feedback:snapshot`; `latestBridge` no collector. |
-| **Content script** | Código da extensão no **isolated world** — não vê variáveis da página; comunica com bridge via DOM/`CustomEvent` e com o **service worker** via mensagens. | `content.tsx`. |
+| **Content script** | Código da extensão no **contexto isolado** (*isolated world*) — **não** vê variáveis globais do site; comunica com o bridge via DOM/`CustomEvent` e com o **service worker** via mensagens. | `content.tsx`. |
 | **Service worker (SW)** | Processo em background MV3: tokens, APIs GitHub/Jira, armazenamento de **sessão de timeline** por aba, HAR, etc. | `service-worker.ts`. |
 | **UI da extensão** | Raiz conhecida para ignorar cliques na timeline (`#qa-feedback-extension-root`). | `TIMELINE_IGNORE_HOST_ID` / constantes. |
 
