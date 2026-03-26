@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { CAPTURE_LIMITS } from "./context-limits";
 import {
   attachNetworkRequestCorrelation,
   enrichAndOrderRuntimeErrors,
   lastMeaningfulTimelineAnchor,
 } from "./session-correlation";
 import type { InteractionTimelineEntryV1, NetworkRequestSummaryEntryV1, RuntimeErrorSnapshotV1 } from "./types";
+
+const CORR_WIN = CAPTURE_LIMITS.correlationWindowAfterActionMs;
 
 describe("lastMeaningfulTimelineAnchor", () => {
   it("returns most recent click submit or navigate", () => {
@@ -44,7 +47,7 @@ describe("attachNetworkRequestCorrelation", () => {
         durationMs: 10,
       },
     ];
-    const out = attachNetworkRequestCorrelation(list, anchor, 12_000);
+    const out = attachNetworkRequestCorrelation(list, anchor, CORR_WIN);
     expect(out[0]!.isCorrelated).toBe(true);
     expect(out[0]!.deltaToLastActionMs).toBe(500);
     expect(out[0]!.correlationTriggerKind).toBe("click");
@@ -60,7 +63,7 @@ describe("attachNetworkRequestCorrelation", () => {
         durationMs: 10,
       },
     ];
-    const out = attachNetworkRequestCorrelation(list, anchor, 12_000);
+    const out = attachNetworkRequestCorrelation(list, anchor, CORR_WIN);
     expect(out[0]!.isCorrelated).toBeUndefined();
   });
 });
@@ -78,7 +81,7 @@ describe("enrichAndOrderRuntimeErrors", () => {
       { at: "2025-01-01T12:00:05.000Z", kind: "error", message: "late" },
       { at: "2025-01-01T12:00:00.200Z", kind: "error", message: "soon", stack: "x".repeat(40), count: 3 },
     ];
-    const out = enrichAndOrderRuntimeErrors(errors, anchor, 12_000);
+    const out = enrichAndOrderRuntimeErrors(errors, anchor, CORR_WIN);
     expect(out[out.length - 1]!.message).toBe("soon");
     expect(out[out.length - 1]!.deltaToLastActionMs).toBe(200);
   });

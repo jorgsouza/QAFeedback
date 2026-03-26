@@ -131,7 +131,7 @@ Janela temporal e regras de priorização sobre timeline + rede + erros + visual
 ### O que foi entregue (implementação)
 
 - `extension/src/shared/session-correlation.ts` + `session-correlation.test.ts`: âncoras `click` / `submit` / `navigate`, correlação de rede na janela `correlationWindowAfterActionMs`, enriquecimento e escolha do erro “principal” com reordenação (último = destacado no builder).
-- `context-limits.ts`: `correlationWindowAfterActionMs` (12s).
+- `context-limits.ts`: `correlationWindowAfterActionMs` (45s — janela após âncora na timeline para marcar/priorizar pedidos correlacionados, não o total de histórico capturado).
 - `types.ts`: `NetworkRequestSummaryEntryV1` (`deltaToLastActionMs`, `correlationTriggerKind`, `isCorrelated`); `RuntimeErrorSnapshotV1.deltaToLastActionMs`; ordem dos tipos timeline ajustada.
 - `network-summary.ts`: desempate na escolha dos pedidos — correlacionados e mais próximos da âncora sobem.
 - `context-collector.ts`: liga correlação antes de `pickNetworkSummariesForIssue`; runtime errors via `enrichAndOrderRuntimeErrors`.

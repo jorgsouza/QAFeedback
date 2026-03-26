@@ -37,8 +37,9 @@ export const CAPTURE_LIMITS = {
   /**
    * PRD-010 Fase 4 — janela após última ação “forte” (clique/submit/navegação) para marcar pedidos
    * de rede como correlacionados (ordenação e narrative; não é prova causal).
+   * Não limita o buffer geral de rede/timeline — só o intervalo em que um pedido “conta como” próximo da âncora.
    */
-  correlationWindowAfterActionMs: 12_000,
+  correlationWindowAfterActionMs: 45_000,
 
   /** Eventos de runtime (error/unhandledrejection) incluídos na issue */
   issueRuntimeErrorEntries: 3,
