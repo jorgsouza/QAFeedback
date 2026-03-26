@@ -39,7 +39,7 @@ Vocabulário **compartilhado** entre produto, QA, suporte e engenharia. Objetivo
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
-| **Page bridge** | Script injectado no **MAIN world** da página: observa DOM, rede, consola e emite **snapshots** para o content script. | `page-bridge.ts` → bundle `page-bridge.js`. |
+| **Page bridge** | Script injectado no **MAIN world** da página: observa DOM, rede, console e emite **snapshots** para o content script. | `page-bridge.ts` → bundle `page-bridge.js`. |
 | **Snapshot (bridge)** | Recorte coerente do estado observado no bridge **naquele documento** (timeline parcial, rede, etc.). | Evento `qa-feedback:snapshot`; `latestBridge` no collector. |
 | **Content script** | Código da extensão no **isolated world** — não vê variáveis da página; comunica com bridge via DOM/`CustomEvent` e com o **service worker** via mensagens. | `content.tsx`. |
 | **Service worker (SW)** | Processo em background MV3: tokens, APIs GitHub/Jira, armazenamento de **sessão de timeline** por aba, HAR, etc. | `service-worker.ts`. |
@@ -59,14 +59,14 @@ Vocabulário **compartilhado** entre produto, QA, suporte e engenharia. Objetivo
 
 ---
 
-## 5. Rede, consola e erros
+## 5. Rede, console e erros
 
 | Termo | Significado | No código / notas |
 |-------|-------------|-------------------|
 | **Requisições relevantes** | Subconjunto de pedidos HTTP (fetch/XHR) escolhido para a issue: prioridade a **falhas** e **lentos**. | `networkRequestSummaries`; seção Markdown “Requisições relevantes”. |
 | **Resumo de rede** | Uma linha por pedido: método, URL sanitizada, status, duração, IDs de correlação quando existem. | `NetworkRequestSummaryEntryV1`. |
 | **URL sanitizada** | URL **sem query nem hash** na exposição típica ao Markdown (reduz vazamento de dados na URL). | Campo `url` no resumo. |
-| **Pedido falhado** (legado / consola) | Entrada simples associada a falhas ainda útil quando não há resumo completo. | `FailedRequestEntry`. |
+| **Pedido falhado** (legado / console) | Entrada simples associada a falhas ainda útil quando não há resumo completo. | `FailedRequestEntry`. |
 | **Erro de runtime principal** | Erro ou `unhandledrejection` destacado na issue com stack quando permitido pelo modo. | `RuntimeErrorSnapshotV1`. |
 | **Sinais de performance** | LCP, INP, CLS, long tasks (best-effort, depende do browser). | `PerformanceSignalsSnapshotV1`. |
 | **Modo diagnóstico completo** | Opção que ativa captura **HAR** (CDP) e anexo ao Jira, com redação de cabeçalhos sensíveis. | `fullNetworkDiagnostic`; permissão `debugger`. |
