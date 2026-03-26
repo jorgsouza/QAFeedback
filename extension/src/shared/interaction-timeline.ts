@@ -46,11 +46,18 @@ export function summarizeFormFieldTimeline(el: HTMLElement): string {
   return `Campo ${el.tagName.toLowerCase()} alterado`;
 }
 
-export function summarizeClickTarget(el: Element): string {
+export function summarizeClickTarget(el: Element, nested = false): string {
   const tag = el.tagName.toLowerCase();
   const role = el.getAttribute("role");
   const aria = el.getAttribute("aria-label")?.trim();
   const testid = el.getAttribute("data-testid") || el.getAttribute("data-qa");
+
+  if (!nested && (tag === "svg" || tag === "path" || tag === "use")) {
+    const host = el.closest("a,button,[role='button'],[role='link']");
+    if (host instanceof Element && host !== el) {
+      return `ícone (${tag}) em ${summarizeClickTarget(host, true)}`;
+    }
+  }
 
   if (role === "tab") {
     const text = (el.textContent || "").trim().replace(/\s+/g, " ");
@@ -65,9 +72,57 @@ export function summarizeClickTarget(el: Element): string {
     return text ? `link "${text}" (${hrefT})` : `link (${hrefT})`;
   }
 
+  if (tag === "img" && el instanceof HTMLImageElement) {
+    const btn = el.closest("button,[role='button']");
+    if (btn instanceof Element && btn !== el) {
+      const alt = el.alt?.trim();
+      const inner = summarizeClickTarget(btn, true);
+      if (alt) return `img (alt: "${truncate(alt, 52)}") no ${inner}`;
+      return `img no ${inner}`;
+    }
+    const alt = el.alt?.trim();
+    const title = el.getAttribute("title")?.trim();
+    let srcHint = "";
+    try {
+      const u = new URL(el.currentSrc || el.src, window.location.href);
+      const seg = u.pathname.split("/").filter(Boolean).pop() || u.hostname;
+      srcHint = truncate(decodeURIComponent(seg), 48);
+    } catch {
+      /* ignore */
+    }
+    const parentA = el.closest("a");
+    if (parentA instanceof HTMLAnchorElement) {
+      const pt = truncate((parentA.textContent || "").trim().replace(/\s+/g, " "), 50);
+      const href = truncate(parentA.getAttribute("href") || "", 55);
+      const bits: string[] = [];
+      if (alt) bits.push(`alt: "${truncate(alt, 55)}"`);
+      if (pt) bits.push(`texto do link: "${pt}"`);
+      if (href) bits.push(href);
+      return bits.length ? `img (${bits.join("; ")})` : "img (dentro de link)";
+    }
+    const bits: string[] = [];
+    if (alt) bits.push(`alt: "${truncate(alt, 60)}"`);
+    if (title) bits.push(`title: "${truncate(title, 50)}"`);
+    if (srcHint) bits.push(`ficheiro/caminho: ${srcHint}`);
+    if (bits.length) return `img (${bits.join("; ")})`;
+    return "img (sem alt nem título — ícone/gráfico; descreva na issue se for relevante)";
+  }
+
   if (testid) return `${tag}[data-testid="${truncate(testid, 80)}"]`;
   if (el.id) return `${tag}#${truncate(el.id, 60)}`;
   if (aria) return `${tag} (aria-label: "${truncate(aria, 72)}")`;
+
+  if (
+    !nested &&
+    (tag === "span" || tag === "div" || tag === "i" || tag === "b" || tag === "strong" || tag === "p")
+  ) {
+    const h = el.closest("a[href],button,[role='button'],[role='link'],[role='menuitem']");
+    if (h instanceof Element && h !== el) {
+      const inner = summarizeClickTarget(h, true);
+      return `${tag} → ${inner}`;
+    }
+  }
+
   const text = truncate((el.textContent || "").trim().replace(/\s+/g, " "), 40);
   if (text) return `${tag} "${text}"`;
   return tag;

@@ -34,6 +34,37 @@ describe("interaction-timeline", () => {
     expect(summarizeClickTarget(el)).toContain("Fechar painel");
   });
 
+  it("summarizeClickTarget describes img with alt and link context", () => {
+    const a = document.createElement("a");
+    a.href = "/empresa/x/";
+    a.textContent = "Ver perfil";
+    const img = document.createElement("img");
+    img.alt = "Logo Ripio";
+    a.appendChild(img);
+    expect(summarizeClickTarget(img)).toContain("Logo Ripio");
+    expect(summarizeClickTarget(img)).toContain("Ver perfil");
+  });
+
+  it("summarizeClickTarget describes img inside button via button summary", () => {
+    const btn = document.createElement("button");
+    btn.setAttribute("aria-label", "Analisar site");
+    const img = document.createElement("img");
+    img.alt = "";
+    btn.appendChild(img);
+    expect(summarizeClickTarget(img)).toContain("img no");
+    expect(summarizeClickTarget(img)).toContain("Analisar");
+  });
+
+  it("summarizeClickTarget wraps div that delegates to parent link", () => {
+    const a = document.createElement("a");
+    a.href = "/reclamar/1/";
+    const div = document.createElement("div");
+    div.textContent = "Reclamar";
+    a.appendChild(div);
+    expect(summarizeClickTarget(div)).toContain("div →");
+    expect(summarizeClickTarget(div)).toContain("reclamar");
+  });
+
   it("summarizeTabSectionSelection reads selected tab", () => {
     document.body.innerHTML =
       '<div role="tablist"><button role="tab" aria-selected="false">A</button><button role="tab" aria-selected="true" id="t-b">Relatos</button></div>';

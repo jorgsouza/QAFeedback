@@ -23,32 +23,11 @@ import type { CaptureModeV1 } from "./types";
 import { buildViewModeHint } from "./view-layout-hint";
 import { elementIsInsideExtensionUi } from "./extension-constants";
 import { captureAppEnvironment } from "./app-environment-capture";
-import {
-  mergeSessionAndBridgeTimelines,
-  timelineEntryFingerprint,
-} from "./timeline-session-store";
+import { mergeSessionAndBridgeTimelines } from "./timeline-session-store";
+import { enqueueRuntimeMessage } from "./extension-message-queue";
+import { scheduleTimelineAppendToServiceWorker } from "./timeline-append-queue";
 
 const SNAP_EVENT = "qa-feedback:snapshot";
-
-/** Evita reenviar as mesmas entradas ao SW; o SW também deduplica. */
-const sentTimelineFingerprints = new Set<string>();
-const SENT_FP_MAX = 2500;
-
-function flushTimelineAppendToSw(entries: InteractionTimelineEntryV1[]): void {
-  if (!entries.length) return;
-  const toSend: InteractionTimelineEntryV1[] = [];
-  for (const e of entries) {
-    const f = timelineEntryFingerprint(e);
-    if (sentTimelineFingerprints.has(f)) continue;
-    sentTimelineFingerprints.add(f);
-    toSend.push(e);
-  }
-  if (sentTimelineFingerprints.size > SENT_FP_MAX) sentTimelineFingerprints.clear();
-  if (!toSend.length) return;
-  void chrome.runtime
-    .sendMessage({ type: "QAF_TIMELINE_APPEND", entries: toSend })
-    .catch(() => {});
-}
 
 /** Linha bruta vinda do `page-bridge` (URL ainda não sanitizada). */
 export type BridgeNetworkRow = {
@@ -120,7 +99,7 @@ function onSnap(ev: Event): void {
     runtimeErrors: (d.runtimeErrors ?? []).slice(-CAPTURE_LIMITS.issueRuntimeErrorEntries),
     performanceSignals: d.performanceSignals,
   };
-  flushTimelineAppendToSw(d.interactionTimeline ?? []);
+  scheduleTimelineAppendToServiceWorker(d.interactionTimeline ?? []);
 }
 
 /**
@@ -332,7 +311,9 @@ function captureTargetDomHint(el: Element | null): TargetDomHintV1 | undefined {
 
 export async function fetchSessionTimelineForSubmit(): Promise<InteractionTimelineEntryV1[]> {
   try {
-    const r = (await chrome.runtime.sendMessage({ type: "QAF_TIMELINE_GET_FOR_SUBMIT" })) as {
+    const r = (await enqueueRuntimeMessage(() =>
+      chrome.runtime.sendMessage({ type: "QAF_TIMELINE_GET_FOR_SUBMIT" }),
+    )) as {
       ok?: boolean;
       entries?: InteractionTimelineEntryV1[];
     };

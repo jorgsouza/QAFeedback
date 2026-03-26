@@ -1,6 +1,8 @@
 import { EXTENSION_ROOT_HOST_ID } from "../shared/extension-constants";
+import { enqueueRuntimeMessage } from "../shared/extension-message-queue";
 import { safeImageFileNameForJira } from "../shared/feedback-image-utils";
 import { cropDataUrlToPngBlob } from "../shared/region-screenshot-crop";
+import { flushTimelineAppendQueueNow } from "../shared/timeline-append-queue";
 import { openRegionPickerOverlay } from "./region-picker-overlay";
 
 function waitFrames(n: number): Promise<void> {
@@ -26,6 +28,8 @@ export async function runRegionScreenshotFlow(): Promise<RegionScreenshotFlowRes
   const prevVisibility = host?.style.visibility ?? "";
 
   try {
+    await flushTimelineAppendQueueNow();
+
     if (host) {
       host.style.visibility = "hidden";
       host.style.display = "none";
@@ -40,7 +44,20 @@ export async function runRegionScreenshotFlow(): Promise<RegionScreenshotFlowRes
 
     await waitFrames(2);
 
-    const cap = (await chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" })) as
+    let tabId: number | undefined;
+    try {
+      const cur = await chrome.tabs.getCurrent();
+      tabId = cur?.id;
+    } catch {
+      /* sem tabs API em alguns contextos */
+    }
+
+    const cap = (await enqueueRuntimeMessage(() =>
+      chrome.runtime.sendMessage({
+        type: "CAPTURE_VISIBLE_TAB",
+        ...(tabId != null ? { tabId } : {}),
+      }),
+    )) as
       | {
           ok?: boolean;
           dataUrl?: string;

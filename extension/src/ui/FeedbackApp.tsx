@@ -13,6 +13,12 @@ import {
   JIRA_FEEDBACK_MAX_IMAGES,
   safeImageFileNameForJira,
 } from "../shared/feedback-image-utils";
+import {
+  loadPendingImagesFromExtensionTab,
+  persistPendingImagesToExtensionTab,
+  storedPendingImagesToUiState,
+  type StoredPendingImageV1,
+} from "../shared/pending-images-session";
 import { pickSpeechRecognitionLang } from "../shared/chrome-speech-dictation";
 import { detectDictationPlatform, getDictationMicTooltip } from "../shared/native-dictation-hint";
 import { buildIssueBody } from "../shared/issue-builder";
@@ -393,8 +399,14 @@ export function FeedbackApp() {
     let cancelled = false;
     void (async () => {
       try {
-        const fromExt = await loadTabSnapshotFromExtensionTab();
+        const [fromExt, pendingStored] = await Promise.all([
+          loadTabSnapshotFromExtensionTab(),
+          loadPendingImagesFromExtensionTab(),
+        ]);
         if (cancelled) return;
+        if (pendingStored.length > 0) {
+          setPendingImages(storedPendingImagesToUiState(pendingStored));
+        }
         if (fromExt) {
           const sess = readTabSnapshotFromSession();
           if (fromExt.open && (!sess || !sess.open)) {
@@ -455,6 +467,32 @@ export function FeedbackApp() {
     }, 250);
     return () => clearTimeout(h);
   }, [open, sheetCollapsed, repoIndex, selectedJiraBoardId, tab, form, fabDismissed, tabUiHydrated]);
+
+  /** Mantém capturas/ficheiros após navegação completa (content script reinicia). */
+  useEffect(() => {
+    if (!tabUiHydrated) return;
+    const h = window.setTimeout(() => {
+      void (async () => {
+        const stored: StoredPendingImageV1[] = [];
+        for (const im of pendingImages) {
+          if (im.file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) continue;
+          try {
+            const base64 = await fileToBase64(im.file);
+            stored.push({
+              id: im.id,
+              fileName: safeImageFileNameForJira(im.file.name),
+              mimeType: im.file.type || "image/png",
+              base64,
+            });
+          } catch {
+            /* ficheiro ilegível */
+          }
+        }
+        persistPendingImagesToExtensionTab(stored);
+      })();
+    }, 450);
+    return () => window.clearTimeout(h);
+  }, [pendingImages, tabUiHydrated]);
 
   const [routeRevision, setRouteRevision] = useState(0);
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
@@ -759,6 +797,7 @@ export function FeedbackApp() {
   }, []);
 
   const resetFlow = () => {
+    persistPendingImagesToExtensionTab([]);
     setPendingImages((prev) => {
       for (const x of prev) URL.revokeObjectURL(x.url);
       return [];
@@ -773,6 +812,7 @@ export function FeedbackApp() {
   const closeModal = useCallback(() => {
     void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
     void chrome.runtime.sendMessage({ type: "QAF_TIMELINE_SESSION_END" }).catch(() => {});
+    persistPendingImagesToExtensionTab([]);
     setNetworkDiagError(null);
     setLastTarget(null);
     const fresh = destinationDefaults(githubTokenConfigured, jiraTokenConfigured);
@@ -885,6 +925,11 @@ export function FeedbackApp() {
             "Há imagens anexadas, mas só são enviadas ao Jira. Marque «Enviar para Jira» e envie de novo para as incluir.",
           );
         }
+        persistPendingImagesToExtensionTab([]);
+        setPendingImages((prev) => {
+          for (const x of prev) URL.revokeObjectURL(x.url);
+          return [];
+        });
         setPostSubmit({
           github: res.githubUrl,
           jira: res.jiraUrl,

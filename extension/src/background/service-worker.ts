@@ -30,6 +30,10 @@ import {
   resolveJiraBoardIdForCreate,
 } from "../shared/jira-boards-list-for-feedback";
 import { parseTabSnapshotFromStoredValue } from "../shared/feedback-ui-session";
+import {
+  parsePendingImagesFromStoredValue,
+  qafPendingImagesStorageKey,
+} from "../shared/pending-images-session";
 import type { InteractionTimelineEntryV1 } from "../shared/types";
 import {
   timelineSessionAppend,
@@ -46,6 +50,7 @@ function qafTabUiStorageKey(tabId: number): string {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void chrome.storage.session.remove(qafTabUiStorageKey(tabId));
+  void chrome.storage.session.remove(qafPendingImagesStorageKey(tabId));
   void timelineSessionEnd(tabId);
 });
 
@@ -193,11 +198,13 @@ type QafPersistTabUiMessage = { type: "QAF_PERSIST_TAB_UI"; payload: unknown };
 type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
-type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB" };
+type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB"; tabId?: number };
 type QafTimelineSessionStartMessage = { type: "QAF_TIMELINE_SESSION_START"; sessionId?: string };
 type QafTimelineAppendMessage = { type: "QAF_TIMELINE_APPEND"; entries: InteractionTimelineEntryV1[] };
 type QafTimelineGetForSubmitMessage = { type: "QAF_TIMELINE_GET_FOR_SUBMIT" };
 type QafTimelineSessionEndMessage = { type: "QAF_TIMELINE_SESSION_END" };
+type QafLoadPendingImagesMessage = { type: "QAF_LOAD_PENDING_IMAGES" };
+type QafPersistPendingImagesMessage = { type: "QAF_PERSIST_PENDING_IMAGES"; payload: unknown };
 
 type Messages =
   | CreateIssueMessage
@@ -214,7 +221,9 @@ type Messages =
   | QafTimelineSessionStartMessage
   | QafTimelineAppendMessage
   | QafTimelineGetForSubmitMessage
-  | QafTimelineSessionEndMessage;
+  | QafTimelineSessionEndMessage
+  | QafLoadPendingImagesMessage
+  | QafPersistPendingImagesMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
@@ -250,6 +259,47 @@ chrome.runtime.onMessage.addListener(
           [qafTabUiStorageKey(tabId)]: parsed,
         });
         sendResponse({ ok: true });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_LOAD_PENDING_IMAGES") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: true as const, images: [] });
+          return;
+        }
+        const key = qafPendingImagesStorageKey(tabId);
+        const bag = await chrome.storage.session.get(key);
+        const raw = bag[key];
+        const images = parsePendingImagesFromStoredValue(raw);
+        sendResponse({ ok: true as const, images });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_PERSIST_PENDING_IMAGES") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        if (tabId == null) {
+          sendResponse({ ok: false });
+          return;
+        }
+        const m = message as QafPersistPendingImagesMessage;
+        const images = parsePendingImagesFromStoredValue(m.payload);
+        const key = qafPendingImagesStorageKey(tabId);
+        try {
+          if (images.length === 0) {
+            await chrome.storage.session.remove(key);
+          } else {
+            await chrome.storage.session.set({ [key]: { v: 1 as const, images } });
+          }
+          sendResponse({ ok: true });
+        } catch (err) {
+          console.error("[QA Feedback] QAF_PERSIST_PENDING_IMAGES:", err);
+          sendResponse({ ok: false });
+        }
       })();
       return true;
     }
@@ -462,14 +512,23 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === "CAPTURE_VISIBLE_TAB") {
       void (async () => {
-        const windowId = sender.tab?.windowId;
+        const m = message as CaptureVisibleTabMessage;
+        let windowId = sender.tab?.windowId;
+        if (windowId == null && typeof m.tabId === "number") {
+          try {
+            const t = await chrome.tabs.get(m.tabId);
+            windowId = t.windowId;
+          } catch {
+            /* ignore */
+          }
+        }
         if (windowId == null) {
           sendResponse({ ok: false, message: "Separador desconhecido." });
           return;
         }
         /**
          * API: `captureVisibleTab(windowId, options)` — o 1.º argumento é o ID da **janela**,
-         * não o da aba. Passar `tabId` quebrava a captura (silenciosamente ou com erro opaco).
+         * não o da aba. O content script pode enviar `tabId` para resolver `windowId` se `sender.tab` falhar.
          */
         try {
           const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
