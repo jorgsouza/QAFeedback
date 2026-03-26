@@ -55,6 +55,9 @@ function CollapseSheetIcon() {
 type PendingFeedbackImage = { id: string; file: File; url: string };
 
 const FEEDBACK_ICON_URL = tryGetExtensionResourceUrl("qa.png");
+const CHECK_POSITIVO_URL = tryGetExtensionResourceUrl("check_positivo.svg");
+const JIRA_BOARD_ICON_URL = tryGetExtensionResourceUrl("jiraBoard.svg");
+const JIRA_ISSUE_ICON_URL = tryGetExtensionResourceUrl("jiraIssue.svg");
 
 function CopyIcon() {
   return (
@@ -67,20 +70,131 @@ function CopyIcon() {
   );
 }
 
+/** Figma body_sucess / cards — ícone 24×24 ao lado do rótulo. */
+function LayoutDashboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        d="M4 4h7v7H4V4zm9 0h7v4h-7V4zm0 6h7v10h-7V10zM4 13h7v7H4v-7z"
+      />
+    </svg>
+  );
+}
+
+function TaskIssueIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+      />
+    </svg>
+  );
+}
+
+function GitHubMarkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden focusable="false">
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z"
+      />
+    </svg>
+  );
+}
+
+function SuccessCheckGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width={40} height={40} aria-hidden focusable="false">
+      <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+    </svg>
+  );
+}
+
+/** Ilustração {DS} (Figma); fallback ao glifo inline se o asset não existir. */
+function SuccessCheckIllustration() {
+  if (CHECK_POSITIVO_URL) {
+    return (
+      <img
+        src={CHECK_POSITIVO_URL}
+        alt=""
+        width={80}
+        height={80}
+        className="qaf-success-check-img"
+        draggable={false}
+      />
+    );
+  }
+  return <SuccessCheckGlyph />;
+}
+
+/** Ícones 24×24 {DS}-Icons (Figma); fallback aos SVGs inline. */
+function JiraBoardCardIcon() {
+  if (JIRA_BOARD_ICON_URL) {
+    return (
+      <img
+        src={JIRA_BOARD_ICON_URL}
+        alt=""
+        width={24}
+        height={24}
+        className="qaf-ds-icon-img"
+        draggable={false}
+      />
+    );
+  }
+  return <LayoutDashboardIcon />;
+}
+
+function JiraIssueCardIcon() {
+  if (JIRA_ISSUE_ICON_URL) {
+    return (
+      <img
+        src={JIRA_ISSUE_ICON_URL}
+        alt=""
+        width={24}
+        height={24}
+        className="qaf-ds-icon-img"
+        draggable={false}
+      />
+    );
+  }
+  return <TaskIssueIcon />;
+}
+
+/**
+ * Microfone estilo {DS} Icons / Figma (outline). SVG embutido: o ficheiro mic.png anterior era texto (URL), não PNG.
+ */
 function MicIcon() {
   return (
     <svg
       className="qaf-dictation-mic-svg"
       viewBox="0 0 24 24"
-      width={20}
-      height={20}
+      width={16}
+      height={16}
       aria-hidden
       focusable="false"
     >
       <path
-        fill="currentColor"
-        d="M12 14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2s-2 .9-2 2v5c0 1.1.9 2 2 2zm5-2c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"
       />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 10v2a7 7 0 0 1-14 0v-2"
+      />
+      <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M12 19v3" />
+      <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M8 22h8" />
     </svg>
   );
 }
@@ -888,87 +1002,115 @@ export function FeedbackApp() {
               {postSubmit ? (
                 <div className="qaf-success">
                   <div className="qaf-success-hero">
-                    <div className="qaf-success-check" aria-hidden>
-                      ✓
+                    <div
+                      className={
+                        CHECK_POSITIVO_URL
+                          ? "qaf-success-check qaf-success-check--illustration"
+                          : "qaf-success-check"
+                      }
+                      aria-hidden
+                    >
+                      <SuccessCheckIllustration />
                     </div>
                     <h3 className="qaf-success-title">Evidência criada</h3>
+                    {postSubmit.jiraBoardIdUsed ? (
+                      <p className="qaf-success-board-meta" role="status">
+                        Issue Jira criada no quadro ID <strong>{postSubmit.jiraBoardIdUsed}</strong>
+                        {selectedJiraBoardId.trim() &&
+                        selectedJiraBoardId.trim() !== postSubmit.jiraBoardIdUsed.trim() ? (
+                          <span className="qaf-success-board-meta-warn">
+                            {" "}
+                            (seleção no formulário era {selectedJiraBoardId.trim()})
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
                   </div>
-                  {postSubmit.jiraBoardIdUsed ? (
-                    <p className="qaf-success-board-meta" role="status">
-                      Issue Jira criada no quadro ID <strong>{postSubmit.jiraBoardIdUsed}</strong>
-                      {selectedJiraBoardId.trim() &&
-                      selectedJiraBoardId.trim() !== postSubmit.jiraBoardIdUsed.trim() ? (
-                        <span className="qaf-success-board-meta-warn">
-                          {" "}
-                          (seleção no formulário era {selectedJiraBoardId.trim()})
-                        </span>
-                      ) : null}
-                    </p>
-                  ) : null}
                   <div className="qaf-success-cards">
                     {postSubmit.github ? (
                       <div className="qaf-success-card">
-                        <div className="qaf-success-card-head">GitHub</div>
-                        <div className="qaf-success-card-actions">
-                          <button
-                            type="button"
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
-                            onClick={() => copyText(postSubmit.github!)}
-                          >
-                            <CopyIcon /> Copiar
-                          </button>
-                          <a
-                            className="qaf-btn qaf-btn-sm qaf-btn-access"
-                            href={postSubmit.github}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Acessar
-                          </a>
+                        <div className="qaf-success-card-row">
+                          <div className="qaf-success-card-head">
+                            <span className="qaf-success-card-icon" aria-hidden>
+                              <GitHubMarkIcon />
+                            </span>
+                            <span className="qaf-success-card-label">GitHub</span>
+                          </div>
+                          <div className="qaf-success-card-actions">
+                            <button
+                              type="button"
+                              className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                              onClick={() => copyText(postSubmit.github!)}
+                            >
+                              <CopyIcon /> Copiar
+                            </button>
+                            <a
+                              className="qaf-btn qaf-btn-sm qaf-btn-access"
+                              href={postSubmit.github}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Acessar
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ) : null}
                     {postSubmit.jira ? (
                       <div className="qaf-success-card">
-                        <div className="qaf-success-card-head">Jira Board</div>
-                        <div className="qaf-success-card-actions">
-                          <button
-                            type="button"
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
-                            onClick={() => copyText(postSubmit.jira!)}
-                          >
-                            <CopyIcon /> Copiar
-                          </button>
-                          <a
-                            className="qaf-btn qaf-btn-sm qaf-btn-access"
-                            href={postSubmit.jira}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Acessar
-                          </a>
+                        <div className="qaf-success-card-row">
+                          <div className="qaf-success-card-head">
+                            <span className="qaf-success-card-icon" aria-hidden>
+                              <JiraBoardCardIcon />
+                            </span>
+                            <span className="qaf-success-card-label">Jira Board</span>
+                          </div>
+                          <div className="qaf-success-card-actions">
+                            <button
+                              type="button"
+                              className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                              onClick={() => copyText(postSubmit.jira!)}
+                            >
+                              <CopyIcon /> Copiar
+                            </button>
+                            <a
+                              className="qaf-btn qaf-btn-sm qaf-btn-access"
+                              href={postSubmit.jira}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Acessar
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ) : null}
                     {postSubmit.jiraIssueBrowse ? (
                       <div className="qaf-success-card">
-                        <div className="qaf-success-card-head">Jira Issue</div>
-                        <div className="qaf-success-card-actions">
-                          <button
-                            type="button"
-                            className="qaf-btn qaf-btn-secondary qaf-btn-sm"
-                            onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
-                          >
-                            <CopyIcon /> Copiar
-                          </button>
-                          <a
-                            className="qaf-btn qaf-btn-sm qaf-btn-access"
-                            href={postSubmit.jiraIssueBrowse}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Acessar
-                          </a>
+                        <div className="qaf-success-card-row">
+                          <div className="qaf-success-card-head">
+                            <span className="qaf-success-card-icon" aria-hidden>
+                              <JiraIssueCardIcon />
+                            </span>
+                            <span className="qaf-success-card-label">Jira Issue</span>
+                          </div>
+                          <div className="qaf-success-card-actions">
+                            <button
+                              type="button"
+                              className="qaf-btn qaf-btn-secondary qaf-btn-sm"
+                              onClick={() => copyText(postSubmit.jiraIssueBrowse!)}
+                            >
+                              <CopyIcon /> Copiar
+                            </button>
+                            <a
+                              className="qaf-btn qaf-btn-sm qaf-btn-access"
+                              href={postSubmit.jiraIssueBrowse}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Acessar
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ) : null}

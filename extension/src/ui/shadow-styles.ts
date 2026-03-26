@@ -6,6 +6,7 @@ export const shadowCss = `
   font-size: 14px;
   line-height: 1.4;
   color: #0f172b;
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -254,21 +255,24 @@ export const shadowCss = `
   min-width: 0;
 }
 
+/* SheetHeader — text-lg/semibold (RA Inspector-QA / Figma body_dialog). */
 .qaf-modal-title {
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.033em;
-  color: var(--qaf-m-text);
+  line-height: 28px;
+  letter-spacing: 0.043em;
+  color: #0f172b;
 }
 
+/* Typography/description tertiary */
 .qaf-modal-subtitle {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.43;
+  line-height: 20px;
   letter-spacing: 0.043em;
-  color: var(--qaf-m-muted);
+  color: #62748e;
 }
 
 .qaf-modal-settings-link {
@@ -353,50 +357,54 @@ export const shadowCss = `
 
 .qaf-tabs {
   display: flex;
-  border-bottom: 1px solid var(--qaf-m-border);
+  border-bottom: 1px solid #e2e8f0;
   margin-top: 16px;
   padding: 0 24px;
   background: var(--qaf-m-bg);
 }
 
+/* Tabs estilo Trust / Figma: inativo slate, ativo primary-700 + indicador. */
 .qaf-tab {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 12px 12px 10px;
+  padding: 12px 8px 10px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--qaf-m-muted);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
+  color: #62748e;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .qaf-tab:hover {
-  color: var(--qaf-m-text);
+  color: #0f172b;
 }
 
 .qaf-tab-active {
-  color: var(--qaf-m-primary);
-  border-bottom-color: var(--qaf-m-primary);
+  color: #004d37;
+  border-bottom-color: #004d37;
+  font-weight: 600;
 }
 
-/* Corpo: gap 20px entre blocos (layout_LT7N9T Figma); padding lateral 24. */
+/* body_dialog Figma: gap 20 entre blocos; padding inferior 24; conteúdo alinhado à _SheetContent (24px laterais). */
 .qaf-body {
   padding: 16px 24px 24px;
   overflow: auto;
   flex: 1;
-  background: var(--qaf-m-bg);
+  background: #ffffff;
 }
 
-/* Estado «Evidência criada» (Figma QA Automation — plugin / Trust-DS: superfície 24px, fluxo vertical). */
+/* Estado «Evidência criada» — Figma node 5:16262 / _SheetContent: gap 16 após header. */
 .qaf-body--post-submit {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 12px 24px 24px;
+  padding: 16px 24px 24px;
 }
 
 .qaf-field {
@@ -406,12 +414,13 @@ export const shadowCss = `
   margin-bottom: 20px;
 }
 
-/* text-sm/medium (Figma): Inter Tight 14 / medium */
+/* text-sm/medium — labels Select / campos (0,6px ≈ 0,043em a 14px). */
 .qaf-label {
   font-weight: 500;
   font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--qaf-m-text);
+  line-height: 20px;
+  letter-spacing: 0.043em;
+  color: #0f172b;
 }
 
 /* Label + chips: gap 14px no Figma (layout_66AZMO). */
@@ -423,12 +432,19 @@ export const shadowCss = `
 
 .qaf-input, .qaf-textarea, .qaf-select {
   width: 100%;
-  border: 1px solid var(--qaf-m-input-border);
+  border: 1px solid #cad5e2;
   border-radius: 12px;
   padding: 8px 12px;
   font: inherit;
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  background: #ffffff;
+  color: #0f172b;
+}
+
+/* _SelectTrigger / inputs: altura 48px (Figma). */
+.qaf-input,
+.qaf-select {
+  min-height: 48px;
+  line-height: 20px;
 }
 
 .qaf-input--readonly {
@@ -445,34 +461,43 @@ export const shadowCss = `
 .qaf-select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2362748e' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23000000' d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
 .qaf-textarea { min-height: 88px; resize: vertical; }
 
+/* Título / descrição: microfone dentro da caixa (Figma / AIStudio: relative + absolute). */
 .qaf-input-with-mic {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
+  display: block;
+  width: 100%;
 }
 
-.qaf-input-flex {
-  flex: 1;
+.qaf-input-with-mic .qaf-input-flex {
+  width: 100%;
   min-width: 0;
+  padding-right: 42px;
+  box-sizing: border-box;
 }
 
+/* Bloco Textarea Figma (~161px com label+gap 4): área útil ~137px de altura mínima. */
 .qaf-textarea-with-mic {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  position: relative;
+  display: block;
+  width: 100%;
 }
 
-.qaf-textarea-flex {
-  flex: 1;
+.qaf-textarea-with-mic .qaf-textarea-flex {
+  display: block;
+  width: 100%;
   min-width: 0;
+  min-height: 137px;
+  padding: 10px 42px 10px 12px;
+  box-sizing: border-box;
+  resize: vertical;
 }
 
 .qaf-dictation-mic-btn {
@@ -484,26 +509,44 @@ export const shadowCss = `
   height: 44px;
   padding: 0;
   border-radius: 8px;
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
   cursor: pointer;
+  box-sizing: border-box;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.qaf-dictation-mic-btn--inline {
-  width: 36px;
-  height: 36px;
+.qaf-dictation-mic-svg {
+  display: block;
+  flex-shrink: 0;
 }
 
-/* Textarea + mic: trigger 32×32 (Figma I11:5123;4:681). */
+/* Título: microfone centrado no input 48px; inset para não colidir com a borda arredondada. */
+.qaf-dictation-mic-btn--inline {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+/* Descreva o problema: dentro do campo, canto superior direito (abaixo da borda superior). */
 .qaf-dictation-mic-btn--textarea {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  margin-top: 0;
-  align-self: flex-end;
+  position: absolute;
+  top: 110px;
+  right: 10px;
+  bottom: auto;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  margin: 0;
 }
 
 .qaf-dictation-mic-btn:hover {
@@ -528,10 +571,6 @@ export const shadowCss = `
   background: rgba(234, 88, 12, 0.18);
   border-color: #ea580c;
   color: #9a3412;
-}
-
-.qaf-dictation-mic-svg {
-  display: block;
 }
 
 .qaf-speech-notice {
@@ -583,14 +622,16 @@ export const shadowCss = `
 }
 
 .qaf-btn-ghost {
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-input);
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
   padding: 8px 12px;
   border-radius: 12px;
   font: inherit;
   font-weight: 500;
   font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -735,7 +776,7 @@ export const shadowCss = `
   justify-content: space-between;
   gap: 10px;
   min-height: 24px;
-  margin: 0 0 10px;
+  margin: 0 0 16px;
 }
 
 .qaf-route-chip {
@@ -885,8 +926,8 @@ export const shadowCss = `
 
 .qaf-btn-submit {
   border: none;
-  background: var(--qaf-m-primary);
-  color: var(--qaf-m-on-primary);
+  background: #004d37;
+  color: #f8fafc;
 }
 
 .qaf-btn-submit:hover:not(:disabled) {
@@ -899,9 +940,13 @@ export const shadowCss = `
 }
 
 .qaf-btn-secondary {
-  border: 1px solid var(--qaf-m-input-border);
-  background: transparent;
-  color: var(--qaf-m-text);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
 }
 
 .qaf-btn-secondary:hover {
@@ -933,8 +978,8 @@ export const shadowCss = `
   font-size: 12px;
   line-height: 1.5;
   background: var(--qaf-m-surface);
-  border: 1px solid var(--qaf-m-border);
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 14px;
   max-height: 360px;
   overflow: auto;
@@ -989,12 +1034,15 @@ export const shadowCss = `
 }
 
 .qaf-success {
-  --qaf-success-ring: #bbf7d0;
-  --qaf-success-fill: #ecfdf5;
-  --qaf-success-icon: #166534;
+  /* check_positivo: cículo ~80px; verde sucesso alinhado a Trust secondary-600 / nota Figma #63991D */
+  --qaf-success-ring: #b6d06f;
+  --qaf-success-fill: #e2edc5;
+  --qaf-success-icon: #407d18;
 
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
   flex: 1;
   min-height: 0;
   background: transparent;
@@ -1006,17 +1054,21 @@ export const shadowCss = `
   font-size: 14px;
 }
 
+/* body_sucess Figma: coluna centrada, padding vertical 32/24, gap 20 — aqui o bloco hero concentra check+título+meta */
 .qaf-success-hero {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 20px;
+  text-align: center;
+  gap: 20px;
+  width: 100%;
+  padding: 16px 0 0;
   flex-shrink: 0;
 }
 
 .qaf-success-check {
-  width: 44px;
-  height: 44px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: var(--qaf-success-fill);
   box-shadow: 0 0 0 1px var(--qaf-success-ring) inset;
@@ -1024,25 +1076,58 @@ export const shadowCss = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
   flex-shrink: 0;
 }
 
+/* Ilustração {DS} check_positivo (Figma Ilustração 2060:140) — SVG com arte embutida. */
+.qaf-success-check--illustration {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.qaf-success-check-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
+}
+
+.qaf-success-check svg {
+  display: block;
+}
+
+/* Ícones 24×24 exportados do {DS}-Icons (Figma). */
+.qaf-ds-icon-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Typography/title secondary — Evidência criada */
 .qaf-success-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--qaf-m-text);
+  line-height: 32px;
+  letter-spacing: 0.025em;
+  color: #000000;
 }
 
 .qaf-success-board-meta {
-  margin: -8px 0 16px;
-  font-size: 13px;
-  color: var(--qaf-m-muted);
-  line-height: 1.45;
+  margin: 0;
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.025em;
+  color: #62748e;
+}
+
+.qaf-success-board-meta strong {
+  font-weight: 700;
+  color: #0f172b;
 }
 
 .qaf-success-board-meta-warn {
@@ -1053,33 +1138,62 @@ export const shadowCss = `
 .qaf-success-cards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 0 0 8px;
+  gap: 14px;
+  margin: 0;
   flex-shrink: 0;
 }
 
+/* Card Figma: row, space-between, padding 24×22, border #E2E8F0, radius 12 */
 .qaf-success-card {
-  border: 1px solid var(--qaf-m-border);
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--qaf-m-bg);
+  padding: 24px 22px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.qaf-success-card-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 .qaf-success-card-head {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--qaf-m-text);
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+
+.qaf-success-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: #000000;
+}
+
+.qaf-success-card-label {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.025em;
+  color: #000000;
 }
 
 .qaf-success-card-actions {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  align-items: flex-end;
+  gap: 16px;
 }
 
 .qaf-success-card-actions a.qaf-btn {
@@ -1087,12 +1201,12 @@ export const shadowCss = `
   box-sizing: border-box;
 }
 
-/* «Acessar»: texto primário (verde #004d37) sobre contorno neutro — alinhado ao frame Figma. */
+/* «Acessar»: primário #004D37 (Trust primary-700) sobre secondary outline — paridade com print / marca. */
 .qaf-btn-access {
-  border: 1px solid var(--qaf-m-input-border);
-  background: var(--qaf-m-bg);
+  border: 1px solid #cad5e2;
+  background: #ffffff;
   color: var(--qaf-m-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .qaf-btn-access:hover {
@@ -1102,17 +1216,33 @@ export const shadowCss = `
 }
 
 .qaf-btn-sm {
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.025em;
   border-radius: 8px;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+.qaf-success-card-actions .qaf-btn-secondary {
+  border: 1px solid #cad5e2;
+  background: #ffffff;
+  color: #0f172b;
+  font-weight: 500;
+}
+
+.qaf-success-card-actions .qaf-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .qaf-success-card-actions .qaf-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .qaf-footer-eq {
@@ -1121,7 +1251,7 @@ export const shadowCss = `
   gap: 8px;
   margin-top: 8px;
   padding-top: 20px;
-  border-top: 1px solid var(--qaf-m-border);
+  border-top: 1px solid #e2e8f0;
 }
 
 .qaf-success-footer {
@@ -1150,9 +1280,34 @@ export const shadowCss = `
   padding: 8px 16px;
   font-weight: 500;
   font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.043em;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
+}
+
+.qaf-footer-eq-row .qaf-btn-submit {
+  background: #004d37;
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+.qaf-success-footer .qaf-btn-submit {
+  background: #004d37;
+  color: #f8fafc;
+}
+
+.qaf-success-footer .qaf-btn-secondary {
+  background: #ffffff;
+  border: 1px solid #cad5e2;
+  color: #0f172b;
+}
+
+.qaf-success-footer .qaf-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .qaf-footer-eq-row--stack .qaf-btn {
@@ -1164,7 +1319,7 @@ export const shadowCss = `
 .qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel {
   border: none;
   background: transparent;
-  color: var(--qaf-m-text);
+  color: #0f172b;
 }
 
 .qaf-footer-eq-row .qaf-btn.qaf-btn--ghost-cancel:hover {
@@ -1190,7 +1345,7 @@ export const shadowCss = `
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.05em;
-  line-height: 1.33;
+  line-height: 16px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
