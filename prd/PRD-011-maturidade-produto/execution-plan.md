@@ -15,8 +15,8 @@
 | **3** — Contexto da aplicação         | **Concluída**                                    |
 | **4** — Correlação ação ↔ rede ↔ erro | **Concluída**                                    |
 | **5** — Timeline mais rica            | **Concluída**                                    |
-| **6** — UX e comunicação              | **Em curso** — branch `feature/prd-011-fase-6-ux-comunicacao` (ver entregas abaixo; falta smoke visual) |
-| **7** — Base para IA                  | Pendente                                         |
+| **6** — UX e comunicação              | **Concluída**                                    |
+| **7** — Base para IA                  | **Concluída**                                    |
 
 
 **Fora do plano de execução:** alinhamento Preview ↔ submit (antiga Fase 6) — o separador Preview será removido; não há trabalho planejado nessa linha.
@@ -179,20 +179,20 @@ Copys em `FeedbackApp` / labels: o que é capturado, avisos de achados sensívei
 
 ### Critérios de aceite
 
-- Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
-- Usuário percebe modo ativo e se houve achados (sem alarmismo).
-- Não há promessas que o código não cumpre.
-- Revisão rápida visual (smoke) nos fluxos principais.
+- [x] Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
+- [x] Usuário percebe modo ativo e se houve achados (sem alarmismo).
+- [x] Não há promessas que o código não cumpre.
+- [x] Revisão rápida visual (smoke) nos fluxos principais — checklist em `extension/DOCUMENTATION.md` § *Checklist de smoke (QA manual)*.
 
-### O que foi entregue (iteração inicial — branch `feature/prd-011-fase-6-ux-comunicacao`)
+### O que foi entregue (implementação)
 
 - **`FeedbackApp.tsx`**: texto do checkbox **Incluir contexto técnico** alinhado ao que o código realmente agrega (timeline mesma aba, rede, console, runtime/perf, estado visual, indícios sensíveis, ambiente app, modos nas opções).
 - **Faixa de estado**: badge **Indícios N** (estilo `qaf-status-badge--info`) quando há achados sensíveis na captura atual e o contexto técnico está ligado; tooltip explica heurística e ausência de “confirmação de vulnerabilidade”.
 - **HAR**: tooltip em pt-BR (“em outras abas”).
 - **`issue-builder.ts`**: linha de metadados neutra — **Contrato de contexto técnico (extensão v1)**; **Tela (screen)** em vez de “Ecrã”; testes `issue-builder.test.ts` atualizados.
 - **`shadow-styles.ts`**: classe `.qaf-status-badge--info`.
-
-**Pendente nesta fase (exemplos):** smoke nos fluxos principais; revisar copys em **Opções** se necessário; comentários de código com “Fase N” são só para dev (não UI).
+- **`OptionsApp.tsx`**: copys em **pt-BR** na secção de captura avançada (ex.: registra/arquivo, “estão sendo gravados”, detecção salva, aba Repositories).
+- **`extension/DOCUMENTATION.md`**: checklist de smoke manual para QA.
 
 ---
 
@@ -206,9 +206,15 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 ### Critérios de aceite
 
-- Helper ou tipos documentam contrato do futuro input IA.
-- Build de issue atual não depende de IA; nenhuma chave/API nova obrigatória.
-- Testes garantem serialização estável ou snapshot do objeto de input em cenário fixo.
+- [x] Helper ou tipos documentam contrato do futuro input IA.
+- [x] Build de issue atual não depende de IA; nenhuma chave/API nova obrigatória.
+- [x] Testes garantem serialização estável ou snapshot do objeto de input em cenário fixo.
+
+### O que foi entregue (implementação)
+
+- **`extension/src/shared/ia-issue-input.ts`**: `IaIssueInputV1`, tipos auxiliares e `buildIaIssueInputV1(payload)` — narração do utilizador, modo, rota, âncora de timeline, pedido prioritário (`pickNetworkSummariesForIssue`), erro de runtime principal, resumo de estado visual, ambiente app (subconjunto), resumo de achados sensíveis (contagem + `kinds` ordenados), contagens de rede/timeline.
+- **`extension/src/shared/ia-issue-input.test.ts`**: `JSON.stringify` idêntico entre duas chamadas com o mesmo payload; casos sem contexto e sem âncora “forte” na timeline.
+- **`extension/DOCUMENTATION.md`**: linha na tabela de arquitetura apontando para o módulo.
 
 ---
 
@@ -216,7 +222,7 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline; por fim UX e gancho IA. A etapa de preview consistente foi fora de escopo.
 
-**Próximo passo sugerido:** concluir **Fase 6** (smoke + ajustes finos de copy) → **Fase 7** (tipos/helper para input IA).
+**Próximo passo sugerido:** integração futura com modelo (fora deste plano) consumindo `buildIaIssueInputV1`; manter contrato versionado ao evoluir o contexto capturado.
 
 ---
 

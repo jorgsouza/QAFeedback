@@ -24,8 +24,9 @@ Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM*
 10. [Ícones (arte circular)](#ícones-arte-circular)
 11. [Jira: quadro no modal, allowlist e tipo Bug → Task](#jira-quadro-no-modal-allowlist-e-tipo-bug--task)
 12. [Linha do tempo contínua (mesma aba)](#linha-do-tempo-contínua-mesma-aba)
-13. [Referência rápida de scripts](#referência-rápida-de-scripts)
-14. [Linguagem ubíqua](#linguagem-ubíqua)
+13. [Checklist de smoke (QA manual)](#checklist-de-smoke-qa-manual)
+14. [Referência rápida de scripts](#referência-rápida-de-scripts)
+15. [Linguagem ubíqua](#linguagem-ubíqua)
 
 ---
 
@@ -91,6 +92,16 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
 6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
 7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5). Com **Incluir contexto técnico**, o Markdown reflete também **Resumo** / leitura rápida, linha do tempo, requisições relevantes, estado visual, elemento relacionado, erro de runtime e sinais de performance **quando houver dados** (ver [page-bridge](#page-bridge-e-erros-da-extensão)).
+
+### Checklist de smoke (QA manual)
+
+Revisão rápida alinhada ao PRD-011 (UX e capacidades reais):
+
+- **Modal:** abrir e fechar; recolher o painel pela seta; reabrir pelo FAB; chip de rota (slug + path) atualiza em navegação SPA.
+- **Toggles:** **Incluir contexto técnico** ligado/desligado; destinos GitHub/Jira conforme tokens nas opções.
+- **Indícios sensíveis:** com heurísticas disparadas na captura, badge informativo visível quando o contexto técnico está ligado; linguagem neutra nos tooltips.
+- **HAR** (opção *Modo diagnóstico completo* nas opções): badge/tooltip deixa claro que só a aba do modal entra no `.har` e que o aviso global do Chrome não implica gravação de outras abas.
+- **Opções:** alternar **Debug interno** / **Produção sensível**, salvar, gerar preview de issue e confirmar diferença de detalhe (truncagem / IDs de correlação) sem perder a seção de achados sensíveis quando existir.
 
 ---
 
@@ -164,6 +175,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Contexto / injeção | `src/shared/context-collector.ts`, `src/injected/page-bridge.ts` |
 | Achados sensíveis (heurísticas) | `src/shared/sensitive-findings.ts` |
 | Modo de captura (debug vs produção sensível) | `src/shared/capture-mode.ts` |
+| Agregado para futura IA (contrato v1, sem API de modelo) | `src/shared/ia-issue-input.ts` |
 | Correlação temporal (rede / erros ↔ timeline) | `src/shared/session-correlation.ts` |
 | Metadados da aplicação (ambiente) | `src/shared/app-environment-capture.ts` |
 | Estado da UI por aba (`chrome.storage.session`) | `src/shared/feedback-ui-session.ts` |
