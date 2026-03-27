@@ -67,6 +67,10 @@ Detalhe funcional, tokens e primeiro uso: **[extension/README.md](extension/READ
 
 ## Desenvolvimento
 
+Antes dos comandos abaixo, esta é a **visão geral** de como a aba, o bridge, o service worker e as APIs se encaixam (PNG exportado do diagrama; texto completo em **[architecture_overview.md](architecture_overview.md)**):
+
+![Visão geral da arquitetura QAFeedback — aba, extensão MV3 e integrações](prd/assets/mermaid.png)
+
 **Requisitos:** Node.js **18+**, Google Chrome.
 
 ```bash
