@@ -713,7 +713,7 @@ export function OptionsApp() {
                   <em>Only select repositories</em> e escolha os projetos, ou outra opção adequada à conta).
                 </li>
                 <li style={{ marginBottom: 8 }}>
-                  Em <strong>Permissions</strong> → separador <strong>Repositories</strong> →{" "}
+                  Em <strong>Permissions</strong> → aba <strong>Repositories</strong> →{" "}
                   <strong>Add permissions</strong> → procure <strong>Issues</strong> e defina{" "}
                   <strong>Read and write</strong>. <strong>Não precisa de outras permissões</strong> para esta extensão.
                 </li>
@@ -1012,7 +1012,7 @@ export function OptionsApp() {
                 border: "1px solid #99f6e4",
               }}
             >
-              <strong>Deteção guardada:</strong>{" "}
+              <strong>Detecção salva:</strong>{" "}
               {settings.jiraBoardAutoFields!.map((f) => f.fieldId).join(", ")} — aplicado ao criar issues.
             </p>
           ) : null}
@@ -1116,14 +1116,14 @@ export function OptionsApp() {
                 lineHeight: 1.55,
               }}
             >
-              Com o modal de feedback aberto, a extensão regista o tráfego HTTP <strong>só da aba onde o modal está</strong>{" "}
-              e pode anexar um ficheiro{" "}
+              Com o modal de feedback aberto, a extensão registra o tráfego HTTP <strong>só da aba onde o modal está</strong>{" "}
+              e pode anexar um arquivo{" "}
               <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>.har</code> ao criar a issue no
               Jira. Requer a permissão de <strong>depurador</strong> do Chrome: por limitação do navegador, o aviso «…
               started debugging this browser» pode aparecer em <strong>todas as janelas/abas</strong> enquanto o depurador
-              estiver ligado — isso <strong>não</strong> significa que o Chat ou outros sites estão a ser gravados no HAR.
+              estiver ligado — isso <strong>não</strong> significa que o Chat ou outros sites estão sendo gravados no HAR.
               Se a captura falhar, feche o <strong>DevTools nesta aba</strong> e tente de novo. Cabeçalhos como Cookie e
-              Authorization são substituídos por <code>[REDACTED]</code> no ficheiro exportado.
+              Authorization são substituídos por <code>[REDACTED]</code> no arquivo exportado.
             </span>
           </span>
         </label>

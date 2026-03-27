@@ -754,6 +754,7 @@ export function FeedbackApp() {
   }, [form, lastTarget, routeRevision, captureMode, sessionTimelinePreview]);
 
   const previewMd = useMemo(() => buildIssueBody(payload), [payload]);
+  const sensitivePreviewCount = payload.capturedContext?.sensitiveFindings?.length ?? 0;
 
   const selectedRepo = repoTargets[repoIndex];
   const hasAnyDestination = githubTokenConfigured || jiraTokenConfigured;
@@ -1178,7 +1179,7 @@ export function FeedbackApp() {
                           role="listitem"
                           title={
                             fullNetworkDiagnosticEnabled
-                              ? "HAR ativo: só esta aba entra no .har. O aviso de «debugging» do Chrome pode aparecer noutras abas — é global ao navegador."
+                              ? "HAR ativo: só esta aba entra no .har. O aviso de «debugging» do Chrome pode aparecer em outras abas — é global ao navegador."
                               : "HAR: ative o diagnóstico de rede nas opções para anexar HAR ao Jira."
                           }
                         >
@@ -1195,6 +1196,15 @@ export function FeedbackApp() {
                         >
                           {captureMode === "producao-sensivel" ? "Ctx restrito" : "Ctx debug"}
                         </span>
+                        {form.includeTechnicalContext && sensitivePreviewCount > 0 ? (
+                          <span
+                            className="qaf-status-badge qaf-status-badge--info"
+                            role="listitem"
+                            title="Indícios heurísticos no texto já capturado (rede, console, página, etc.). Não confirma vulnerabilidade — veja a seção na preview e na issue."
+                          >
+                            Indícios {sensitivePreviewCount}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="qaf-route-path-line">{routePathWithQuery}</div>
@@ -1683,8 +1693,11 @@ export function FeedbackApp() {
                         <span className="qaf-check-text">
                           <span className="qaf-check-title">Incluir contexto técnico</span>
                           <span className="qaf-check-hint">
-                            URL, viewport e tela (screen), indício desktop/móvel/emulação DevTools, último clique na
-                            página (não no botão), console e requests com falha.
+                            Linha do tempo (inclui fluxo na mesma aba), resumo de pedidos HTTP, console, erro de runtime
+                            e sinais de performance quando existirem, estado visual, elemento alvo, indícios
+                            heurísticos de dados sensíveis (secção própria na issue), ambiente da app quando a página
+                            expõe sinais. O modo nas opções (debug interno vs produção sensível) altera quanto texto
+                            bruto entra na issue.
                           </span>
                         </span>
                       </label>

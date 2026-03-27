@@ -94,11 +94,11 @@ describe("buildIssueBody", () => {
     expect(md).toContain("- Rota técnica:");
     expect(md).toContain("`ra-foo`");
     expect(md).toContain("/foo");
-    expect(md).toContain("Ecrã (screen):");
+    expect(md).toContain("Tela (screen):");
     expect(md).toContain("Vista / dispositivo");
     expect(md).toContain("Indício de teste.");
-    expect(md).toContain("Schema de contexto (extensão): **v1**");
-    expect(md).toContain("ambiente da app (best-effort)");
+    expect(md).toContain("Contrato de contexto técnico (extensão **v1**)");
+    expect(md).toContain("ambiente da app quando existir");
     expect(md).toContain("- Modo de captura:");
     expect(md).toContain("Debug interno");
     expect(md).not.toContain("## Leitura rápida da sessão");

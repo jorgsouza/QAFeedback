@@ -7,15 +7,17 @@
 
 ## Estado do plano (atualização)
 
-| Fase | Situação |
-|------|-----------|
-| **1** — Achados sensíveis | **Concluída** |
-| **2** — Modos de captura | **Concluída** |
-| **3** — Contexto da aplicação | **Concluída** |
-| **4** — Correlação ação ↔ rede ↔ erro | **Concluída** |
-| **5** — Timeline mais rica | **Concluída** |
-| **6** — UX e comunicação | Pendente (há entregas parciais; ver nota abaixo) |
-| **7** — Base para IA | Pendente |
+
+| Fase                                  | Situação                                         |
+| ------------------------------------- | ------------------------------------------------ |
+| **1** — Achados sensíveis             | **Concluída**                                    |
+| **2** — Modos de captura              | **Concluída**                                    |
+| **3** — Contexto da aplicação         | **Concluída**                                    |
+| **4** — Correlação ação ↔ rede ↔ erro | **Concluída**                                    |
+| **5** — Timeline mais rica            | **Concluída**                                    |
+| **6** — UX e comunicação              | **Concluída**                                    |
+| **7** — Base para IA                  | **Concluída**                                    |
+
 
 **Fora do plano de execução:** alinhamento Preview ↔ submit (antiga Fase 6) — o separador Preview será removido; não há trabalho planejado nessa linha.
 
@@ -49,11 +51,11 @@ Pipeline que, a partir do snapshot já agregado (rede resumida, console, runtime
 
 ### Critérios de aceite
 
-- [x] Achados derivam apenas de fontes já presentes na captura; ausência de dados não quebra o fluxo.
-- [x] Tipos estáveis para achado (espécie, severidade sugerida, fonte, local/resumo, preview truncado, fingerprint opcional).
-- [x] Seção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
-- [x] Nenhum token/segredo completo no corpo principal por padrão.
-- [x] Testes cobrem casos representativos (JWT-like, Bearer, PII óbvia, mensagem de erro “suspeita” com flag de baixa confiança).
+- Achados derivam apenas de fontes já presentes na captura; ausência de dados não quebra o fluxo.
+- Tipos estáveis para achado (espécie, severidade sugerida, fonte, local/resumo, preview truncado, fingerprint opcional).
+- Seção na issue aparece quando houver achados; omitir ou mostrar vazio elegante quando não houver.
+- Nenhum token/segredo completo no corpo principal por padrão.
+- Testes cobrem casos representativos (JWT-like, Bearer, PII óbvia, mensagem de erro “suspeita” com flag de baixa confiança).
 
 ### O que foi entregue (implementação)
 
@@ -74,10 +76,10 @@ Definir modo persistido (ex.: `debug-interno` | `producao-sensivel`) com default
 
 ### Critérios de aceite
 
-- [x] Modo configurável em opções (e migrado de `emptySettings` / load com fallback).
-- [x] Comparação lado a lado: mesmo contexto bruto produz markdown diferente entre modos onde previsto, sem perda de narrativa essencial.
-- [x] Modo default não reduz capacidade atual de debugging.
-- [x] Testes de builder ou snapshots de texto cobrem os dois modos.
+- Modo configurável em opções (e migrado de `emptySettings` / load com fallback).
+- Comparação lado a lado: mesmo contexto bruto produz markdown diferente entre modos onde previsto, sem perda de narrativa essencial.
+- Modo default não reduz capacidade atual de debugging.
+- Testes de builder ou snapshots de texto cobrem os dois modos.
 
 ### O que foi entregue (implementação)
 
@@ -98,14 +100,14 @@ Coleta best-effort de meta tags / globais conhecidos / storage allowlist → cam
 
 ### Critérios de aceite
 
-- [x] Campo opcional; páginas sem sinais não geram erros nem seção vazia ruidosa.
-- [x] Não vazar storage inteiro; apenas chaves allowlist ou estratégia documentada no código.
-- [x] Issue mostra só o que é útil e legível (sem dumps gigantes).
-- [x] Testes com HTML/mocks mínimos validam extração e ausência de crash.
+- Campo opcional; páginas sem sinais não geram erros nem seção vazia ruidosa.
+- Não vazar storage inteiro; apenas chaves allowlist ou estratégia documentada no código.
+- Issue mostra só o que é útil e legível (sem dumps gigantes).
+- Testes com HTML/mocks mínimos validam extração e ausência de crash.
 
 ### O que foi entregue (implementação)
 
-- Novo `extension/src/shared/app-environment-capture.ts` + `app-environment-capture.test.ts`: meta tags (incl. `feature-flag-*` / `experiment-*`), globais string (`__BUILD_ID__`, etc.), `__NEXT_DATA__.buildId` apenas, `__APP_CONFIG__` e **`__INITIAL_STATE__` só no nível topo** (mesmas chaves escalares / flags rasas — sem percorrer árvore Redux), `localStorage` / `sessionStorage` só via **`APP_ENV_STORAGE_KEYS_ALLOWLIST`** (documentado no módulo).
+- Novo `extension/src/shared/app-environment-capture.ts` + `app-environment-capture.test.ts`: meta tags (incl. `feature-flag-*` / `experiment-*`), globais string (`__BUILD_ID__`, etc.), `__NEXT_DATA__.buildId` apenas, `__APP_CONFIG__` e `**__INITIAL_STATE__` só no nível topo** (mesmas chaves escalares / flags rasas — sem percorrer árvore Redux), `localStorage` / `sessionStorage` só via `**APP_ENV_STORAGE_KEYS_ALLOWLIST`** (documentado no módulo).
 - `context-limits.ts`: limites `appEnvFieldMax`, `appEnvCommitMax`, `appEnvFlagsMax`, chaves/valores de flags.
 - `types.ts`: `AppEnvironmentSnapshotV1` / `AppEnvironmentKeyValueV1`, campo opcional `appEnvironment` em `TechnicalContextPayload`.
 - `context-collector.ts`: `captureAppEnvironment(window)` em `try/catch`; omite campo se vazio.
@@ -124,10 +126,10 @@ Janela temporal e regras de priorização sobre timeline + rede + erros + visual
 
 ### Critérios de aceite
 
-- [x] Requests/errors mais relevantes sobem na narrative em cenários de teste sintéticos.
-- [x] Copy da issue não diz “causado por” quando só há correlação temporal (linguagem explícita de correlação).
-- [x] Regressão: issues continham os mesmos blocos obrigatórios anteriores.
-- [x] Testes de narrative / collector cobrem ordenação e tie-breaks.
+- Requests/errors mais relevantes sobem na narrative em cenários de teste sintéticos.
+- Copy da issue não diz “causado por” quando só há correlação temporal (linguagem explícita de correlação).
+- Regressão: issues continham os mesmos blocos obrigatórios anteriores.
+- Testes de narrative / collector cobrem ordenação e tie-breaks.
 
 ### O que foi entregue (implementação)
 
@@ -151,10 +153,10 @@ Eventos adicionais ou refinados no bridge + timeline + limites: scroll com limia
 
 ### Critérios de aceite
 
-- [x] Novos tipos ou entradas aparecem na timeline da issue quando aplicável.
-- [x] Timeline não explode em volume em páginas ruidosas (limites respeitados).
-- [x] Interações geradas pela UI da extensão não poluem a timeline.
-- [x] Testes de timeline cobrem dedupe e novos tipos.
+- Novos tipos ou entradas aparecem na timeline da issue quando aplicável.
+- Timeline não explode em volume em páginas ruidosas (limites respeitados).
+- Interações geradas pela UI da extensão não poluem a timeline.
+- Testes de timeline cobrem dedupe e novos tipos.
 
 ### O que foi entregue (implementação)
 
@@ -177,10 +179,20 @@ Copys em `FeedbackApp` / labels: o que é capturado, avisos de achados sensívei
 
 ### Critérios de aceite
 
-- [ ] Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
-- [ ] Usuário percebe modo ativo e se houve achados (sem alarmismo).
-- [ ] Não há promessas que o código não cumpre.
-- [ ] Revisão rápida visual (smoke) nos fluxos principais.
+- [x] Textos alinhados ao comportamento pós-fases 1–5 (e ao que restar do Preview até ser retirado).
+- [x] Usuário percebe modo ativo e se houve achados (sem alarmismo).
+- [x] Não há promessas que o código não cumpre.
+- [x] Revisão rápida visual (smoke) nos fluxos principais — checklist em `extension/DOCUMENTATION.md` § *Checklist de smoke (QA manual)*.
+
+### O que foi entregue (implementação)
+
+- **`FeedbackApp.tsx`**: texto do checkbox **Incluir contexto técnico** alinhado ao que o código realmente agrega (timeline mesma aba, rede, console, runtime/perf, estado visual, indícios sensíveis, ambiente app, modos nas opções).
+- **Faixa de estado**: badge **Indícios N** (estilo `qaf-status-badge--info`) quando há achados sensíveis na captura atual e o contexto técnico está ligado; tooltip explica heurística e ausência de “confirmação de vulnerabilidade”.
+- **HAR**: tooltip em pt-BR (“em outras abas”).
+- **`issue-builder.ts`**: linha de metadados neutra — **Contrato de contexto técnico (extensão v1)**; **Tela (screen)** em vez de “Ecrã”; testes `issue-builder.test.ts` atualizados.
+- **`shadow-styles.ts`**: classe `.qaf-status-badge--info`.
+- **`OptionsApp.tsx`**: copys em **pt-BR** na secção de captura avançada (ex.: registra/arquivo, “estão sendo gravados”, detecção salva, aba Repositories).
+- **`extension/DOCUMENTATION.md`**: checklist de smoke manual para QA.
 
 ---
 
@@ -194,9 +206,15 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 ### Critérios de aceite
 
-- [ ] Helper ou tipos documentam contrato do futuro input IA.
-- [ ] Build de issue atual não depende de IA; nenhuma chave/API nova obrigatória.
-- [ ] Testes garantem serialização estável ou snapshot do objeto de input em cenário fixo.
+- [x] Helper ou tipos documentam contrato do futuro input IA.
+- [x] Build de issue atual não depende de IA; nenhuma chave/API nova obrigatória.
+- [x] Testes garantem serialização estável ou snapshot do objeto de input em cenário fixo.
+
+### O que foi entregue (implementação)
+
+- **`extension/src/shared/ia-issue-input.ts`**: `IaIssueInputV1`, tipos auxiliares e `buildIaIssueInputV1(payload)` — narração do utilizador, modo, rota, âncora de timeline, pedido prioritário (`pickNetworkSummariesForIssue`), erro de runtime principal, resumo de estado visual, ambiente app (subconjunto), resumo de achados sensíveis (contagem + `kinds` ordenados), contagens de rede/timeline.
+- **`extension/src/shared/ia-issue-input.test.ts`**: `JSON.stringify` idêntico entre duas chamadas com o mesmo payload; casos sem contexto e sem âncora “forte” na timeline.
+- **`extension/DOCUMENTATION.md`**: linha na tabela de arquitetura apontando para o módulo.
 
 ---
 
@@ -204,7 +222,7 @@ Separar conceitualmente camadas no código (tipos/helpers): input agregado para 
 
 Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segurança-informativa e modos primeiro; depois contexto app e correlação; em seguida timeline; por fim UX e gancho IA. A etapa de preview consistente foi fora de escopo.
 
-**Próximo passo sugerido:** **Fase 6** (UX e comunicação).
+**Próximo passo sugerido:** integração futura com modelo (fora deste plano) consumindo `buildIaIssueInputV1`; manter contrato versionado ao evoluir o contexto capturado.
 
 ---
 
@@ -214,3 +232,4 @@ Executar **na ordem das fases 1 → 7** (como no [plan.md](plan.md) §6): segura
 - Confirmar Markdown (ou ADF) no destino usado pelo time (Jira/GitHub).
 - Regressão: toggle “incluir contexto técnico”, envio com rede desligada/ligada, hosts allowlist.
 - Revisar ausência de dados sensíveis completos no corpo.
+
