@@ -86,6 +86,8 @@ npm test         # Vitest (unitários)
 
 Carregar **`extension/dist`** em **chrome://extensions** (modo desenvolvedor). Após alterações: `npm run build` e **Recarregar** a extensão.
 
+**Versão da extensão:** o campo `version` em [`extension/manifest.dist.json`](extension/manifest.dist.json) é o que o Chrome exibe; mantenha-o alinhado com `version` em [`extension/package.json`](extension/package.json) quando fizer releases.
+
 **Allowlist de quadros Jira (opcional, só build):** `extension/.env` ou `.env` na raiz do repo — `BOARD_ID=…` ou `VITE_JIRA_BOARD_ALLOWLIST=…` (ver [extension/README.md](extension/README.md)). **Nunca** faça commit de tokens.
 
 ---

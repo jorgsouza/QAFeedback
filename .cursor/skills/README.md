@@ -12,7 +12,7 @@ Cada pasta contém um **`SKILL.md`** no formato de Agent Skills do Cursor (front
 | `refactoring` | Candidatos a refactor pós-TDD |
 | `tdd` | Red-green-refactor, fatias verticais |
 | `tests` | Bons vs maus testes |
-| `context-budget` | Leitura mínima de contexto no Cursor para economizar tokens/créditos |
+| `context.budget` | Leitura mínima de contexto no Cursor para economizar tokens/créditos |
 
 Planos de produto: pasta **`prd/`** com índice em **`prd/INDEX.md`** (conteúdo antigo de `plans/` e da antiga pasta `PRD/` consolidados em `prd/`).
 

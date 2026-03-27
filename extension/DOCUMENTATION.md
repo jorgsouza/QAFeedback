@@ -81,6 +81,8 @@ Abra as opções pelo menu da extensão, **chrome://extensions**, ou **Configura
 
 Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). Uso só no **background** para criar issues e listar repos/quadros.
 
+**Domínios permitidos (primeira instalação):** se a lista estiver vazia no storage, a extensão usa `DEFAULT_ALLOWED_HOSTS` em `storage.ts` (`localhost`, `127.0.0.1` e um host de exemplo). Ajuste ou remova entradas nas opções conforme o seu ambiente.
+
 ---
 
 ## Uso no dia a dia (modal)
@@ -116,7 +118,9 @@ Revisão rápida alinhada ao PRD-011 (UX e capacidades reais):
 ## Permissões
 
 - **`storage`**, **`scripting`**, **`activeTab`** — configurações, registro/injeção do content script quando necessário.
-- **`host_permissions` fixas:** `api.github.com`, **`*.atlassian.net`**, localhost / 127.0.0.1.
+- **`tabs`** — leitura de metadados da aba (ex.: janela para `captureVisibleTab`), listeners como `tabs.onRemoved` para limpar sessão de timeline.
+- **`debugger`** — presente no manifest; o SW só anexa o depurador quando **Modo diagnóstico completo** está ativo (HAR via CDP).
+- **`host_permissions` fixas:** `api.github.com`, **`*.atlassian.net`**, localhost / 127.0.0.1, e outras entradas que o projeto mantém em **`manifest.dist.json`** (ex.: host de referência para QA — remova ou altere em forks).
 - **`optional_host_permissions`** `http(s)://*/*` — pedido ao **Salvar** conforme os domínios listados nas opções.
 
 ---

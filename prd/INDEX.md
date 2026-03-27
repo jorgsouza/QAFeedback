@@ -14,7 +14,7 @@ Documentação de produto e planos de implementação vivem em **`prd/`**, numer
 | **PRD-006** | Modo diagnóstico HAR + anexo Jira | [plan.md](PRD-006-network-har-diagnostic/plan.md) | Implementado (CDP + anexo; ver código e `DOCUMENTATION.md`) |
 | **PRD-007** | Layout Figma / Trust DS / título 4 palavras | [plan.md](PRD-007-figma-layout-qa-automation-trust-ds/plan.md) | UI em evolução; validar critérios de aceite no doc |
 | **PRD-008** | Captura por região (viewport) → Jira | [plan.md](PRD-008-region-capture-jira/plan.md) | Implementado no código; atualizar checkboxes do plano se QA validar |
-| **PRD-009** | UX da página de opções / configuração | [prd.md](PRD-009-options-config-ux/prd.md), [plan.md](PRD-009-options-config-ux/plan.md) | Em curso — branch `feature/options-config-ux-refactor`; PRD + plano de implementação (Fases 1–3) |
+| **PRD-009** | UX da página de opções / configuração | [prd.md](PRD-009-options-config-ux/prd.md), [plan.md](PRD-009-options-config-ux/plan.md) | Em curso — trabalho na branch remota `feature/options-config-ux-refactor`; PRD + plano (Fases 1–3) |
 | **PRD-010** | Linha do tempo contínua na mesma aba (multi-URL) | [prd.md](PRD-010-linha-tempo-continua/prd.md), [analise-execucao.md](PRD-010-linha-tempo-continua/analise-execucao.md) | Implementado na `main` (sessão por `tabId` no SW + append incremental) |
 | **PRD-011** | Maturidade do produto — debug interno, segurança pragmática (OWASP-aware) | [plan.md](PRD-011-maturidade-produto/plan.md), [execution-plan.md](PRD-011-maturidade-produto/execution-plan.md) (fases verticais) | Plano ativo; Etapas 1–7 (preview consistente fora de escopo) após PRD-009; [OWASP](https://owasp.org/) |
 

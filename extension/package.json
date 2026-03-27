@@ -1,7 +1,7 @@
 {
   "name": "qa-feedback-github",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "build:bridge": "esbuild src/injected/page-bridge.ts --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/page-bridge.js",

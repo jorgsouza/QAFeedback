@@ -133,9 +133,12 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | `storage` | Guardar opções e tokens localmente |
 | `scripting` | Registrar/injetar o content script nos hosts permitidos |
 | `activeTab` | Injeção ao clicar no ícone; captura do viewport para “Capturar área” |
-| `debugger` | Só quando **Modo diagnóstico completo** está ligado (captura HAR) |
-| Hosts fixos | `api.github.com`, `*.atlassian.net`, localhost / 127.0.0.1 |
+| `tabs` | Metadados da aba (ex.: `captureVisibleTab` com `windowId`), limpeza de sessão ao fechar aba |
+| `debugger` | Declarada no manifest; o CDP só é usado quando **Modo diagnóstico completo** está ligado (captura HAR) |
+| Hosts fixos (manifest) | `api.github.com`, `*.atlassian.net`, localhost / 127.0.0.1; o arquivo `manifest.dist.json` pode incluir hosts adicionais para a sua equipe (ex.: site de referência em testes) — ajuste antes do build se fizer fork |
 | Hosts opcionais | Os que você adicionar nas opções (pedido ao **Salvar**) |
+
+**Domínios iniciais nas opções:** primeira instalação usa a lista em `storage.ts` (`DEFAULT_ALLOWED_HOSTS`: `localhost`, `127.0.0.1` e um host de exemplo). Edite ou apague linhas nas **Domínios permitidos** conforme o seu ambiente.
 
 ---
 
@@ -147,8 +150,9 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Opções | `src/options/` |
 | Service worker | `src/background/service-worker.ts` |
 | GitHub | `src/shared/github-client.ts` |
-| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts` |
+| Jira | `src/shared/jira-client.ts`, `jira-board-filter-resolve.ts`, `jira-board-allowlist.ts`, `jira-boards-list-for-feedback.ts`, `jira-motivo.ts` |
 | Issue / contexto | `src/shared/issue-builder.ts`, `context-collector.ts`, `context-limits.ts` |
+| Agregado IA (contrato v1, sem API de modelo) | `src/shared/ia-issue-input.ts` |
 | Narrativa / Jira ADF | `src/shared/issue-narrative.ts`, `src/shared/jira-markdown-adf.ts` |
 | Timeline / rede (helpers) | `src/shared/interaction-timeline.ts`, `src/shared/network-summary.ts` |
 | Timeline sessão por aba (SW) | `src/shared/timeline-session-store.ts`, `src/background/timeline-tab-session.ts`, `src/shared/timeline-append-queue.ts` |
@@ -156,6 +160,9 @@ Mais detalhes: [DOCUMENTATION.md](./DOCUMENTATION.md#botão-não-aparece).
 | Correlação rede–erros–timeline | `src/shared/session-correlation.ts` |
 | Ambiente da app (metadados) | `src/shared/app-environment-capture.ts` |
 | Sessão UI / imagens pendentes (`session` storage) | `src/shared/feedback-ui-session.ts`, `src/shared/pending-images-session.ts` |
+| Fila de mensagens ao SW | `src/shared/extension-message-queue.ts` |
+| Runtime / contexto invalidado | `src/shared/extension-runtime.ts` |
+| Rota SPA / localização | `src/shared/page-route-context.ts`, `location-subscription.ts` |
 | Indício vista desktop/móvel | `src/shared/view-layout-hint.ts` |
 | page-bridge (MAIN world) | `src/injected/page-bridge.ts` |
 | Voz | `src/shared/chrome-speech-dictation.ts`, `src/ui/useChromeSpeechDictation.ts` |

@@ -46,7 +46,7 @@ Vocabulário **compartilhado** entre produto, QA, suporte e engenharia. Objetivo
 | **Snapshot (bridge)** | Recorte coerente do estado observado no bridge **naquele documento** (timeline parcial, rede, etc.). | Evento `qa-feedback:snapshot`; `latestBridge` no collector. |
 | **Content script** | Código da extensão no **contexto isolado** (*isolated world*) — **não** vê variáveis globais do site; comunica com o bridge via DOM/`CustomEvent` e com o **service worker** via mensagens. | `content.tsx`. |
 | **Service worker (SW)** | Processo em background MV3: tokens, APIs GitHub/Jira, armazenamento de **sessão de timeline** por aba, HAR, etc. | `service-worker.ts`. |
-| **UI da extensão** | Raiz conhecida para ignorar cliques na timeline (`#qa-feedback-extension-root`). | `TIMELINE_IGNORE_HOST_ID` / constantes. |
+| **UI da extensão** | Raiz conhecida para ignorar cliques na timeline (`#qa-feedback-extension-root`). | `EXTENSION_ROOT_HOST_ID` em `extension-constants.ts`; alias `TIMELINE_IGNORE_HOST_ID` em `interaction-timeline.ts`. |
 
 ---
 
