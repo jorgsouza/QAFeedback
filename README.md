@@ -69,12 +69,9 @@ Detalhe funcional, tokens e primeiro uso: **[extension/README.md](extension/READ
 
 Antes dos comandos abaixo, esta é a **visão geral** de como a aba, o bridge, o service worker e as APIs se encaixam (PNG exportado do diagrama; texto completo em **[architecture_overview.md](architecture_overview.md)**).
 
-<!-- Caminho com `./` e tag HTML: o preview do Cursor/VS Code costuma não resolver `![](prd/...)` sem `./`. -->
-<p align="center">
-  <img src="./prd/assets/mermaid.png" alt="Visão geral da arquitetura QAFeedback - aba, extensão MV3 e integrações" width="95%" />
-</p>
+![Visão geral da arquitetura QAFeedback: aba, extensão MV3 e integrações](prd/assets/mermaid.png)
 
-*Preview sem imagem? No Cursor/VS Code: **Settings → Markdown › Preview: Security → Allow insecure content** (o webview às vezes bloqueia arquivos locais). Ou abra diretamente [`prd/assets/mermaid.png`](prd/assets/mermaid.png).*
+*Sintaxe `![](prd/assets/mermaid.png)` é a que o **GitHub** resolve bem; `<img>` com caminho relativo costuma aparecer quebrado no site. **Preview local (Cursor/VS Code)** sem figura: **Settings → Markdown › Preview: Security → Allow insecure content**, ou abra [`prd/assets/mermaid.png`](prd/assets/mermaid.png).*
 
 **Requisitos:** Node.js **18+**, Google Chrome.
 
