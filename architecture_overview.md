@@ -10,9 +10,11 @@
 
 ## 1) Diagrama (renderização estática)
 
-Para visualização em qualquer viewer (PDF, revisão offline, ferramentas sem suporte a Mermaid):
+Para visualização em qualquer viewer (PDF, revisão offline, preview do Cursor/VS Code, ferramentas sem suporte a Mermaid):
 
-![Visão geral da arquitetura QAFeedback — fluxo aba, extensão e APIs](prd/assets/mermaid.png)
+<p align="center">
+  <img src="./prd/assets/mermaid.png" alt="Visão geral da arquitetura QAFeedback - fluxo aba, extensão e APIs" width="95%" />
+</p>
 
 *Arquivo gerado a partir do diagrama Mermaid abaixo; ao alterar o desenho, regenere o PNG se quiser manter paridade.*
 
