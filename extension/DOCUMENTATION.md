@@ -6,6 +6,8 @@ Extensão **Chrome Manifest V3**: botão flutuante (FAB), modal em **Shadow DOM*
 
 **Linguagem ubíqua (glossário de domínio):** [prd/LINGUAGEM-UBIQUA.md](../prd/LINGUAGEM-UBIQUA.md) — alinha termos de produto, QA e código (`CapturedIssueContextV1`, timeline, achados sensíveis, etc.).
 
+**Visão de arquitetura (diagrama + PNG):** [architecture_overview.md](../architecture_overview.md) na raiz do repositório.
+
 ---
 
 ## Índice

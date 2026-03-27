@@ -24,6 +24,7 @@ Termos compartilhados entre produto, QA e código — [LINGUAGEM-UBIQUA.md](LING
 
 ## Recursos compartilhados
 
+- **Diagrama de arquitetura (PNG):** [assets/mermaid.png](assets/mermaid.png) — export do diagrama; documentação em [`architecture_overview.md`](../architecture_overview.md) na raiz do repositório.
 - **Ícone / mascote:** [assets/capiQA.png](assets/capiQA.png) — usado pelo script `extension/scripts/roundify-capiqa.mjs` no build.
 
 ## Migração das pastas antigas

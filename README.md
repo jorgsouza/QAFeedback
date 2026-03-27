@@ -89,6 +89,7 @@ Carregar **`extension/dist`** em **chrome://extensions** (modo desenvolvedor). A
 | Recurso | Descrição |
 |---------|-----------|
 | [extension/README.md](extension/README.md) | Funcionalidades completas, tokens, build, permissões, estrutura principal dos arquivos do código |
+| [architecture_overview.md](architecture_overview.md) | **Arquitetura** — diagrama Mermaid + PNG (`prd/assets/mermaid.png`), fluxos e responsabilidades |
 | [extension/DOCUMENTATION.md](extension/DOCUMENTATION.md) | Guia técnico: opções, SW, page-bridge, mensagens (`QAF_TIMELINE_*`, sessão por aba), resolução de problemas, Jira/ADF |
 | [prd/INDEX.md](prd/INDEX.md) | **Índice de PRD-001 … PRD-011** (estado, links para `prd.md` / `plan.md` / `execution-plan.md`) |
 | [prd/LINGUAGEM-UBIQUA.md](prd/LINGUAGEM-UBIQUA.md) | **Linguagem ubíqua** — glossário de domínio (feedback, contexto, timeline, Jira/GitHub, modos de captura) |
