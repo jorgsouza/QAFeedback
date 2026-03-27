@@ -303,9 +303,9 @@ export function buildIssueBody(payload: CreateIssuePayload): string {
     md += `- Data/Hora: ${p.timestamp}\n`;
     md += `- Navegador: ${truncate(p.userAgent, 300)}\n`;
     md += `- Viewport (janela): ${p.viewport}\n`;
-    md += `- Ecrã (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
+    md += `- Tela (screen): ${p.screenCss} · DPR: ${p.devicePixelRatio} · maxTouchPoints: ${p.maxTouchPoints} · pointer: ${p.pointerCoarse ? "coarse" : "fine"}\n`;
     md += `- Vista / dispositivo (indício automático): ${p.viewModeHint}\n`;
-    md += `- Schema de contexto (extensão): **v${ctx.version}** — narrativa, timeline, rede resumida, ambiente da app (best-effort)\n\n`;
+    md += `- Contrato de contexto técnico (extensão **v${ctx.version}**): narrativa, timeline, rede resumida, ambiente da app quando existir\n\n`;
 
     const tl = formatInteractionTimeline(ctx.interactionTimeline ?? [], captureMode);
     if (tl) {

@@ -951,6 +951,12 @@ export const shadowCss = `
   box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.35) inset;
 }
 
+.qaf-status-badge--info {
+  color: #1e40af;
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.28) inset;
+}
+
 .qaf-integrations-loading {
   display: flex;
   align-items: flex-start;
