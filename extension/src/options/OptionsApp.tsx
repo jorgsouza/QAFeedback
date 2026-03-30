@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
+  Bug,
+  CircleHelp,
+  GitBranch,
+  LayoutGrid,
+  Layers,
+  Plus,
+  RefreshCw,
+  Search,
+  Shield,
+  X,
+} from "lucide-react";
+import {
   DEFAULT_ALLOWED_HOSTS,
   emptySettings,
   loadSettings,
@@ -21,7 +33,6 @@ import type { ResolveJiraBoardFilterResult } from "../shared/jira-board-filter-r
 import { builtInJiraBoardAllowlistIds, filterJiraBoardsByAllowlist } from "../shared/jira-board-allowlist";
 import { sortJiraBoardsByName } from "../shared/jira-boards-list-for-feedback";
 
-/** Quadros mostrados no menu das opções: mesma allowlist que o painel (BOARD_ID / VITE_… no .env → build). */
 function boardsForOptionsMenu(raw: { id: number; name: string; type: string }[]) {
   return filterJiraBoardsByAllowlist(raw, builtInJiraBoardAllowlistIds());
 }
@@ -63,10 +74,12 @@ function SectionMessage({
   id,
   message,
   style,
+  className = "",
 }: {
   id: string;
   message: string | null;
   style?: CSSProperties;
+  className?: string;
 }) {
   if (!message) return null;
   return (
@@ -74,75 +87,48 @@ function SectionMessage({
       id={id}
       role="status"
       aria-live="polite"
-      style={{
-        marginTop: 12,
-        marginBottom: 0,
-        padding: 12,
-        borderRadius: 8,
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        fontSize: 14,
-        lineHeight: 1.5,
-        ...style,
-      }}
+      className={`${className?.trim() ? className : "mt-3"} rounded-[var(--radius-lg)] border border-[var(--color-slate-200)] bg-[var(--color-slate-50)] p-3 text-sm leading-relaxed text-[var(--foreground)]`}
+      style={style}
     >
       {message}
     </p>
   );
 }
 
-function StatusBadge({ children, tone }: { children: ReactNode; tone: "neutral" | "ok" | "warn" | "load" }) {
-  const bg =
-    tone === "ok"
-      ? "#dcfce7"
-      : tone === "warn"
-        ? "#ffedd5"
-        : tone === "load"
-          ? "#e0f2fe"
-          : "#f1f5f9";
-  const color =
-    tone === "ok"
-      ? "#166534"
-      : tone === "warn"
-        ? "#9a3412"
-        : tone === "load"
-          ? "#0369a1"
-          : "#475569";
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.04em",
-        padding: "4px 8px",
-        borderRadius: 999,
-        background: bg,
-        color,
-        flexShrink: 0,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function SectionHeading({ children }: { children: ReactNode }) {
+function DsSectionTitle({ children, id }: { children: ReactNode; id?: string }) {
   return (
     <h2
-      style={{
-        margin: "20px 0 10px",
-        fontSize: 15,
-        fontWeight: 700,
-        color: "#0f172a",
-        borderBottom: "1px solid #e2e8f0",
-        paddingBottom: 6,
-      }}
+      id={id}
+      className="mb-4 font-[var(--font-sans-2)] text-xs font-bold uppercase tracking-wider text-[var(--color-slate-600)]"
     >
       {children}
     </h2>
   );
 }
+
+function ConnectionPill({ connected, label }: { connected: boolean; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-slate-100)] px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-[var(--color-slate-700)]">
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${connected ? "bg-[var(--color-green-500)]" : "bg-[var(--color-red-500)]"}`}
+        aria-hidden
+      />
+      {label}
+    </span>
+  );
+}
+
+const inputClass =
+  "flex h-10 w-full rounded-[var(--radius-xl)] border border-[var(--color-slate-300)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] placeholder:text-[var(--color-slate-500)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-500)]/30";
+
+const btnPrimaryClass =
+  "inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-xl)] bg-[var(--primary-700)] px-4 text-sm font-medium text-[var(--color-slate-50)] transition-colors hover:bg-[var(--primary-800)] disabled:cursor-not-allowed disabled:opacity-60";
+
+const btnSecondaryClass =
+  "inline-flex h-10 w-full items-center justify-center rounded-[var(--radius-xl)] border border-[var(--color-slate-300)] bg-[var(--background)] px-3 text-xs font-semibold uppercase tracking-wide text-[var(--foreground)] transition-colors hover:bg-[var(--color-slate-50)] disabled:opacity-60";
+
+const cardClass =
+  "rounded-[var(--radius-3xl)] border border-[var(--color-slate-200)] bg-[var(--background)] p-5 shadow-[var(--shadow-base)]";
 
 export function OptionsApp() {
   const [settings, setSettings] = useState<ExtensionSettings>(emptySettings());
@@ -152,9 +138,10 @@ export function OptionsApp() {
   const [feedback, setFeedback] = useState<OptionsSectionFeedback>(emptySectionFeedback);
   const [testing, setTesting] = useState(false);
   const [testingJira, setTestingJira] = useState(false);
-  /** Listagem automática de quadros (email + token válidos). */
   const [jiraBoardsLoading, setJiraBoardsLoading] = useState(false);
   const [jiraBoards, setJiraBoards] = useState<{ id: number; name: string; type: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [domainDraft, setDomainDraft] = useState("");
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const jiraListRequestId = useRef(0);
@@ -391,7 +378,6 @@ export function OptionsApp() {
     [],
   );
 
-  /** Após email + token (e site inferível), lista todos os quadros sem precisar de botão. */
   const jiraEmailTrim = (settings.jiraEmail ?? "").trim();
   const jiraTokenTrim = (settings.jiraApiToken ?? "").trim();
   const jiraSiteTrim = (settings.jiraSiteUrl ?? "").trim();
@@ -469,7 +455,6 @@ export function OptionsApp() {
     };
   }, [jiraCredsReady, jiraEmailTrim, jiraTokenTrim, jiraSiteTrim, sendJiraTestAndListBoards]);
 
-  /** ID guardado deixou de existir na nova lista (ex.: mudou de conta). */
   useEffect(() => {
     if (jiraBoardsLoading || jiraBoards.length === 0) return;
     const id = (settings.jiraSoftwareBoardId ?? "").trim();
@@ -501,7 +486,6 @@ export function OptionsApp() {
           }));
           return;
         }
-        /** Resposta com boardId ≠ lista completa: só o quadro do projeto. Recarregar lista global sem perder o menu. */
         const fullRes = await sendJiraTestAndListBoards("");
         if (fullRes.ok) {
           const listed = sortJiraBoardsByName(boardsForOptionsMenu(fullRes.boards));
@@ -566,613 +550,514 @@ export function OptionsApp() {
     }));
   }, [settings]);
 
-  const githubBadge = useMemo(() => {
-    if (testing) return { label: "A testar…", tone: "load" as const };
-    if (settings.githubToken.trim()) return { label: "Token preenchido", tone: "ok" as const };
-    return { label: "Sem token", tone: "neutral" as const };
-  }, [testing, settings.githubToken]);
+  const hostList = useMemo(
+    () =>
+      [
+        ...new Set(
+          textToHosts(hostsText)
+            .map(normalizeAllowedHostLine)
+            .filter(Boolean),
+        ),
+      ],
+    [hostsText],
+  );
 
-  const jiraBadge = useMemo(() => {
-    if (testingJira) return { label: "A aplicar quadro…", tone: "load" as const };
-    if (jiraBoardsLoading) return { label: "A carregar quadros…", tone: "load" as const };
-    if (!jiraCredsReady) return { label: "Conexão incompleta", tone: "warn" as const };
-    if (jiraBoards.length > 0) return { label: `${jiraBoards.length} quadro(s)`, tone: "ok" as const };
-    return { label: "Sem quadros no menu", tone: "neutral" as const };
-  }, [testingJira, jiraBoardsLoading, jiraCredsReady, jiraBoards.length]);
+  const removeHost = useCallback((h: string) => {
+    const next = textToHosts(hostsText).filter((x) => normalizeAllowedHostLine(x) !== h);
+    setHostsText(hostsToText(next));
+  }, [hostsText]);
+
+  const addDomain = useCallback(() => {
+    const n = normalizeAllowedHostLine(domainDraft.trim());
+    if (!n) return;
+    const set = new Set(
+      textToHosts(hostsText)
+        .map((x) => normalizeAllowedHostLine(x))
+        .filter(Boolean),
+    );
+    if (set.has(n)) {
+      setDomainDraft("");
+      return;
+    }
+    setHostsText(hostsToText([...textToHosts(hostsText), n]));
+    setDomainDraft("");
+  }, [domainDraft, hostsText]);
+
+  const sq = searchQuery.trim().toLowerCase();
+  const matchInt = !sq || /git|hub|jira|repo|token|email|atlassian|integra/i.test(sq);
+  const matchCap = !sq || /captura|modo|debug|har|produ|sens[ií]vel|intern/i.test(sq);
+  const matchAdv = !sq || /har|diagn|diagnost|rede|http|trafego|tráfego/i.test(sq);
+  const matchDom = !sq || /dom[ií]n|host|local|permit/i.test(sq);
+  const noSectionHit = sq && !matchInt && !matchCap && !matchAdv && !matchDom;
+  const showInt = !sq || noSectionHit || matchInt;
+  const showCap = !sq || noSectionHit || matchCap;
+  const showAdv = !sq || noSectionHit || matchAdv;
+  const showDom = !sq || noSectionHit || matchDom;
+
+  const githubConnected = Boolean(settings.githubToken.trim());
+  const jiraConnected = Boolean(jiraCredsReady && (settings.jiraSoftwareBoardId ?? "").trim());
+
+  const visibleHosts = useMemo(() => {
+    if (!sq) return hostList;
+    return hostList.filter((h) => h.toLowerCase().includes(sq));
+  }, [hostList, sq]);
 
   if (!loaded) {
-    return <p style={{ fontFamily: "system-ui", padding: 16 }}>Carregando…</p>;
+    return (
+      <p className="p-6 font-[var(--font-base)] text-sm text-[var(--color-slate-600)]">Carregando…</p>
+    );
   }
 
   return (
-    <div
-      style={{
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: 640,
-        margin: "24px auto",
-        padding: "0 16px",
-        color: "#0f172a",
-      }}
-    >
-      <style>{`
-        details.qaf-opt-acc {
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          margin-top: 16px;
-          overflow: hidden;
-          background: #fff;
-        }
-        details.qaf-opt-acc > summary {
-          cursor: pointer;
-          font-weight: 700;
-          font-size: 16px;
-          padding: 14px 16px;
-          list-style: none;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          color: #0f172a;
-          background: #f8fafc;
-          user-select: none;
-        }
-        details.qaf-opt-acc[open] > summary {
-          border-bottom: 1px solid #e2e8f0;
-        }
-        details.qaf-opt-acc > summary::-webkit-details-marker {
-          display: none;
-        }
-        .qaf-opt-acc-body {
-          padding: 16px;
-        }
-        .qaf-opt-acc-chev {
-          color: #64748b;
-          font-size: 14px;
-          line-height: 1;
-          transition: transform 0.2s ease;
-          flex-shrink: 0;
-        }
-        details.qaf-opt-acc[open] .qaf-opt-acc-chev {
-          transform: rotate(90deg);
-        }
-        details.qaf-opt-help {
-          margin-bottom: 16px;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          background: #fff;
-          overflow: hidden;
-        }
-        details.qaf-opt-help > summary {
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 14px;
-          padding: 10px 12px;
-          color: #334155;
-          background: #f8fafc;
-          list-style: none;
-          user-select: none;
-        }
-        details.qaf-opt-help > summary::-webkit-details-marker {
-          display: none;
-        }
-        details.qaf-opt-help[open] > summary {
-          border-bottom: 1px solid #e2e8f0;
-        }
-        .qaf-opt-help-inner {
-          padding: 12px 14px;
-          font-size: 14px;
-          color: #334155;
-          background: #fafafa;
-        }
-      `}</style>
-
-      <h1 style={{ fontSize: 22 }}>QA Feedback — GitHub e Jira</h1>
-      <p style={{ color: "#475569", fontSize: 14, marginBottom: 0 }}>
-        Expanda cada secção. GitHub: PAT com permissão <strong>Issues</strong>. Jira:{" "}
-        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">
-          API token
-        </a>{" "}
-        e e-mail Atlassian. Ao <strong>Salvar</strong>, o Chrome pode pedir permissão para os domínios listados.
-      </p>
-
-      <details className="qaf-opt-acc" open>
-        <summary>
-          <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span>GitHub</span>
-            <StatusBadge tone={githubBadge.tone}>{githubBadge.label}</StatusBadge>
-          </span>
-          <span className="qaf-opt-acc-chev" aria-hidden>
-            ▸
-          </span>
-        </summary>
-        <div className="qaf-opt-acc-body">
-          <details className="qaf-opt-help">
-            <summary>Como criar o token fine-grained (passo a passo)</summary>
-            <div className="qaf-opt-help-inner">
-              <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.6 }}>
-                <li style={{ marginBottom: 8 }}>
-                  Aceda a{" "}
-                  <a
-                    href="https://github.com/settings/personal-access-tokens"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "#2563eb", fontWeight: 600 }}
-                  >
-                    github.com/settings/personal-access-tokens
-                  </a>
-                  . Na secção <strong>Fine-grained personal access tokens</strong>, clique em{" "}
-                  <strong>Generate new token</strong> e escolha a opção fine-grained.
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  Em <strong>Token name</strong>, escreva{" "}
-                  <code style={{ background: "#e2e8f0", padding: "1px 6px", borderRadius: 4 }}>QAFeedback</code> (assim
-                  fica fácil de reconhecer no GitHub).
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  Em <strong>Repository access</strong>, inclua os repositórios onde o QA vai abrir issues (por exemplo{" "}
-                  <em>Only select repositories</em> e escolha os projetos, ou outra opção adequada à conta).
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  Em <strong>Permissions</strong> → aba <strong>Repositories</strong> →{" "}
-                  <strong>Add permissions</strong> → procure <strong>Issues</strong> e defina{" "}
-                  <strong>Read and write</strong>. <strong>Não precisa de outras permissões</strong> para esta extensão.
-                </li>
-                <li>
-                  Clique em <strong>Generate token</strong>, copie o valor e cole no campo <strong>GitHub token</strong>{" "}
-                  abaixo (o GitHub só mostra o token completo uma vez).
-                </li>
-              </ol>
-            </div>
-          </details>
-
-          <section style={{ marginTop: 20 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="token">
-              GitHub token
-            </label>
+    <div className="min-h-screen pb-16 font-[var(--font-base)]">
+      <header className="border-b border-[var(--color-slate-200)] bg-[var(--background)] px-4 py-4 shadow-sm sm:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-slate-400)]"
+              aria-hidden
+            />
             <input
-              id="token"
-              type="password"
-              autoComplete="off"
-              value={settings.githubToken}
-              onChange={(e) => setSettings({ ...settings, githubToken: e.target.value })}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar configurações, integrações, domínios…"
+              className={`${inputClass} pl-10`}
+              aria-label="Buscar nas configurações"
             />
-            <p style={{ fontSize: 13, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
-              <strong>Testar conexão</strong> valida o token e <strong>preenche a lista</strong> com os repositórios que
-              a API permite ver (até milhares, em páginas de 100).
-            </p>
-            <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" onClick={onTest} disabled={testing} style={btnPrimary}>
-                {testing ? "Carregando…" : "Testar conexão e listar repos"}
-              </button>
-              <button type="button" onClick={onClearToken} style={btnGhost}>
-                Apagar token
-              </button>
-            </div>
-          </section>
-
-          <section style={{ marginTop: 20 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="repos">
-              Repositórios destino (um por linha)
-            </label>
-            <textarea
-              id="repos"
-              value={reposText}
-              onChange={(e) => setReposText(e.target.value)}
-              rows={8}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                fontFamily: "monospace",
-                fontSize: 13,
-              }}
-              placeholder={"jorgsouza/meu-repo\norg/outro-repo|Projeto legado\nhttps://github.com/org/repo"}
-            />
-            <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-              Formato: <code>owner/repo</code>, URL do GitHub ou <code>owner/repo|Nome no menu</code>. Pode ficar vazio
-              se usar só Jira.
-            </p>
-          </section>
-
-          <SectionMessage id="options-github-feedback" message={feedback.github} />
+          </div>
+          <button type="button" className={btnPrimaryClass} onClick={() => void onSave()}>
+            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+            Oi! Vamos sincronizar?
+          </button>
         </div>
-      </details>
-
-      <details className="qaf-opt-acc">
-        <summary>
-          <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span>Jira Cloud (Atlassian)</span>
-            <StatusBadge tone={jiraBadge.tone}>{jiraBadge.label}</StatusBadge>
-          </span>
-          <span className="qaf-opt-acc-chev" aria-hidden>
-            ▸
-          </span>
-        </summary>
-        <div className="qaf-opt-acc-body">
-          <p style={{ fontSize: 13, color: "#64748b", marginTop: 0, marginBottom: 12, lineHeight: 1.5 }}>
-            Com <strong>e-mail @empresa</strong> (ex. <code>@reclameaqui.com.br</code>) inferimos{" "}
-            <code>https://reclameaqui.atlassian.net</code>. Gmail/Hotmail não inferem site — use{" "}
-            <strong>Avançado</strong>. O <strong>ID do quadro</strong> obtém a chave do projeto e o JQL do filtro na
-            API.
-          </p>
-
-          <SectionHeading>Conexão</SectionHeading>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-email">
-            E-mail Atlassian
-          </label>
-          <input
-            id="jira-email"
-            type="email"
-            autoComplete="off"
-            value={settings.jiraEmail ?? ""}
-            onChange={(e) => setSettings({ ...settings, jiraEmail: e.target.value })}
-            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-          />
-
-          <details className="qaf-opt-help" style={{ marginTop: 14 }}>
-            <summary>Como criar o API token Jira (ajuda passo a passo)</summary>
-            <div className="qaf-opt-help-inner">
-              <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.6 }}>
-                <li style={{ marginBottom: 8 }}>
-                  Inicie sessão na Atlassian e abra{" "}
-                  <a
-                    href="https://id.atlassian.com/manage-profile/security/api-tokens"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "#2563eb", fontWeight: 600 }}
-                  >
-                    id.atlassian.com/manage-profile/security/api-tokens
-                  </a>
-                  .
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  Clique em <strong>Create API token</strong>, dê um nome reconhecível (ex.{" "}
-                  <code style={{ background: "#e2e8f0", padding: "1px 6px", borderRadius: 4 }}>QAFeedback</code>) e
-                  confirme.
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  Copie o token <strong>na hora</strong> (a Atlassian não o mostra outra vez) e cole no campo{" "}
-                  <strong>API token Jira</strong> abaixo.
-                </li>
-                <li>
-                  Use o <strong>mesmo e-mail</strong> da conta Atlassian que aparece no Jira (autenticação nas chamadas
-                  REST).
-                </li>
-              </ol>
-            </div>
-          </details>
-
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 16 }} htmlFor="jira-token">
-            API token Jira
-          </label>
-          <input
-            id="jira-token"
-            type="password"
-            autoComplete="off"
-            value={settings.jiraApiToken ?? ""}
-            onChange={(e) => setSettings({ ...settings, jiraApiToken: e.target.value })}
-            style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-          />
-
-          <details style={{ marginTop: 14, fontSize: 13, color: "#475569" }}>
-            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#0f172a" }}>
-              Avançado — site manual, chave do projeto, override do filtro
-            </summary>
-            <p style={{ marginTop: 10, marginBottom: 10, lineHeight: 1.5 }}>
-              Só se a inferência do site pelo e-mail falhar (domínio ≠ subdomínio Atlassian), ou se a leitura do JQL não
-              preencher um select — aí pode forçar <code>customfield_…</code> e o texto exacto da opção.
-            </p>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-site">
-              Site Atlassian (https://…atlassian.net ou URL com /boards/N/…)
-            </label>
-            <input
-              id="jira-site"
-              type="url"
-              autoComplete="off"
-              placeholder="Deixe vazio para inferir pelo e-mail @empresa"
-              value={settings.jiraSiteUrl ?? ""}
-              onChange={(e) => setSettings({ ...settings, jiraSiteUrl: e.target.value })}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-            />
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 12 }} htmlFor="jira-project">
-              Chave do projeto (só se não usar ID de quadro ou quiser corrigir)
-            </label>
-            <input
-              id="jira-project"
-              type="text"
-              autoComplete="off"
-              placeholder="Preenchida automaticamente ao testar com ID do quadro"
-              value={settings.jiraProjectKey ?? ""}
-              onChange={(e) => setSettings({ ...settings, jiraProjectKey: e.target.value })}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-            />
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 14 }} htmlFor="jira-board-filter-field">
-              Override — ID do campo select
-            </label>
-            <input
-              id="jira-board-filter-field"
-              type="text"
-              autoComplete="off"
-              placeholder="ex. customfield_12071 (Squad) — raro: o filtro costuma bastar"
-              value={settings.jiraBoardFilterSelectFieldId ?? ""}
-              onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectFieldId: e.target.value })}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 13 }}
-            />
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, marginTop: 10 }} htmlFor="jira-board-filter-value">
-              Override — valor da opção
-            </label>
-            <input
-              id="jira-board-filter-value"
-              type="text"
-              autoComplete="off"
-              placeholder="Texto exacto da opção no Jira"
-              value={settings.jiraBoardFilterSelectValue ?? ""}
-              onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectValue: e.target.value })}
-              style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-            />
-          </details>
-
-          <SectionHeading>Board padrão</SectionHeading>
-          {jiraBoardsLoading ? (
-            <p
-              role="status"
-              aria-live="polite"
-              style={{
-                margin: "0 0 10px",
-                fontSize: 13,
-                color: "#0369a1",
-                fontWeight: 600,
-              }}
-            >
-              Jira: a contactar a API e atualizar a lista de quadros…
-            </p>
-          ) : null}
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="jira-board-select">
-            Quadro Software — backlog destino
-          </label>
-          <select
-            id="jira-board-select"
-            value={settings.jiraSoftwareBoardId ?? ""}
-            disabled={!jiraCredsReady || jiraBoardsLoading || testingJira}
-            onChange={(e) => void onJiraBoardSelect(e.target.value)}
-            style={{
-              width: "100%",
-              padding: 8,
-              borderRadius: 8,
-              border: "1px solid #cbd5e1",
-              fontSize: 14,
-              background: "#fff",
-            }}
+        <p className="mx-auto mt-3 max-w-6xl text-sm leading-relaxed text-[var(--color-slate-600)]">
+          QA Feedback — GitHub e Jira. PAT com permissão <strong className="font-semibold text-[var(--foreground)]">Issues</strong>
+          . Jira:{" "}
+          <a
+            className="font-semibold text-[var(--primary-700)] hover:underline"
+            href="https://id.atlassian.com/manage-profile/security/api-tokens"
+            target="_blank"
+            rel="noreferrer"
           >
-            <option value="">
-              {jiraBoardsLoading
-                ? "A carregar quadros…"
-                : !jiraCredsReady
-                  ? "Preencha e-mail Atlassian e API token"
-                  : jiraBoards.length === 0
-                    ? "Nenhum quadro encontrado"
-                    : "Escolha um quadro…"}
-            </option>
-            {jiraBoards.map((b) => (
-              <option key={b.id} value={String(b.id)}>
-                {b.name} ({b.type}) — ID {b.id}
-              </option>
-            ))}
-          </select>
-          <p style={{ fontSize: 13, color: "#64748b", marginTop: 6, marginBottom: 0 }}>
-            Com <strong>e-mail</strong> e <strong>token</strong> válidos, a lista de quadros carrega automaticamente
-            (como os repositórios no GitHub). Ao <strong>escolher um quadro</strong>, confirmamos o site, a{" "}
-            <strong>chave do projeto</strong> e o <strong>filtro do quadro</strong> (Squad, etc.) e guardamos — não é
-            preciso botão de teste. O motivo da abertura continua na descrição ao criar issues.
-          </p>
-          {builtInJiraBoardAllowlistIds().length > 0 ? (
-            <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
-              O menu acima mostra só quadros cujos IDs estão em{" "}
-              <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>BOARD_ID</code> ou{" "}
-              <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>VITE_JIRA_BOARD_ALLOWLIST</code>{" "}
-              no <code>.env</code> (definido em tempo de <code>npm run build</code>). Para alterar a lista, edite o{" "}
-              <code>.env</code> na raiz ou em <code>extension/</code> e reconstrua a extensão.
-            </p>
-          ) : null}
-          {(settings.jiraProjectKey ?? "").trim() ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "#334155",
-                marginTop: 10,
-                marginBottom: 0,
-                padding: "8px 10px",
-                background: "#f8fafc",
-                borderRadius: 8,
-                border: "1px solid #e2e8f0",
-              }}
-            >
-              <strong>Chave do projeto (guardada):</strong> {settings.jiraProjectKey}
-              {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "") ? (
-                <>
-                  {" "}
-                  · <strong>Site:</strong>{" "}
-                  {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "")}
-                </>
-              ) : null}
-            </p>
-          ) : null}
-          {(settings.jiraBoardAutoFields?.length ?? 0) > 0 ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "#0f766e",
-                marginTop: 10,
-                marginBottom: 0,
-                padding: "8px 10px",
-                background: "#f0fdfa",
-                borderRadius: 8,
-                border: "1px solid #99f6e4",
-              }}
-            >
-              <strong>Detecção salva:</strong>{" "}
-              {settings.jiraBoardAutoFields!.map((f) => f.fieldId).join(", ")} — aplicado ao criar issues.
-            </p>
-          ) : null}
-
-          <SectionMessage id="options-jira-feedback" message={feedback.jira} />
-        </div>
-      </details>
-
-      <section
-        style={{
-          marginTop: 24,
-          padding: 16,
-          borderRadius: 10,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-        }}
-      >
-        <SectionHeading>Captura avançada</SectionHeading>
-        <fieldset style={{ border: "none", margin: "0 0 18px", padding: 0 }}>
-          <legend style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "#0f172a" }}>
-            Modo de contexto na issue
-          </legend>
-          <label
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "flex-start",
-              cursor: "pointer",
-              marginBottom: 10,
-              fontSize: 14,
-            }}
-          >
-            <input
-              type="radio"
-              name="qaf-capture-mode"
-              checked={settings.captureMode !== "producao-sensivel"}
-              onChange={() => setSettings({ ...settings, captureMode: "debug-interno" })}
-              style={{ marginTop: 3, flexShrink: 0 }}
-            />
-            <span>
-              <strong>Debug interno</strong> (recomendado em homologação)
-              <span
-                style={{
-                  display: "block",
-                  fontWeight: 400,
-                  fontSize: 13,
-                  color: "#64748b",
-                  marginTop: 6,
-                  lineHeight: 1.55,
-                }}
-              >
-                Mantém mais texto técnico na descrição para facilitar diagnóstico. Achados sensíveis continuam na seção
-                dedicada quando existirem.
-              </span>
-            </span>
-          </label>
-          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
-            <input
-              type="radio"
-              name="qaf-capture-mode"
-              checked={settings.captureMode === "producao-sensivel"}
-              onChange={() => setSettings({ ...settings, captureMode: "producao-sensivel" })}
-              style={{ marginTop: 3, flexShrink: 0 }}
-            />
-            <span>
-              <strong>Produção sensível</strong>
-              <span
-                style={{
-                  display: "block",
-                  fontWeight: 400,
-                  fontSize: 13,
-                  color: "#64748b",
-                  marginTop: 6,
-                  lineHeight: 1.55,
-                }}
-              >
-                Reduz trechos brutos no corpo da issue (mensagens mais curtas, sem stack completo, sem IDs de correlação nas
-                linhas de rede). Útil em páginas com dados mais sensíveis; a seção de achados sensíveis segue aparecendo.
-              </span>
-            </span>
-          </label>
-        </fieldset>
-        <label
-          style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}
-        >
-          <input
-            type="checkbox"
-            checked={Boolean(settings.fullNetworkDiagnostic)}
-            onChange={(e) => setSettings({ ...settings, fullNetworkDiagnostic: e.target.checked })}
-            style={{ marginTop: 3, flexShrink: 0 }}
-          />
-          <span>
-            Modo diagnóstico completo (captura HAR para o Jira)
-            <span
-              style={{
-                display: "block",
-                fontWeight: 400,
-                fontSize: 13,
-                color: "#64748b",
-                marginTop: 8,
-                lineHeight: 1.55,
-              }}
-            >
-              Com o modal de feedback aberto, a extensão registra o tráfego HTTP <strong>só da aba onde o modal está</strong>{" "}
-              e pode anexar um arquivo{" "}
-              <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: 4 }}>.har</code> ao criar a issue no
-              Jira. Requer a permissão de <strong>depurador</strong> do Chrome: por limitação do navegador, o aviso «…
-              started debugging this browser» pode aparecer em <strong>todas as janelas/abas</strong> enquanto o depurador
-              estiver ligado — isso <strong>não</strong> significa que o Chat ou outros sites estão sendo gravados no HAR.
-              Se a captura falhar, feche o <strong>DevTools nesta aba</strong> e tente de novo. Cabeçalhos como Cookie e
-              Authorization são substituídos por <code>[REDACTED]</code> no arquivo exportado.
-            </span>
-          </span>
-        </label>
-      </section>
-
-      <section style={{ marginTop: 20 }}>
-        <SectionHeading>Domínios</SectionHeading>
-        <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }} htmlFor="hosts">
-          Domínios permitidos (um por linha)
-        </label>
-        <textarea
-          id="hosts"
-          value={hostsText}
-          onChange={(e) => setHostsText(e.target.value)}
-          rows={6}
-          style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #cbd5e1" }}
-        />
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-          Padrão: localhost e 127.0.0.1. Ao salvar, o Chrome pode pedir permissão para cada host novo.
+            API token
+          </a>{" "}
+          e e-mail Atlassian. Ao sincronizar, o Chrome pode pedir permissão para os domínios.
         </p>
-        <SectionMessage id="options-domains-feedback" message={feedback.domains} />
-      </section>
+      </header>
 
-      <div style={{ marginTop: 20 }}>
-        <button type="button" onClick={() => void onSave()} style={btnPrimary}>
-          Salvar
-        </button>
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:px-8">
+        {showInt ? (
+          <section aria-labelledby="qaf-integrations">
+            <DsSectionTitle id="qaf-integrations">Integrações</DsSectionTitle>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className={cardClass}>
+                <div className="mb-4 flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-slate-100)]">
+                      <GitBranch className="h-5 w-5 text-[var(--foreground)]" aria-hidden />
+                    </span>
+                    <span className="font-[var(--font-sans-2)] text-lg font-semibold text-[var(--foreground)]">
+                      GitHub
+                    </span>
+                  </div>
+                  <ConnectionPill connected={githubConnected} label={githubConnected ? "Conectado" : "Desconectado"} />
+                </div>
+
+                <details className="mb-4 rounded-[var(--radius-lg)] border border-[var(--color-slate-200)] bg-[var(--color-slate-50)]">
+                  <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[var(--color-slate-700)]">
+                    Como criar o token fine-grained (passo a passo)
+                  </summary>
+                  <ol className="list-decimal space-y-2 border-t border-[var(--color-slate-200)] px-5 py-3 text-sm text-[var(--color-slate-600)]">
+                    <li>
+                      Acesse{" "}
+                      <a
+                        className="font-semibold text-[var(--primary-700)] hover:underline"
+                        href="https://github.com/settings/personal-access-tokens"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        github.com/settings/personal-access-tokens
+                      </a>
+                      . Em <strong>Fine-grained personal access tokens</strong>, gere um token novo.
+                    </li>
+                    <li>
+                      Em <strong>Permissions</strong> → <strong>Issues</strong>: <strong>Read and write</strong>.
+                    </li>
+                    <li>Cole o valor abaixo (o GitHub só mostra o token completo uma vez).</li>
+                  </ol>
+                </details>
+
+                <label className="mb-1 block text-sm font-semibold text-[var(--foreground)]" htmlFor="token">
+                  Token GitHub
+                </label>
+                <input
+                  id="token"
+                  type="password"
+                  autoComplete="off"
+                  value={settings.githubToken}
+                  onChange={(e) => setSettings({ ...settings, githubToken: e.target.value })}
+                  className={inputClass}
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" className={btnSecondaryClass} onClick={onTest} disabled={testing}>
+                    {testing ? "Carregando…" : "Testar conexão e listar repos"}
+                  </button>
+                  <button type="button" className={btnSecondaryClass} onClick={() => void onClearToken()}>
+                    Apagar token
+                  </button>
+                </div>
+
+                <label className="mb-1 mt-4 block text-sm font-semibold text-[var(--foreground)]" htmlFor="repos">
+                  Repositórios destino (um por linha)
+                </label>
+                <textarea
+                  id="repos"
+                  value={reposText}
+                  onChange={(e) => setReposText(e.target.value)}
+                  rows={6}
+                  className={`${inputClass} min-h-[8rem] resize-y font-mono text-xs`}
+                  placeholder={"jorgsouza/meu-repo\norg/outro-repo|Projeto legado\nhttps://github.com/org/repo"}
+                />
+                <p className="mt-2 text-xs text-[var(--color-slate-500)]">
+                  Formato: <code className="rounded bg-[var(--color-slate-100)] px-1">owner/repo</code>, URL ou{" "}
+                  <code className="rounded bg-[var(--color-slate-100)] px-1">owner/repo|Nome</code>. Vazio se usar só Jira.
+                </p>
+                <SectionMessage id="options-github-feedback" message={feedback.github} />
+              </div>
+
+              <div className={cardClass}>
+                <div className="mb-4 flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-slate-100)]">
+                      <Layers className="h-5 w-5 text-[var(--color-blue-600)]" aria-hidden />
+                    </span>
+                    <span className="font-[var(--font-sans-2)] text-lg font-semibold text-[var(--foreground)]">Jira</span>
+                  </div>
+                  <ConnectionPill connected={jiraConnected} label={jiraConnected ? "Conectado" : "Desconectado"} />
+                </div>
+
+                <p className="mb-3 text-sm text-[var(--color-slate-600)]">
+                  Com e-mail <strong>@empresa</strong> inferimos o site Atlassian. Gmail não inferem — use{" "}
+                  <strong>Avançado</strong>.
+                </p>
+
+                <label className="mb-1 block text-sm font-semibold text-[var(--foreground)]" htmlFor="jira-email">
+                  E-mail Atlassian
+                </label>
+                <input
+                  id="jira-email"
+                  type="email"
+                  autoComplete="off"
+                  value={settings.jiraEmail ?? ""}
+                  onChange={(e) => setSettings({ ...settings, jiraEmail: e.target.value })}
+                  className={inputClass}
+                />
+
+                <a
+                  className="mt-3 flex h-10 w-full items-center justify-center rounded-[var(--radius-xl)] border border-dashed border-[var(--color-slate-300)] bg-[var(--color-slate-50)] text-xs font-bold uppercase tracking-wide text-[var(--primary-700)] hover:bg-[var(--color-slate-100)]"
+                  href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Criar API token Jira (guia na Atlassian)
+                </a>
+
+                <label className="mb-1 mt-3 block text-sm font-semibold text-[var(--foreground)]" htmlFor="jira-token">
+                  API token Jira
+                </label>
+                <input
+                  id="jira-token"
+                  type="password"
+                  autoComplete="off"
+                  value={settings.jiraApiToken ?? ""}
+                  onChange={(e) => setSettings({ ...settings, jiraApiToken: e.target.value })}
+                  className={inputClass}
+                />
+
+                <details className="mt-3 rounded-[var(--radius-lg)] border border-[var(--color-slate-200)]">
+                  <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-[var(--color-slate-700)]">
+                    Avançado — site, projeto, override do filtro
+                  </summary>
+                  <div className="space-y-3 border-t border-[var(--color-slate-200)] p-3">
+                    <label className="block text-xs font-semibold" htmlFor="jira-site">
+                      Site Atlassian
+                    </label>
+                    <input
+                      id="jira-site"
+                      type="url"
+                      autoComplete="off"
+                      placeholder="Vazio = inferir pelo e-mail"
+                      value={settings.jiraSiteUrl ?? ""}
+                      onChange={(e) => setSettings({ ...settings, jiraSiteUrl: e.target.value })}
+                      className={inputClass}
+                    />
+                    <label className="block text-xs font-semibold" htmlFor="jira-project">
+                      Chave do projeto
+                    </label>
+                    <input
+                      id="jira-project"
+                      type="text"
+                      autoComplete="off"
+                      value={settings.jiraProjectKey ?? ""}
+                      onChange={(e) => setSettings({ ...settings, jiraProjectKey: e.target.value })}
+                      className={inputClass}
+                    />
+                    <label className="block text-xs font-semibold" htmlFor="jira-board-filter-field">
+                      Override campo select
+                    </label>
+                    <input
+                      id="jira-board-filter-field"
+                      type="text"
+                      autoComplete="off"
+                      value={settings.jiraBoardFilterSelectFieldId ?? ""}
+                      onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectFieldId: e.target.value })}
+                      className={`${inputClass} font-mono text-xs`}
+                    />
+                    <label className="block text-xs font-semibold" htmlFor="jira-board-filter-value">
+                      Valor da opção
+                    </label>
+                    <input
+                      id="jira-board-filter-value"
+                      type="text"
+                      autoComplete="off"
+                      value={settings.jiraBoardFilterSelectValue ?? ""}
+                      onChange={(e) => setSettings({ ...settings, jiraBoardFilterSelectValue: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                </details>
+
+                {jiraBoardsLoading ? (
+                  <p className="mt-3 text-sm font-semibold text-[var(--color-blue-600)]" role="status">
+                    Consultando a API e atualizando quadros…
+                  </p>
+                ) : null}
+
+                <label className="mb-1 mt-3 block text-sm font-semibold text-[var(--foreground)]" htmlFor="jira-board-select">
+                  Quadro Software — backlog destino
+                </label>
+                <select
+                  id="jira-board-select"
+                  value={settings.jiraSoftwareBoardId ?? ""}
+                  disabled={!jiraCredsReady || jiraBoardsLoading || testingJira}
+                  onChange={(e) => void onJiraBoardSelect(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">
+                    {jiraBoardsLoading
+                      ? "Carregando quadros…"
+                      : !jiraCredsReady
+                        ? "Preencha e-mail e API token"
+                        : jiraBoards.length === 0
+                          ? "Nenhum quadro encontrado"
+                          : "Escolha um quadro…"}
+                  </option>
+                  {jiraBoards.map((b) => (
+                    <option key={b.id} value={String(b.id)}>
+                      {b.name} ({b.type}) — ID {b.id}
+                    </option>
+                  ))}
+                </select>
+
+                {builtInJiraBoardAllowlistIds().length > 0 ? (
+                  <p className="mt-2 text-xs text-[var(--color-slate-500)]">
+                    Menu filtrado por <code className="rounded bg-[var(--color-slate-100)] px-1">BOARD_ID</code> no build.
+                  </p>
+                ) : null}
+                {(settings.jiraProjectKey ?? "").trim() ? (
+                  <p className="mt-2 rounded-[var(--radius-lg)] border border-[var(--color-slate-200)] bg-[var(--color-slate-50)] p-2 text-xs text-[var(--color-slate-700)]">
+                    <strong>Projeto:</strong> {settings.jiraProjectKey}
+                    {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "") ? (
+                      <>
+                        {" "}
+                        · <strong>Site:</strong> {resolveJiraCloudBaseUrl(settings.jiraSiteUrl ?? "", settings.jiraEmail ?? "")}
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+                {(settings.jiraBoardAutoFields?.length ?? 0) > 0 ? (
+                  <p className="mt-2 rounded-[var(--radius-lg)] border border-[var(--primary-200)] bg-[var(--primary-50)] p-2 text-xs text-[var(--primary-800)]">
+                    <strong>Detecção:</strong> {settings.jiraBoardAutoFields!.map((f) => f.fieldId).join(", ")}
+                  </p>
+                ) : null}
+                <SectionMessage id="options-jira-feedback" message={feedback.jira} />
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {showCap ? (
+          <section aria-labelledby="qaf-capture-mode">
+            <DsSectionTitle id="qaf-capture-mode">Modo de captura</DsSectionTitle>
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, captureMode: "debug-interno" })}
+                className={`${cardClass} text-left transition-shadow hover:shadow-[var(--shadow-lg)] ${
+                  settings.captureMode !== "producao-sensivel"
+                    ? "ring-2 ring-[var(--primary-500)] ring-offset-2"
+                    : ""
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <Bug className="h-6 w-6 text-[var(--primary-700)]" aria-hidden />
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-slate-500)]">
+                    <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+                    Saiba mais
+                  </span>
+                </div>
+                <h3 className="font-[var(--font-sans-2)] text-base font-bold text-[var(--foreground)]">Debug interno</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--color-slate-600)]">
+                  Logs técnicos mais completos na issue. Recomendado em homologação. Achados sensíveis seguem na seção dedicada.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, captureMode: "producao-sensivel" })}
+                className={`${cardClass} text-left transition-shadow hover:shadow-[var(--shadow-lg)] ${
+                  settings.captureMode === "producao-sensivel"
+                    ? "ring-2 ring-[var(--primary-500)] ring-offset-2"
+                    : ""
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <Shield className="h-6 w-6 text-[var(--color-slate-700)]" aria-hidden />
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-slate-500)]">
+                    <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+                    Saiba mais
+                  </span>
+                </div>
+                <h3 className="font-[var(--font-sans-2)] text-base font-bold text-[var(--foreground)]">Produção sensível</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--color-slate-600)]">
+                  Menos trechos brutos (sem stack completo, sem IDs de correlação nas linhas de rede). Útil em páginas públicas.
+                </p>
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {showAdv ? (
+          <section aria-labelledby="qaf-advanced-capture">
+            <DsSectionTitle id="qaf-advanced-capture">Captura avançada</DsSectionTitle>
+            <div className={cardClass}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <label className="relative inline-flex cursor-pointer items-center pt-1">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={Boolean(settings.fullNetworkDiagnostic)}
+                    onChange={(e) => setSettings({ ...settings, fullNetworkDiagnostic: e.target.checked })}
+                  />
+                  <span className="h-7 w-12 shrink-0 rounded-full bg-[var(--color-slate-300)] transition-colors after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[var(--primary-600)] peer-checked:after:translate-x-5 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--primary-500)]/40" />
+                </label>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-[var(--font-sans-2)] text-sm font-bold uppercase tracking-wide text-[var(--foreground)]">
+                      HAR diagnostics (captura completa)
+                    </span>
+                    <span className="rounded-full bg-[var(--color-orange-100)] px-2 py-0.5 text-[0.65rem] font-bold uppercase text-[var(--color-orange-700)]">
+                      Requer permissões do navegador
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-slate-600)]">
+                    Grava o tráfego HTTP da aba do feedback para anexar <code className="rounded bg-[var(--color-slate-100)] px-1">.har</code> no Jira. O aviso de depuração do Chrome pode aparecer em todas as janelas enquanto ativo — só essa aba entra no arquivo. Cookie e Authorization saem como{" "}
+                    <code className="rounded bg-[var(--color-slate-100)] px-1">[REDACTED]</code>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {showDom ? (
+          <section aria-labelledby="qaf-domains">
+            <DsSectionTitle id="qaf-domains">Domínios permitidos</DsSectionTitle>
+            <div className={cardClass}>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {visibleHosts.length === 0 ? (
+                  <span className="text-sm text-[var(--color-slate-500)]">
+                    {sq ? "Nenhum domínio combina com a busca." : "Nenhum domínio — adicione abaixo."}
+                  </span>
+                ) : (
+                  visibleHosts.map((h) => (
+                    <span
+                      key={h}
+                      className="inline-flex items-center gap-1 rounded-full border border-[var(--color-slate-300)] bg-[var(--color-slate-100)] px-3 py-1 text-sm font-medium text-[var(--color-slate-800)]"
+                    >
+                      {h}
+                      <button
+                        type="button"
+                        className="rounded p-0.5 text-[var(--color-slate-500)] hover:bg-[var(--color-slate-200)] hover:text-[var(--foreground)]"
+                        onClick={() => removeHost(h)}
+                        aria-label={`Remover ${h}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="relative flex gap-2">
+                <input
+                  type="text"
+                  value={domainDraft}
+                  onChange={(e) => setDomainDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addDomain();
+                    }
+                  }}
+                  placeholder="Adicionar domínio…"
+                  className={`${inputClass} pr-12`}
+                  aria-label="Novo domínio"
+                />
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--primary-700)] text-white hover:bg-[var(--primary-800)]"
+                  onClick={addDomain}
+                  aria-label="Adicionar domínio"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-[var(--color-slate-500)]">
+                Alterações aqui ficam ao sincronizar. Você também pode editar a lista completa:{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-[var(--primary-700)] underline"
+                  onClick={() => {
+                    const ta = document.getElementById("hosts-raw");
+                    if (ta) (ta as HTMLTextAreaElement).focus();
+                  }}
+                >
+                  ver texto bruto
+                </button>
+                .
+              </p>
+              <textarea
+                id="hosts-raw"
+                value={hostsText}
+                onChange={(e) => setHostsText(e.target.value)}
+                rows={4}
+                className={`${inputClass} mt-2 min-h-[5rem] font-mono text-xs`}
+                aria-label="Lista de domínios (texto bruto)"
+              />
+              <SectionMessage id="options-domains-feedback" message={feedback.domains} />
+            </div>
+          </section>
+        ) : null}
+
+        <SectionMessage id="options-global-feedback" message={feedback.global} className="mt-6" />
       </div>
 
-      <SectionMessage id="options-global-feedback" message={feedback.global} style={{ marginTop: 16 }} />
+      <footer className="border-t border-[var(--color-slate-200)] bg-[var(--background)] py-6 text-center text-xs text-[var(--color-slate-400)]">
+        <span className="inline-flex items-center gap-2">
+          <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+          QA Feedback · configurações
+        </span>
+      </footer>
     </div>
   );
 }
-
-const btnPrimary: CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 8,
-  border: "none",
-  background: "#2563eb",
-  color: "#fff",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const btnGhost: CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 8,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  fontWeight: 600,
-  cursor: "pointer",
-};
