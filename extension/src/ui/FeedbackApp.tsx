@@ -647,6 +647,7 @@ export function FeedbackApp() {
             attachment: JiraImageAttachmentPayload;
             durationMs: number;
             sizeBytes: number;
+            pendingInSession?: boolean;
           }
         | { type: "QAF_VIDEO_RECORDING_ERROR"; code: string; message: string }
         | undefined;
@@ -1123,19 +1124,25 @@ export function FeedbackApp() {
           });
         }
         if (videoAttachment) {
-          const raw = videoAttachment.base64.length * 0.75;
-          if (raw > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
+          const approxBytes =
+            videoMeta?.sizeBytes ??
+            Math.max(0, Math.ceil((videoAttachment.base64.length * 3) / 4));
+          if (approxBytes > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
             setError(
               `Vídeo demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB). Grave de novo com menos tempo ou movimento.`,
             );
             setBusy(false);
             return;
           }
-          jiraImageAttachments.push({
-            fileName: safeImageFileNameForJira(videoAttachment.fileName),
-            mimeType: videoAttachment.mimeType || "video/webm",
-            base64: videoAttachment.base64,
-          });
+          if (videoAttachment.base64 === "") {
+            /* vídeo em chrome.storage.session; não passar base64 pelo sendMessage */
+          } else {
+            jiraImageAttachments.push({
+              fileName: safeImageFileNameForJira(videoAttachment.fileName),
+              mimeType: videoAttachment.mimeType || "video/webm",
+              base64: videoAttachment.base64,
+            });
+          }
         }
       }
 
@@ -1152,12 +1159,22 @@ export function FeedbackApp() {
           })
         : undefined;
       const submitPayload: CreateIssuePayload = { ...form, capturedContext: capturedContextForSend };
+      const jiraVideoPendingInSession =
+        form.sendToJira &&
+        Boolean(
+          videoMeta &&
+            videoAttachment &&
+            (videoAttachment.base64 === "" ||
+              videoAttachment.base64 == null ||
+              videoAttachment.base64.trim() === ""),
+        );
 
       const res = (await chrome.runtime.sendMessage({
         type: "CREATE_ISSUE",
         payload: {
           ...submitPayload,
           ...(jiraImageAttachments?.length ? { jiraImageAttachments } : {}),
+          ...(jiraVideoPendingInSession ? { jiraVideoPendingInSession: true } : {}),
           ...(form.sendToJira && selectedJiraBoardId.trim()
             ? { jiraSoftwareBoardId: selectedJiraBoardId.trim() }
             : {}),
@@ -1981,6 +1998,9 @@ export function FeedbackApp() {
                                         type="button"
                                         className="qaf-btn-ghost"
                                         onClick={() => {
+                                          void chrome.runtime
+                                            .sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" })
+                                            .catch(() => {});
                                           setVideoAttachment(null);
                                           setVideoMeta(null);
                                           setVideoRecordingState("idle");

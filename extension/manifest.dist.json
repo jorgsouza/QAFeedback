@@ -34,7 +34,8 @@
     "https://localhost/*",
     "http://127.0.0.1/*",
     "https://127.0.0.1/*",
-    "https://www.reclameaqui.com.br/*"
+    "https://reclameaqui.com.br/*",
+    "https://*.reclameaqui.com.br/*"
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": {

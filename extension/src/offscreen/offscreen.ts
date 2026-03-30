@@ -2,6 +2,9 @@ import { pickWebmMimeTypeForMediaRecorder } from "../shared/video-recording-mime
 
 const JIRA_MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
+/** Offscreen não tem `chrome.storage`; o SW junta as partes e grava em session. */
+const VIDEO_BASE64_CHUNK_CHARS = 2_000_000;
+
 type StartMsg = {
   type: "QAF_OFFSCREEN_VIDEO_START";
   streamId: string;
@@ -10,7 +13,7 @@ type StartMsg = {
   videoBitsPerSecond?: number;
 };
 
-type StopMsg = { type: "QAF_OFFSCREEN_VIDEO_STOP"; sessionId: string };
+type StopMsg = { type: "QAF_OFFSCREEN_VIDEO_STOP"; sessionId: string; tabId: number };
 type AbortMsg = { type: "QAF_OFFSCREEN_VIDEO_ABORT"; sessionId?: string };
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -126,7 +129,17 @@ async function handleStart(msg: StartMsg): Promise<void> {
 }
 
 async function handleStop(msg: StopMsg): Promise<void> {
-  const { sessionId } = msg;
+  const { sessionId, tabId } = msg;
+  if (typeof tabId !== "number" || !Number.isFinite(tabId)) {
+    sendSignal({
+      type: "QAF_OFFSCREEN_VIDEO_SIGNAL",
+      phase: "error",
+      sessionId,
+      code: "NO_TAB",
+      message: "Separador inválido ao finalizar vídeo.",
+    });
+    return;
+  }
   if (!activeSessionId || sessionId !== activeSessionId) {
     sendSignal({
       type: "QAF_OFFSCREEN_VIDEO_SIGNAL",
@@ -209,18 +222,38 @@ async function handleStop(msg: StopMsg): Promise<void> {
   try {
     const base64 = await blobToBase64(blob);
     const fileName = `qa-recording-${Date.now()}.webm`;
-    sendSignal({
-      type: "QAF_OFFSCREEN_VIDEO_SIGNAL",
-      phase: "stopped",
+    const mimeType = "video/webm";
+    const total = Math.max(1, Math.ceil(base64.length / VIDEO_BASE64_CHUNK_CHARS));
+    for (let i = 0; i < total; i++) {
+      const chunk = base64.slice(i * VIDEO_BASE64_CHUNK_CHARS, (i + 1) * VIDEO_BASE64_CHUNK_CHARS);
+      const ack = (await chrome.runtime.sendMessage({
+        type: "QAF_OFFSCREEN_VIDEO_BASE64_CHUNK",
+        sessionId,
+        tabId,
+        index: i,
+        total,
+        chunk,
+      })) as { ok?: boolean } | undefined;
+      if (ack && typeof ack === "object" && ack.ok === false) {
+        throw new Error("Falha ao enviar bloco do vídeo.");
+      }
+    }
+    const done = (await chrome.runtime.sendMessage({
+      type: "QAF_OFFSCREEN_VIDEO_BASE64_COMMIT",
       sessionId,
-      attachment: {
-        fileName,
-        mimeType: "video/webm",
-        base64,
-      },
+      tabId,
       durationMs,
       sizeBytes,
-    });
+      fileName,
+      mimeType,
+    })) as { ok?: boolean; message?: string } | undefined;
+    if (!done || typeof done !== "object" || done.ok !== true) {
+      throw new Error(
+        typeof done?.message === "string" && done.message.trim()
+          ? done.message
+          : "Falha ao gravar vídeo no armazenamento da extensão.",
+      );
+    }
   } catch (e) {
     sendSignal({
       type: "QAF_OFFSCREEN_VIDEO_SIGNAL",

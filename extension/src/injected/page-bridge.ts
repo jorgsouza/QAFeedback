@@ -50,21 +50,48 @@ function cap<T>(arr: T[], n: number): T[] {
   return arr.slice(-n);
 }
 
+/** Evita «Refused to get unsafe header» / exceções em XHR cross-origin (ex.: www → API noutro host). */
+function requestUrlSameOriginAsPage(requestUrl: string, pageHref: string): boolean {
+  try {
+    const u = new URL(requestUrl, pageHref);
+    return u.origin === new URL(pageHref).origin;
+  } catch {
+    return false;
+  }
+}
+
+function safeXhrGetResponseHeader(xhr: XMLHttpRequest, name: string): string | null {
+  try {
+    return xhr.getResponseHeader(name);
+  } catch {
+    return null;
+  }
+}
+
 function readCorrelationHeadersFromResponse(res: Response): {
   requestId?: string;
   correlationId?: string;
   contentType?: string;
 } {
   try {
-    const requestId =
-      res.headers.get("x-request-id") || res.headers.get("x-requestid") || res.headers.get("request-id") || undefined;
-    const correlationId =
-      res.headers.get("x-correlation-id") ||
-      res.headers.get("correlation-id") ||
-      res.headers.get("x-amzn-requestid") ||
-      undefined;
+    let requestId: string | undefined;
+    let correlationId: string | undefined;
+    let contentType: string | undefined;
+    const sameOrigin = requestUrlSameOriginAsPage(res.url, typeof location !== "undefined" ? location.href : "");
+    if (sameOrigin) {
+      requestId =
+        res.headers.get("x-request-id") ||
+        res.headers.get("x-requestid") ||
+        res.headers.get("request-id") ||
+        undefined;
+      correlationId =
+        res.headers.get("x-correlation-id") ||
+        res.headers.get("correlation-id") ||
+        res.headers.get("x-amzn-requestid") ||
+        undefined;
+    }
     const ct = res.headers.get("content-type");
-    const contentType = ct ? ct.split(";")[0]?.trim() : undefined;
+    if (ct) contentType = ct.split(";")[0]?.trim();
     return {
       requestId: requestId || undefined,
       correlationId: correlationId || undefined,
@@ -402,13 +429,16 @@ function init(): void {
       let requestId: string | undefined;
       let correlationId: string | undefined;
       let contentType: string | undefined;
-      try {
-        requestId = this.getResponseHeader("x-request-id") || this.getResponseHeader("x-requestid") || undefined;
-        correlationId = this.getResponseHeader("x-correlation-id") || undefined;
-        const ct = this.getResponseHeader("content-type");
-        if (ct) contentType = ct.split(";")[0]?.trim();
-      } catch {
-        /* ignore */
+      const sameOrigin = requestUrlSameOriginAsPage(meta.url, location.href);
+      const ct = safeXhrGetResponseHeader(this, "content-type");
+      if (ct) contentType = ct.split(";")[0]?.trim();
+      if (sameOrigin) {
+        const rid =
+          safeXhrGetResponseHeader(this, "x-request-id") ||
+          safeXhrGetResponseHeader(this, "x-requestid");
+        requestId = rid || undefined;
+        const cid = safeXhrGetResponseHeader(this, "x-correlation-id");
+        correlationId = cid || undefined;
       }
       pushNetworkEntry({
         at: new Date().toISOString(),

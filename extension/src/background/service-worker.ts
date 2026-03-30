@@ -44,7 +44,11 @@ import {
 import {
   abortViewportRecording,
   abortViewportRecordingForTab,
+  clearPendingJiraVideoForTab,
   getViewportRecordingStateForTab,
+  loadPendingJiraVideoForTab,
+  routeOffscreenVideoBase64Chunk,
+  routeOffscreenVideoBase64Commit,
   routeOffscreenVideoSignal,
   startViewportRecording,
   stopViewportRecording,
@@ -208,6 +212,39 @@ type OpenOptionsMessage = { type: "OPEN_OPTIONS" };
 type StartNetworkDiagnosticMessage = { type: "START_NETWORK_DIAGNOSTIC" };
 type StopNetworkDiagnosticMessage = { type: "STOP_NETWORK_DIAGNOSTIC" };
 type CaptureVisibleTabMessage = { type: "CAPTURE_VISIBLE_TAB"; tabId?: number };
+
+/** Páginas onde `captureVisibleTab` falha sempre (mensagem alinhada ao Chrome). */
+function viewportCaptureDeniedReason(url: string | undefined | null): string | null {
+  if (url == null || !String(url).trim()) return null;
+  const u = String(url).trim().toLowerCase();
+  if (
+    u.startsWith("chrome://") ||
+    u.startsWith("chrome-extension://") ||
+    u.startsWith("edge://") ||
+    u.startsWith("about:") ||
+    u.startsWith("devtools://") ||
+    u.startsWith("view-source:") ||
+    u.startsWith("https://chrome.google.com/webstore") ||
+    u.startsWith("https://chromewebstore.google.com")
+  ) {
+    return "Esta página não pode ser capturada (Chrome interno, Web Store, about:, etc.). Use «Capturar tela» num site http(s) normal.";
+  }
+  return null;
+}
+
+function friendlyCaptureVisibleTabError(raw: string, tabUrl?: string | null): string {
+  const m = raw.toLowerCase();
+  if (m.includes("chrome pages cannot be captured") || m.includes("cannot be captured")) {
+    return viewportCaptureDeniedReason(tabUrl) ?? raw;
+  }
+  if (m.includes("not been invoked") || m.includes("activetab")) {
+    return "Para capturar o ecrã: clique uma vez no ícone da extensão na barra do Chrome neste separador antes de «Capturar tela», ou nas Opções aceite permissão para este domínio (sites permitidos + pedir acesso amplo se precisar).";
+  }
+  if (m.includes("permission") || m.includes("denied") || m.includes("cannot access")) {
+    return "Sem permissão para capturar este separador. Clique no ícone da extensão nesta página ou adicione o domínio em Opções → Sites permitidos.";
+  }
+  return raw;
+}
 type QafTimelineSessionStartMessage = { type: "QAF_TIMELINE_SESSION_START"; sessionId?: string };
 type QafTimelineAppendMessage = { type: "QAF_TIMELINE_APPEND"; entries: InteractionTimelineEntryV1[] };
 type QafTimelineGetForSubmitMessage = { type: "QAF_TIMELINE_GET_FOR_SUBMIT" };
@@ -248,6 +285,27 @@ chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
     routeOffscreenVideoSignal(message as unknown as Record<string, unknown>);
 
+    const extVideoMsgType = (message as { type?: string }).type;
+    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BASE64_CHUNK") {
+      routeOffscreenVideoBase64Chunk(message as unknown as Record<string, unknown>);
+      sendResponse({ ok: true as const });
+      return true;
+    }
+    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BASE64_COMMIT") {
+      void (async () => {
+        try {
+          await routeOffscreenVideoBase64Commit(message as unknown as Record<string, unknown>);
+          sendResponse({ ok: true as const });
+        } catch (e) {
+          sendResponse({
+            ok: false as const,
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      })();
+      return true;
+    }
+
     if (message.type === "QAF_VIDEO_RECORDING_START") {
       void (async () => {
         const m = message as QafVideoRecordingStartMessage;
@@ -282,6 +340,7 @@ chrome.runtime.onMessage.addListener(
             attachment: r.attachment,
             durationMs: r.durationMs,
             sizeBytes: r.sizeBytes,
+            pendingInSession: r.pendingInSession,
           });
         } else {
           sendResponse({
@@ -611,22 +670,32 @@ chrome.runtime.onMessage.addListener(
     if (message.type === "CAPTURE_VISIBLE_TAB") {
       void (async () => {
         const m = message as CaptureVisibleTabMessage;
-        let windowId = sender.tab?.windowId;
-        if (windowId == null && typeof m.tabId === "number") {
-          try {
-            const t = await chrome.tabs.get(m.tabId);
-            windowId = t.windowId;
-          } catch {
-            /* ignore */
-          }
-        }
-        if (windowId == null) {
+        const tabId = sender.tab?.id ?? (typeof m.tabId === "number" ? m.tabId : undefined);
+        if (tabId == null) {
           sendResponse({ ok: false, message: "Separador desconhecido." });
           return;
         }
+        let tab: chrome.tabs.Tab;
+        try {
+          tab = await chrome.tabs.get(tabId);
+        } catch {
+          sendResponse({ ok: false, message: "Não foi possível ler o separador." });
+          return;
+        }
+        const tabUrl = tab.url ?? tab.pendingUrl;
+        const denyEarly = viewportCaptureDeniedReason(tabUrl);
+        if (denyEarly) {
+          sendResponse({ ok: false, message: denyEarly });
+          return;
+        }
+        const windowId = tab.windowId;
+        if (windowId == null) {
+          sendResponse({ ok: false, message: "Janela do separador desconhecida." });
+          return;
+        }
         /**
-         * API: `captureVisibleTab(windowId, options)` — o 1.º argumento é o ID da **janela**,
-         * não o da aba. O content script pode enviar `tabId` para resolver `windowId` se `sender.tab` falhar.
+         * `captureVisibleTab` exige permissão de host para o origin **ou** `activeTab` após clicar no ícone
+         * (content script injectado automaticamente não conta como «invocação»).
          */
         try {
           const dataUrl = await chrome.tabs.captureVisibleTab(windowId, { format: "png" });
@@ -636,11 +705,11 @@ chrome.runtime.onMessage.addListener(
           }
           sendResponse({ ok: true, dataUrl });
         } catch (e) {
-          const msg =
+          const raw =
             e instanceof Error
               ? e.message
               : chrome.runtime.lastError?.message ?? "Falha ao capturar o separador.";
-          sendResponse({ ok: false, message: msg });
+          sendResponse({ ok: false, message: friendlyCaptureVisibleTabError(raw, tabUrl) });
         }
       })();
       return true;
@@ -825,6 +894,18 @@ chrome.runtime.onMessage.addListener(
 
           let appendHarHelp: string | undefined;
           const jiraAttachments = [...(p.jiraImageAttachments ?? [])];
+          let hadPendingSessionVideo = false;
+          if (p.jiraVideoPendingInSession === true && tabId != null) {
+            const vid = await loadPendingJiraVideoForTab(tabId);
+            if (vid) {
+              jiraAttachments.push({
+                fileName: vid.fileName,
+                mimeType: vid.mimeType || "video/webm",
+                base64: vid.base64,
+              });
+              hadPendingSessionVideo = true;
+            }
+          }
           if (s.fullNetworkDiagnostic && tabId != null) {
             try {
               const tabForHar = await chrome.tabs.get(tabId);
@@ -875,6 +956,9 @@ chrome.runtime.onMessage.addListener(
                 issueKey: jr.key,
                 attachments: jiraAttachments,
               });
+              if (up.ok && hadPendingSessionVideo && tabId != null) {
+                await clearPendingJiraVideoForTab(tabId);
+              }
               if (!up.ok) warnings.push(`Jira anexos: ${up.message}`);
             }
 

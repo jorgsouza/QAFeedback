@@ -337,6 +337,11 @@ export type CreateIssuePayload = IssueFormState & {
   /** Só usado quando `sendToJira`; anexos via REST após POST /issue. */
   jiraImageAttachments?: JiraImageAttachmentPayload[];
   /**
+   * Vídeo WebM guardado em `chrome.storage.session` pela aba do remetente (evita base64 gigante em `sendMessage`).
+   * O SW lê `qafPendingVideoV1_tab_<tabId>`; não confiar em dados arbitrários do content script para a chave.
+   */
+  jiraVideoPendingInSession?: boolean;
+  /**
    * Quadro escolhido no modal de feedback (tem prioridade sobre `jiraSoftwareBoardId` nas opções).
    * Deve ir dentro do payload para o Chrome entregar de forma fiável ao service worker.
    */
