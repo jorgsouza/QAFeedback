@@ -6,8 +6,7 @@ import {
   LayoutGrid,
   Layers,
   Plus,
-  RefreshCw,
-  Search,
+  Save,
   Shield,
   X,
 } from "lucide-react";
@@ -140,7 +139,6 @@ export function OptionsApp() {
   const [testingJira, setTestingJira] = useState(false);
   const [jiraBoardsLoading, setJiraBoardsLoading] = useState(false);
   const [jiraBoards, setJiraBoards] = useState<{ id: number; name: string; type: string }[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [domainDraft, setDomainDraft] = useState("");
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -583,24 +581,8 @@ export function OptionsApp() {
     setDomainDraft("");
   }, [domainDraft, hostsText]);
 
-  const sq = searchQuery.trim().toLowerCase();
-  const matchInt = !sq || /git|hub|jira|repo|token|email|atlassian|integra/i.test(sq);
-  const matchCap = !sq || /captura|modo|debug|har|produ|sens[ií]vel|intern/i.test(sq);
-  const matchAdv = !sq || /har|diagn|diagnost|rede|http|trafego|tráfego/i.test(sq);
-  const matchDom = !sq || /dom[ií]n|host|local|permit/i.test(sq);
-  const noSectionHit = sq && !matchInt && !matchCap && !matchAdv && !matchDom;
-  const showInt = !sq || noSectionHit || matchInt;
-  const showCap = !sq || noSectionHit || matchCap;
-  const showAdv = !sq || noSectionHit || matchAdv;
-  const showDom = !sq || noSectionHit || matchDom;
-
   const githubConnected = Boolean(settings.githubToken.trim());
   const jiraConnected = Boolean(jiraCredsReady && (settings.jiraSoftwareBoardId ?? "").trim());
-
-  const visibleHosts = useMemo(() => {
-    if (!sq) return hostList;
-    return hostList.filter((h) => h.toLowerCase().includes(sq));
-  }, [hostList, sq]);
 
   if (!loaded) {
     return (
@@ -609,29 +591,9 @@ export function OptionsApp() {
   }
 
   return (
-    <div className="min-h-screen pb-16 font-[var(--font-base)]">
-      <header className="border-b border-[var(--color-slate-200)] bg-[var(--background)] px-4 py-4 shadow-sm sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-slate-400)]"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar configurações, integrações, domínios…"
-              className={`${inputClass} pl-10`}
-              aria-label="Buscar nas configurações"
-            />
-          </div>
-          <button type="button" className={btnPrimaryClass} onClick={() => void onSave()}>
-            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
-            Oi! Vamos sincronizar?
-          </button>
-        </div>
-        <p className="mx-auto mt-3 max-w-6xl text-sm leading-relaxed text-[var(--color-slate-600)]">
+    <div className="min-h-screen pb-8 font-[var(--font-base)]">
+      <header className="border-b border-[var(--color-slate-200)] bg-[var(--background)] px-4 py-5 shadow-sm sm:px-8">
+        <p className="mx-auto max-w-6xl text-sm leading-relaxed text-[var(--color-slate-600)]">
           QA Feedback — GitHub e Jira. PAT com permissão <strong className="font-semibold text-[var(--foreground)]">Issues</strong>
           . Jira:{" "}
           <a
@@ -642,13 +604,12 @@ export function OptionsApp() {
           >
             API token
           </a>{" "}
-          e e-mail Atlassian. Ao sincronizar, o Chrome pode pedir permissão para os domínios.
+          e e-mail Atlassian. Ao guardar, o Chrome pode pedir permissão para os domínios.
         </p>
       </header>
 
       <div className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:px-8">
-        {showInt ? (
-          <section aria-labelledby="qaf-integrations">
+        <section aria-labelledby="qaf-integrations">
             <DsSectionTitle id="qaf-integrations">Integrações</DsSectionTitle>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className={cardClass}>
@@ -885,10 +846,8 @@ export function OptionsApp() {
               </div>
             </div>
           </section>
-        ) : null}
 
-        {showCap ? (
-          <section aria-labelledby="qaf-capture-mode">
+        <section aria-labelledby="qaf-capture-mode">
             <DsSectionTitle id="qaf-capture-mode">Modo de captura</DsSectionTitle>
             <div className="grid gap-4 md:grid-cols-2">
               <button
@@ -935,10 +894,8 @@ export function OptionsApp() {
               </button>
             </div>
           </section>
-        ) : null}
 
-        {showAdv ? (
-          <section aria-labelledby="qaf-advanced-capture">
+        <section aria-labelledby="qaf-advanced-capture">
             <DsSectionTitle id="qaf-advanced-capture">Captura avançada</DsSectionTitle>
             <div className={cardClass}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -968,19 +925,15 @@ export function OptionsApp() {
               </div>
             </div>
           </section>
-        ) : null}
 
-        {showDom ? (
-          <section aria-labelledby="qaf-domains">
+        <section aria-labelledby="qaf-domains">
             <DsSectionTitle id="qaf-domains">Domínios permitidos</DsSectionTitle>
             <div className={cardClass}>
               <div className="mb-4 flex flex-wrap gap-2">
-                {visibleHosts.length === 0 ? (
-                  <span className="text-sm text-[var(--color-slate-500)]">
-                    {sq ? "Nenhum domínio combina com a busca." : "Nenhum domínio — adicione abaixo."}
-                  </span>
+                {hostList.length === 0 ? (
+                  <span className="text-sm text-[var(--color-slate-500)]">Nenhum domínio — adicione abaixo.</span>
                 ) : (
-                  visibleHosts.map((h) => (
+                  hostList.map((h) => (
                     <span
                       key={h}
                       className="inline-flex items-center gap-1 rounded-full border border-[var(--color-slate-300)] bg-[var(--color-slate-100)] px-3 py-1 text-sm font-medium text-[var(--color-slate-800)]"
@@ -1023,7 +976,7 @@ export function OptionsApp() {
                 </button>
               </div>
               <p className="mt-3 text-xs text-[var(--color-slate-500)]">
-                Alterações aqui ficam ao sincronizar. Você também pode editar a lista completa:{" "}
+                Alterações aqui são aplicadas ao guardar. Você também pode editar a lista completa:{" "}
                 <button
                   type="button"
                   className="font-semibold text-[var(--primary-700)] underline"
@@ -1047,9 +1000,19 @@ export function OptionsApp() {
               <SectionMessage id="options-domains-feedback" message={feedback.domains} />
             </div>
           </section>
-        ) : null}
 
         <SectionMessage id="options-global-feedback" message={feedback.global} className="mt-6" />
+
+        <div className="mt-10 flex flex-col gap-3 border-t border-[var(--color-slate-200)] pt-8 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            className={`${btnPrimaryClass} w-full sm:w-auto sm:min-w-[12.5rem]`}
+            onClick={() => void onSave()}
+          >
+            <Save className="h-4 w-4 shrink-0" aria-hidden />
+            Salvar
+          </button>
+        </div>
       </div>
 
       <footer className="border-t border-[var(--color-slate-200)] bg-[var(--background)] py-6 text-center text-xs text-[var(--color-slate-400)]">
