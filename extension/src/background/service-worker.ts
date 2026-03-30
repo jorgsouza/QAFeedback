@@ -43,6 +43,8 @@ import {
 } from "./timeline-tab-session";
 import {
   abortViewportRecording,
+  abortViewportRecordingForTab,
+  getViewportRecordingStateForTab,
   routeOffscreenVideoSignal,
   startViewportRecording,
   stopViewportRecording,
@@ -55,6 +57,7 @@ function qafTabUiStorageKey(tabId: number): string {
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  void abortViewportRecordingForTab(tabId);
   void chrome.storage.session.remove(qafTabUiStorageKey(tabId));
   void chrome.storage.session.remove(qafPendingImagesStorageKey(tabId));
   void timelineSessionEnd(tabId);
@@ -214,6 +217,8 @@ type QafPersistPendingImagesMessage = { type: "QAF_PERSIST_PENDING_IMAGES"; payl
 type QafVideoRecordingStartMessage = { type: "QAF_VIDEO_RECORDING_START"; tabId?: number };
 type QafVideoRecordingStopMessage = { type: "QAF_VIDEO_RECORDING_STOP"; sessionId: string };
 type QafVideoRecordingAbortMessage = { type: "QAF_VIDEO_RECORDING_ABORT"; sessionId?: string };
+type QafVideoRecordingGetStateMessage = { type: "QAF_VIDEO_RECORDING_GET_STATE" };
+type QafVideoRecordingAbortForTabMessage = { type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" };
 
 type Messages =
   | CreateIssueMessage
@@ -235,7 +240,9 @@ type Messages =
   | QafPersistPendingImagesMessage
   | QafVideoRecordingStartMessage
   | QafVideoRecordingStopMessage
-  | QafVideoRecordingAbortMessage;
+  | QafVideoRecordingAbortMessage
+  | QafVideoRecordingGetStateMessage
+  | QafVideoRecordingAbortForTabMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
@@ -252,6 +259,7 @@ chrome.runtime.onMessage.addListener(
             sessionId: r.sessionId,
             startedAt: r.startedAt,
             maxDurationSec: r.maxDurationSec,
+            ...(r.reattached ? { reattached: true as const } : {}),
           });
         } else {
           sendResponse({
@@ -291,6 +299,24 @@ chrome.runtime.onMessage.addListener(
         const m = message as QafVideoRecordingAbortMessage;
         await abortViewportRecording(m.sessionId);
         sendResponse({ ok: true as const });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_VIDEO_RECORDING_ABORT_FOR_TAB") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        await abortViewportRecordingForTab(tabId);
+        sendResponse({ ok: true as const });
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_VIDEO_RECORDING_GET_STATE") {
+      void (async () => {
+        const tabId = sender.tab?.id;
+        const st = await getViewportRecordingStateForTab(tabId);
+        sendResponse(st);
       })();
       return true;
     }

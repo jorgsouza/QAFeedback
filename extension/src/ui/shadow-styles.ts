@@ -171,6 +171,27 @@ export const shadowCss = `
   position: relative;
 }
 
+.qaf-fab-icon-only.qaf-fab--recording {
+  position: relative;
+}
+
+.qaf-fab-rec-pill {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 28px;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #dc2626;
+  border-radius: 8px;
+  line-height: 1.2;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
 .qaf-fab-icon-only.qaf-fab--integrations-loading::after {
   content: "";
   position: absolute;

@@ -2,6 +2,43 @@ import { loadSettings } from "../shared/storage";
 
 const OFFSCREEN_HTML = "offscreen.html";
 
+const VIDEO_REC_SESSION_PREFIX = "qafVideoRecV1_";
+
+function videoRecSessionKey(tabId: number): string {
+  return `${VIDEO_REC_SESSION_PREFIX}${tabId}`;
+}
+
+type StoredVideoRecV1 = {
+  v: 1;
+  sessionId: string;
+  tabId: number;
+  startedAtMs: number;
+  maxDurationSec: number;
+};
+
+async function persistVideoRecordingSession(
+  tabId: number,
+  data: { sessionId: string; tabId: number; startedAtMs: number; maxDurationSec: number },
+): Promise<void> {
+  const payload: StoredVideoRecV1 = { v: 1, ...data };
+  await chrome.storage.session.set({ [videoRecSessionKey(tabId)]: payload });
+}
+
+async function clearVideoRecordingSessionStorage(tabId: number | null | undefined): Promise<void> {
+  if (tabId == null || !Number.isFinite(tabId)) return;
+  await chrome.storage.session.remove(videoRecSessionKey(tabId)).catch(() => {});
+}
+
+async function readVideoRecordingSession(tabId: number): Promise<StoredVideoRecV1 | null> {
+  const k = videoRecSessionKey(tabId);
+  const bag = await chrome.storage.session.get(k);
+  const raw = bag[k];
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as StoredVideoRecV1;
+  if (o.v !== 1 || typeof o.sessionId !== "string") return null;
+  return o;
+}
+
 type ExpectedPhase = "started" | "stopped";
 
 type SignalWaiter = {
@@ -83,7 +120,7 @@ function clampViewportMaxSec(n: number): number {
 }
 
 export type VideoStartResult =
-  | { ok: true; sessionId: string; startedAt: string; maxDurationSec: number }
+  | { ok: true; sessionId: string; startedAt: string; maxDurationSec: number; reattached?: boolean }
   | { ok: false; code: string; message: string };
 
 export type VideoStopResult =
@@ -96,9 +133,46 @@ export type VideoStopResult =
   | { ok: false; code: string; message: string };
 
 let currentSessionId: string | null = null;
+/** Separador cuja captura está ativa no offscreen (uma gravação global por extensão). */
+let recordingTabId: number | null = null;
 
 export function getActiveVideoSessionId(): string | null {
   return currentSessionId;
+}
+
+export async function getViewportRecordingStateForTab(tabId: number | undefined): Promise<{
+  active: boolean;
+  sessionId?: string;
+  startedAtMs?: number;
+  maxDurationSec?: number;
+}> {
+  if (tabId == null || !Number.isFinite(tabId)) return { active: false };
+  if (!currentSessionId || recordingTabId !== tabId) {
+    const orphan = await readVideoRecordingSession(tabId);
+    if (orphan) await clearVideoRecordingSessionStorage(tabId);
+    return { active: false };
+  }
+  const snap = await readVideoRecordingSession(tabId);
+  if (snap && snap.sessionId !== currentSessionId) {
+    await clearVideoRecordingSessionStorage(tabId);
+    return { active: false };
+  }
+  const startedAtMs = snap?.startedAtMs ?? Date.now();
+  const maxDurationSec = snap?.maxDurationSec ?? 60;
+  return {
+    active: true,
+    sessionId: currentSessionId,
+    startedAtMs,
+    maxDurationSec,
+  };
+}
+
+/** Aborta só se este separador for o que está a gravar (útil após navegação quando o React perdeu o sessionId). */
+export async function abortViewportRecordingForTab(tabId: number | undefined): Promise<void> {
+  if (tabId == null || !Number.isFinite(tabId)) return;
+  if (recordingTabId === tabId) {
+    await abortViewportRecording();
+  }
 }
 
 export async function startViewportRecording(tabId: number | undefined): Promise<VideoStartResult> {
@@ -113,11 +187,25 @@ export async function startViewportRecording(tabId: number | undefined): Promise
   if (tabId == null || !Number.isFinite(tabId)) {
     return { ok: false, code: "NO_TAB", message: "Separador desconhecido." };
   }
-  if (currentSessionId) {
+  if (currentSessionId != null) {
+    if (recordingTabId === tabId) {
+      const snap = await readVideoRecordingSession(tabId);
+      const maxDurationSec =
+        snap?.maxDurationSec ?? clampViewportMaxSec((await loadSettings()).viewportRecordingMaxSec ?? 60);
+      const startedAtMs = snap?.startedAtMs ?? Date.now();
+      console.info("[QA Feedback] video recording reattach same tab", { sessionId: currentSessionId, tabId });
+      return {
+        ok: true,
+        sessionId: currentSessionId,
+        startedAt: new Date(startedAtMs).toISOString(),
+        maxDurationSec,
+        reattached: true,
+      };
+    }
     return {
       ok: false,
       code: "ALREADY_RECORDING",
-      message: "Já existe uma gravação ativa. Pare ou cancele antes de iniciar outra.",
+      message: "Já existe uma gravação noutro separador. Pare ou cancele antes de iniciar outra.",
     };
   }
   let tab: chrome.tabs.Tab;
@@ -189,11 +277,19 @@ export async function startViewportRecording(tabId: number | undefined): Promise
     };
   }
   currentSessionId = sessionId;
+  recordingTabId = tabId;
+  const startedAtMs = Date.now();
+  await persistVideoRecordingSession(tabId, {
+    sessionId,
+    tabId,
+    startedAtMs,
+    maxDurationSec,
+  });
   console.info("[QA Feedback] video recording started", { sessionId, tabId, maxDurationSec });
   return {
     ok: true,
     sessionId,
-    startedAt: new Date().toISOString(),
+    startedAt: new Date(startedAtMs).toISOString(),
     maxDurationSec,
   };
 }
@@ -211,7 +307,10 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
     await chrome.runtime.sendMessage({ type: "QAF_OFFSCREEN_VIDEO_STOP", sessionId });
   } catch (e) {
     signalWaiters.delete(sessionId);
+    const tabClear = recordingTabId;
     currentSessionId = null;
+    recordingTabId = null;
+    void clearVideoRecordingSessionStorage(tabClear);
     return {
       ok: false,
       code: "SEND_FAILED",
@@ -220,7 +319,10 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
   }
   try {
     const msg = await stoppedPromise;
+    const tabClear = recordingTabId;
     currentSessionId = null;
+    recordingTabId = null;
+    await clearVideoRecordingSessionStorage(tabClear);
     const att = msg.attachment as { fileName?: string; mimeType?: string; base64?: string } | undefined;
     if (!att?.fileName || !att?.base64) {
       return { ok: false, code: "NO_ATTACHMENT", message: "Resposta de gravação incompleta." };
@@ -239,7 +341,10 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
       sizeBytes,
     };
   } catch (e) {
+    const tabClear = recordingTabId;
     currentSessionId = null;
+    recordingTabId = null;
+    await clearVideoRecordingSessionStorage(tabClear);
     return {
       ok: false,
       code: "STOP_ERROR",
@@ -250,7 +355,10 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
 
 export async function abortViewportRecording(sessionId?: string): Promise<void> {
   const sid = sessionId && sessionId === currentSessionId ? sessionId : currentSessionId;
+  const tabClear = recordingTabId;
   currentSessionId = null;
+  recordingTabId = null;
+  await clearVideoRecordingSessionStorage(tabClear);
   const w = sid ? signalWaiters.get(sid) : undefined;
   if (w) {
     clearTimeout(w.timeoutId);

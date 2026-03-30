@@ -622,13 +622,25 @@ export function FeedbackApp() {
   ]);
 
   const stopViewportRecording = useCallback(async () => {
-    if (!recordingSessionId || videoRecordingState !== "recording") return;
+    if (videoRecordingState !== "recording") return;
+    let sid = recordingSessionId;
+    if (!sid) {
+      const st = (await chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_GET_STATE" })) as {
+        active?: boolean;
+        sessionId?: string;
+      };
+      if (st?.active && st.sessionId) {
+        sid = st.sessionId;
+        setRecordingSessionId(st.sessionId);
+      }
+    }
+    if (!sid) return;
     setVideoRecordingState("stopping");
     setVideoRecordingError(null);
     try {
       const r = (await chrome.runtime.sendMessage({
         type: "QAF_VIDEO_RECORDING_STOP",
-        sessionId: recordingSessionId,
+        sessionId: sid,
       })) as
         | {
             type: "QAF_VIDEO_RECORDING_STOPPED";
@@ -688,15 +700,21 @@ export function FeedbackApp() {
             sessionId: string;
             startedAt: string;
             maxDurationSec: number;
+            reattached?: boolean;
           }
         | { type: "QAF_VIDEO_RECORDING_ERROR"; code: string; message: string }
         | undefined;
       if (r?.type === "QAF_VIDEO_RECORDING_STARTED") {
         setRecordingSessionId(r.sessionId);
         setVideoMaxDurationSec(r.maxDurationSec);
-        setRecordingSeconds(0);
+        if (r.reattached && r.startedAt) {
+          const elapsed = Math.floor((Date.now() - new Date(r.startedAt).getTime()) / 1000);
+          setRecordingSeconds(Math.max(0, elapsed));
+        } else {
+          setRecordingSeconds(0);
+        }
         setVideoRecordingState("recording");
-        console.info("[QA Feedback] viewport recording started", r.sessionId);
+        console.info("[QA Feedback] viewport recording started", r.sessionId, r.reattached ? "(reattach)" : "");
       } else if (r?.type === "QAF_VIDEO_RECORDING_ERROR") {
         setVideoRecordingState("error");
         setVideoRecordingError(r.message);
@@ -734,6 +752,31 @@ export function FeedbackApp() {
     }, ms);
     return () => clearTimeout(t);
   }, [videoRecordingState, recordingSessionId, videoMaxDurationSec]);
+
+  /** Após navegação o content script reinicia: recupera gravação ativa do SW (mesmo separador). */
+  useEffect(() => {
+    if (!open || !tabUiHydrated) return;
+    let cancelled = false;
+    void (async () => {
+      const st = (await chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_GET_STATE" })) as {
+        active?: boolean;
+        sessionId?: string;
+        startedAtMs?: number;
+        maxDurationSec?: number;
+      };
+      if (cancelled || !st?.active || !st.sessionId) return;
+      setRecordingSessionId(st.sessionId);
+      setVideoMaxDurationSec(st.maxDurationSec ?? 60);
+      setRecordingSeconds(
+        Math.max(0, Math.floor((Date.now() - (st.startedAtMs ?? Date.now())) / 1000)),
+      );
+      setVideoRecordingState("recording");
+      setVideoRecordingError(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tabUiHydrated, sheetCollapsed]);
 
   const loadRepoTargets = useCallback(async () => {
     const gen = ++integrationsLoadGenRef.current;
@@ -959,12 +1002,7 @@ export function FeedbackApp() {
   }, []);
 
   const resetFlow = () => {
-    void chrome.runtime
-      .sendMessage({
-        type: "QAF_VIDEO_RECORDING_ABORT",
-        sessionId: recordingSessionId ?? undefined,
-      })
-      .catch(() => {});
+    void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
     setVideoRecordingState("idle");
     setRecordingSessionId(null);
     setVideoAttachment(null);
@@ -984,12 +1022,7 @@ export function FeedbackApp() {
 
   /** Fecha o fluxo, limpa rascunho/imagens e grava estado vazio na sessão da aba (sessionStorage + SW). */
   const closeModal = useCallback(() => {
-    void chrome.runtime
-      .sendMessage({
-        type: "QAF_VIDEO_RECORDING_ABORT",
-        sessionId: recordingSessionId ?? undefined,
-      })
-      .catch(() => {});
+    void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
     setVideoRecordingState("idle");
     setRecordingSessionId(null);
     setVideoAttachment(null);
@@ -1027,9 +1060,37 @@ export function FeedbackApp() {
     });
     writeTabSnapshotToSession(snap);
     persistTabSnapshotToExtensionTab(snap);
-  }, [githubTokenConfigured, jiraTokenConfigured, recordingSessionId]);
+  }, [githubTokenConfigured, jiraTokenConfigured]);
 
+  /** Recolhe o painel sem parar a gravação (seta / backdrop). */
   const collapseToFab = useCallback(() => {
+    setSheetCollapsed(true);
+  }, []);
+
+  /**
+   * Cancelar: interrompe gravação neste separador, limpa anexos/rascunho do formulário e recolhe.
+   * (O botão «Cancelar» não deve deixar sessão órfã no SW.)
+   */
+  const cancelFormAndCollapse = useCallback(() => {
+    void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
+    setVideoRecordingState("idle");
+    setRecordingSessionId(null);
+    setVideoAttachment(null);
+    setVideoMeta(null);
+    setVideoRecordingError(null);
+    setRecordingSeconds(0);
+    persistPendingImagesToExtensionTab([]);
+    setPendingImages((prev) => {
+      for (const x of prev) URL.revokeObjectURL(x.url);
+      return [];
+    });
+    setForm((f) => ({
+      ...f,
+      title: "",
+      whatHappened: "",
+      ...(f.sendToJira ? { jiraMotivoAbertura: "" } : {}),
+    }));
+    setError(null);
     setSheetCollapsed(true);
   }, []);
 
@@ -1190,17 +1251,28 @@ export function FeedbackApp() {
           <div className="qaf-fab-cluster">
             <button
               type="button"
-              className={`qaf-fab qaf-fab-icon-only${integrationsLoading && open ? " qaf-fab--integrations-loading" : ""}`}
+              className={`qaf-fab qaf-fab-icon-only${integrationsLoading && open ? " qaf-fab--integrations-loading" : ""}${open && sheetCollapsed && recordingBusy ? " qaf-fab--recording" : ""}`}
               onClick={openOrExpandFeedback}
-              aria-label="Abrir feedback"
+              aria-label={
+                open && sheetCollapsed && recordingBusy
+                  ? "Abrir feedback — gravação ativa"
+                  : "Abrir feedback"
+              }
               aria-busy={integrationsLoading && open}
               title={
-                integrationsLoading && open
-                  ? "Carregando integrações GitHub/Jira…"
-                  : undefined
+                open && sheetCollapsed && recordingBusy
+                  ? "Gravação ativa — abra para parar e anexar"
+                  : integrationsLoading && open
+                    ? "Carregando integrações GitHub/Jira…"
+                    : undefined
               }
             >
               <FeedbackFabIcon />
+              {open && sheetCollapsed && recordingBusy ? (
+                <span className="qaf-fab-rec-pill" aria-hidden>
+                  REC
+                </span>
+              ) : null}
             </button>
             <button
               type="button"
@@ -1985,7 +2057,7 @@ export function FeedbackApp() {
                       </label>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={collapseToFab}>
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={cancelFormAndCollapse}>
                             Cancelar
                           </button>
                           <button
@@ -2011,7 +2083,7 @@ export function FeedbackApp() {
                       <div className="qaf-preview">{previewMd || "(vazio)"}</div>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
-                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={collapseToFab}>
+                          <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={cancelFormAndCollapse}>
                             Cancelar
                           </button>
                           <button

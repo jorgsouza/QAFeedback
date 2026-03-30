@@ -219,7 +219,9 @@ Token ou escopos Issues (fine-grained) incorretos.
 | `QAF_LOAD_PENDING_IMAGES` / `QAF_PERSIST_PENDING_IMAGES` | Lê/grava fila de capturas/imagens pendentes por **`tabId`** em sessão (sobrevive a reinícios do SW). |
 | `QAF_VIDEO_RECORDING_START` | Inicia gravação WebM do separador (`tabCapture` + offscreen). Resposta: **`QAF_VIDEO_RECORDING_STARTED`** ou **`QAF_VIDEO_RECORDING_ERROR`**. |
 | `QAF_VIDEO_RECORDING_STOP` | Finaliza e devolve anexo base64 (**`QAF_VIDEO_RECORDING_STOPPED`**) ou erro. |
-| `QAF_VIDEO_RECORDING_ABORT` | Cancela sem anexar (fechar modal / novo fluxo). |
+| `QAF_VIDEO_RECORDING_ABORT` | Cancela sem anexar (sessionId opcional; preferir **ABORT_FOR_TAB** a partir do content script). |
+| `QAF_VIDEO_RECORDING_ABORT_FOR_TAB` | Aborta gravação se o **separador do remetente** for o que está a gravar (após navegação o React pode não ter o `sessionId`). |
+| `QAF_VIDEO_RECORDING_GET_STATE` | Devolve `{ active, sessionId?, startedAtMs?, maxDurationSec? }` para reidratar a UI após recarregar a página. |
 
 ---
 
