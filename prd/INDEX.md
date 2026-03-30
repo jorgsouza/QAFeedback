@@ -17,6 +17,7 @@ Documentação de produto e planos de implementação vivem em **`prd/`**, numer
 | **PRD-009** | UX da página de opções / configuração | [prd.md](PRD-009-options-config-ux/prd.md), [plan.md](PRD-009-options-config-ux/plan.md) | Em curso — trabalho na branch remota `feature/options-config-ux-refactor`; PRD + plano (Fases 1–3) |
 | **PRD-010** | Linha do tempo contínua na mesma aba (multi-URL) | [prd.md](PRD-010-linha-tempo-continua/prd.md), [analise-execucao.md](PRD-010-linha-tempo-continua/analise-execucao.md) | Implementado na `main` (sessão por `tabId` no SW + append incremental) |
 | **PRD-011** | Maturidade do produto — debug interno, segurança pragmática (OWASP-aware) | [plan.md](PRD-011-maturidade-produto/plan.md), [execution-plan.md](PRD-011-maturidade-produto/execution-plan.md) (fases verticais) | Plano ativo; Etapas 1–7 (preview consistente fora de escopo) após PRD-009; [OWASP](https://owasp.org/) |
+| **PRD-012** | Gravação contínua de viewport (WebM) para evidências QA | [plan.md](PRD-012-gravacao-viewport/plan.md) | Planejado — plano técnico inicial com arquitetura MV3 (offscreen + tabCapture + MediaRecorder) |
 
 ## Linguagem ubíqua (vocabulário do domínio)
 
