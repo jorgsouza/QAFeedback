@@ -901,7 +901,9 @@ chrome.runtime.onMessage.addListener(
               jiraAttachments.push({
                 fileName: vid.fileName,
                 mimeType: vid.mimeType || "video/webm",
-                base64: vid.base64,
+                ...(vid.binary && vid.binary.byteLength > 0
+                  ? { binary: vid.binary }
+                  : { base64: vid.base64 ?? "" }),
               });
               hadPendingSessionVideo = true;
             }

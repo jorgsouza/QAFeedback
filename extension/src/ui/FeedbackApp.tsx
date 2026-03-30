@@ -1126,7 +1126,7 @@ export function FeedbackApp() {
         if (videoAttachment) {
           const approxBytes =
             videoMeta?.sizeBytes ??
-            Math.max(0, Math.ceil((videoAttachment.base64.length * 3) / 4));
+            Math.max(0, Math.ceil(((videoAttachment.base64?.length ?? 0) * 3) / 4));
           if (approxBytes > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
             setError(
               `Vídeo demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB). Grave de novo com menos tempo ou movimento.`,

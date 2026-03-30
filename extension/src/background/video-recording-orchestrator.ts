@@ -1,10 +1,12 @@
+import { base64ToUint8Array } from "../shared/base64-to-bytes";
 import { loadSettings } from "../shared/storage";
+import { bytesMatchWebmEbmlSignature } from "../shared/webm-file-signature";
 
 const OFFSCREEN_HTML = "offscreen.html";
 
 const VIDEO_REC_SESSION_PREFIX = "qafVideoRecV1_";
 
-/** Vídeo pronto para Jira (base64) — mesmo prefixo que `offscreen.ts`. */
+/** Vídeo pronto para Jira (bytes em session, v:3) — mesmo prefixo que `offscreen.ts`. */
 const PENDING_JIRA_VIDEO_TAB_PREFIX = "qafPendingVideoV1_tab_";
 
 export function pendingJiraVideoSessionKey(tabId: number): string {
@@ -42,19 +44,52 @@ type StoredPendingJiraVideoMetaV2 = {
   parts: number;
 };
 
-/** Vídeo único em session; acima do limite usa várias chaves `_part_N` (v:2). */
-const PENDING_VIDEO_SINGLE_MAX_CHARS = 900_000;
-const PENDING_VIDEO_PART_CHARS = Math.floor(750_000 / 4) * 4;
+type StoredPendingJiraVideoV3 = {
+  v: 3;
+  fileName: string;
+  mimeType: string;
+  byteLength: number;
+  /** Preferido (structured clone fiável em `chrome.storage.session`). */
+  bytes?: Uint8Array;
+  /** Legado: só `ArrayBuffer`. */
+  data?: ArrayBuffer;
+};
 
 export async function loadPendingJiraVideoForTab(tabId: number): Promise<{
   fileName: string;
   mimeType: string;
-  base64: string;
+  base64?: string;
+  binary?: Uint8Array;
 } | null> {
   const pk = pendingJiraVideoSessionKey(tabId);
   const bag = await chrome.storage.session.get(pk);
-  const top = bag[pk] as StoredPendingJiraVideoV1 | StoredPendingJiraVideoMetaV2 | undefined;
+  const top = bag[pk] as
+    | StoredPendingJiraVideoV1
+    | StoredPendingJiraVideoMetaV2
+    | StoredPendingJiraVideoV3
+    | undefined;
   if (!top || typeof top !== "object") return null;
+  if (top.v === 3) {
+    const o = top as StoredPendingJiraVideoV3;
+    if (!o.fileName) return null;
+    if (o.bytes instanceof Uint8Array && o.bytes.byteLength > 0) {
+      const copy = new Uint8Array(o.bytes.byteLength);
+      copy.set(o.bytes);
+      return {
+        fileName: o.fileName,
+        mimeType: o.mimeType || "video/webm",
+        binary: copy,
+      };
+    }
+    if (o.data instanceof ArrayBuffer && o.data.byteLength > 0) {
+      return {
+        fileName: o.fileName,
+        mimeType: o.mimeType || "video/webm",
+        binary: new Uint8Array(o.data),
+      };
+    }
+    return null;
+  }
   if (top.v === 1) {
     const o = top as StoredPendingJiraVideoV1;
     if (o.fileName && o.base64) {
@@ -199,27 +234,34 @@ export async function routeOffscreenVideoBase64Commit(message: Record<string, un
   const durationMs = Number(message.durationMs ?? 0);
   const sizeBytes = Number(message.sizeBytes ?? 0);
   const pendingKey = pendingJiraVideoSessionKey(tabId);
-  if (base64.length <= PENDING_VIDEO_SINGLE_MAX_CHARS) {
-    await chrome.storage.session.set({
-      [pendingKey]: { v: 1, fileName, mimeType, base64 },
-    });
-  } else {
-    const partStrs: string[] = [];
-    for (let i = 0; i < base64.length; i += PENDING_VIDEO_PART_CHARS) {
-      partStrs.push(base64.slice(i, i + PENDING_VIDEO_PART_CHARS));
-    }
-    const meta: StoredPendingJiraVideoMetaV2 = {
-      v: 2,
-      fileName,
-      mimeType,
-      parts: partStrs.length,
-    };
-    const batch: Record<string, unknown> = { [pendingKey]: meta };
-    for (let i = 0; i < partStrs.length; i++) {
-      batch[`${pendingKey}_part_${i}`] = partStrs[i];
-    }
-    await chrome.storage.session.set(batch);
+  let decoded: Uint8Array;
+  try {
+    decoded = base64ToUint8Array(base64);
+  } catch {
+    rejectStoppedWaiterIfPresent(sessionId, "Vídeo: falha ao processar dados da gravação.");
+    throw new Error("VIDEO_DECODE_FAILED");
   }
+  if (decoded.byteLength === 0) {
+    rejectStoppedWaiterIfPresent(sessionId, "Vídeo vazio.");
+    throw new Error("VIDEO_EMPTY");
+  }
+  if (!bytesMatchWebmEbmlSignature(decoded)) {
+    rejectStoppedWaiterIfPresent(
+      sessionId,
+      "Vídeo corrompido ou inválido após transferência (não é WebM/Matroska). Grave de novo.",
+    );
+    throw new Error("VIDEO_BAD_MAGIC");
+  }
+  const owned = new Uint8Array(decoded.byteLength);
+  owned.set(decoded);
+  const payload: StoredPendingJiraVideoV3 = {
+    v: 3,
+    fileName,
+    mimeType,
+    byteLength: owned.byteLength,
+    bytes: owned,
+  };
+  await chrome.storage.session.set({ [pendingKey]: payload });
   const w = signalWaiters.get(sessionId);
   if (w && w.expected === "stopped") {
     clearTimeout(w.timeoutId);
@@ -524,7 +566,9 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
     recordingTabId = null;
     await clearVideoRecordingSessionStorage(tabClear);
     const loaded = await loadPendingJiraVideoForTab(tabForVideo);
-    if (!loaded?.fileName || !loaded.base64) {
+    const hasVideoBytes =
+      (loaded?.binary?.byteLength ?? 0) > 0 || (loaded?.base64 != null && loaded.base64.length > 0);
+    if (!loaded?.fileName || !hasVideoBytes) {
       return { ok: false, code: "NO_ATTACHMENT", message: "Resposta de gravação incompleta." };
     }
     const durationMs = Number(msg.durationMs ?? 0);
