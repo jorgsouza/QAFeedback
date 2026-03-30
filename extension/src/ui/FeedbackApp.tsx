@@ -212,6 +212,15 @@ function JiraIssueCardIcon() {
 /**
  * Microfone estilo {DS} Icons / Figma (outline). SVG embutido: o ficheiro mic.png anterior era texto (URL), não PNG.
  */
+/** Ícone câmera — gravação viewport (PRD-012). */
+function RecordingCameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden focusable="false" fill="currentColor">
+      <path d="M18 4h-2.5l-1.48-1.47A2 2 0 0 0 12.35 2H11.6a2 2 0 0 0-1.67.53L8.5 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-6 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+    </svg>
+  );
+}
+
 function MicIcon() {
   return (
     <svg
@@ -352,11 +361,32 @@ export function FeedbackApp() {
   const [networkDiagError, setNetworkDiagError] = useState<string | null>(null);
   const [regionScreenshotBusy, setRegionScreenshotBusy] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingFeedbackImage[]>([]);
+  /** PRD-012 — gravação WebM do viewport (opções + feature flag). */
+  const [viewportRecordingFeatureOn, setViewportRecordingFeatureOn] = useState(false);
+  const [videoRecordingState, setVideoRecordingState] = useState<
+    "idle" | "recording" | "stopping" | "ready" | "error"
+  >("idle");
+  const [recordingSessionId, setRecordingSessionId] = useState<string | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [videoMaxDurationSec, setVideoMaxDurationSec] = useState(60);
+  const [videoAttachment, setVideoAttachment] = useState<JiraImageAttachmentPayload | null>(null);
+  const [videoMeta, setVideoMeta] = useState<{ durationMs: number; sizeBytes: number } | null>(null);
+  const [videoRecordingError, setVideoRecordingError] = useState<string | null>(null);
   /** Timeline acumulada no SW (multi-URL); atualizada para o separador Preview. */
   const [sessionTimelinePreview, setSessionTimelinePreview] = useState<InteractionTimelineEntryV1[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const jiraAttachmentSlotsUsed = useMemo(
+    () => pendingImages.length + (videoRecordingState === "ready" && videoAttachment ? 1 : 0),
+    [pendingImages.length, videoRecordingState, videoAttachment],
+  );
+  const recordingBusy = videoRecordingState === "recording" || videoRecordingState === "stopping";
+  const maxImageSlotsForPending = useMemo(
+    () => JIRA_FEEDBACK_MAX_IMAGES - (videoRecordingState === "ready" && videoAttachment ? 1 : 0),
+    [videoRecordingState, videoAttachment],
+  );
 
   const dictationPlatform = useMemo(() => detectDictationPlatform(), []);
   const speechRecognitionLang = useMemo(() => pickSpeechRecognitionLang(), []);
@@ -520,24 +550,29 @@ export function FeedbackApp() {
     if (open) clearSpeechError();
   }, [open, clearSpeechError]);
 
-  const addImageFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).filter(
-      (f) =>
-        f.type.startsWith("image/") ||
-        (!(f.type ?? "").trim() && /\.(png|apng|jpe?g|gif|webp|bmp)$/i.test(f.name)),
-    );
-    setPendingImages((prev) => {
-      if (prev.length >= JIRA_FEEDBACK_MAX_IMAGES) return prev;
-      const next = [...prev];
-      for (const file of arr) {
-        if (next.length >= JIRA_FEEDBACK_MAX_IMAGES) break;
-        if (file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) continue;
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        next.push({ id, file, url: URL.createObjectURL(file) });
-      }
-      return next;
-    });
-  }, []);
+  const addImageFiles = useCallback(
+    (files: FileList | File[]) => {
+      const arr = Array.from(files).filter(
+        (f) =>
+          f.type.startsWith("image/") ||
+          (!(f.type ?? "").trim() && /\.(png|apng|jpe?g|gif|webp|bmp)$/i.test(f.name)),
+      );
+      const videoReady = videoRecordingState === "ready" && videoAttachment != null;
+      const maxImages = JIRA_FEEDBACK_MAX_IMAGES - (videoReady ? 1 : 0);
+      setPendingImages((prev) => {
+        if (prev.length >= maxImages) return prev;
+        const next = [...prev];
+        for (const file of arr) {
+          if (next.length >= maxImages) break;
+          if (file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) continue;
+          const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          next.push({ id, file, url: URL.createObjectURL(file) });
+        }
+        return next;
+      });
+    },
+    [videoRecordingState, videoAttachment],
+  );
 
   const removePendingImage = useCallback((id: string) => {
     setPendingImages((prev) => {
@@ -549,8 +584,9 @@ export function FeedbackApp() {
 
   const onRegionScreenshot = useCallback(async () => {
     if (!jiraTokenConfigured) return;
-    if (pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES) {
-      setError(`Limite de ${JIRA_FEEDBACK_MAX_IMAGES} imagens.`);
+    if (recordingBusy) return;
+    if (pendingImages.length >= maxImageSlotsForPending) {
+      setError(`Limite de ${JIRA_FEEDBACK_MAX_IMAGES} anexos (imagens + vídeo).`);
       return;
     }
     setRegionScreenshotBusy(true);
@@ -577,7 +613,127 @@ export function FeedbackApp() {
     } finally {
       setRegionScreenshotBusy(false);
     }
-  }, [addImageFiles, jiraTokenConfigured, pendingImages.length]);
+  }, [
+    addImageFiles,
+    jiraTokenConfigured,
+    pendingImages.length,
+    recordingBusy,
+    maxImageSlotsForPending,
+  ]);
+
+  const stopViewportRecording = useCallback(async () => {
+    if (!recordingSessionId || videoRecordingState !== "recording") return;
+    setVideoRecordingState("stopping");
+    setVideoRecordingError(null);
+    try {
+      const r = (await chrome.runtime.sendMessage({
+        type: "QAF_VIDEO_RECORDING_STOP",
+        sessionId: recordingSessionId,
+      })) as
+        | {
+            type: "QAF_VIDEO_RECORDING_STOPPED";
+            attachment: JiraImageAttachmentPayload;
+            durationMs: number;
+            sizeBytes: number;
+          }
+        | { type: "QAF_VIDEO_RECORDING_ERROR"; code: string; message: string }
+        | undefined;
+      if (r?.type === "QAF_VIDEO_RECORDING_STOPPED") {
+        setVideoAttachment(r.attachment);
+        setVideoMeta({ durationMs: r.durationMs, sizeBytes: r.sizeBytes });
+        setVideoRecordingState("ready");
+        setRecordingSessionId(null);
+        console.info("[QA Feedback] viewport recording stopped", r.sizeBytes);
+      } else if (r?.type === "QAF_VIDEO_RECORDING_ERROR") {
+        setVideoRecordingState("error");
+        setVideoRecordingError(r.message);
+        setRecordingSessionId(null);
+      } else {
+        setVideoRecordingState("error");
+        setVideoRecordingError("Resposta inesperada ao parar gravação.");
+        setRecordingSessionId(null);
+      }
+    } catch (e) {
+      setVideoRecordingState("error");
+      setVideoRecordingError(
+        isExtensionContextInvalidatedError(e)
+          ? "Recarregue a página (F5): a ligação à extensão expirou."
+          : "Não foi possível concluir a gravação.",
+      );
+      setRecordingSessionId(null);
+    }
+  }, [recordingSessionId, videoRecordingState]);
+
+  const stopViewportRecordingRef = useRef(stopViewportRecording);
+  stopViewportRecordingRef.current = stopViewportRecording;
+
+  const startViewportRecording = useCallback(async () => {
+    if (!viewportRecordingFeatureOn || recordingBusy) return;
+    if (pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES) {
+      setError("Remova pelo menos uma imagem para anexar vídeo (máx. 8 anexos).");
+      return;
+    }
+    if (videoRecordingState === "ready" && videoAttachment) {
+      setVideoAttachment(null);
+      setVideoMeta(null);
+      setVideoRecordingState("idle");
+    }
+    if (videoRecordingState === "error") setVideoRecordingState("idle");
+    setVideoRecordingError(null);
+    setError(null);
+    try {
+      const r = (await chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_START" })) as
+        | {
+            type: "QAF_VIDEO_RECORDING_STARTED";
+            sessionId: string;
+            startedAt: string;
+            maxDurationSec: number;
+          }
+        | { type: "QAF_VIDEO_RECORDING_ERROR"; code: string; message: string }
+        | undefined;
+      if (r?.type === "QAF_VIDEO_RECORDING_STARTED") {
+        setRecordingSessionId(r.sessionId);
+        setVideoMaxDurationSec(r.maxDurationSec);
+        setRecordingSeconds(0);
+        setVideoRecordingState("recording");
+        console.info("[QA Feedback] viewport recording started", r.sessionId);
+      } else if (r?.type === "QAF_VIDEO_RECORDING_ERROR") {
+        setVideoRecordingState("error");
+        setVideoRecordingError(r.message);
+      } else {
+        setVideoRecordingState("error");
+        setVideoRecordingError("Resposta inesperada ao iniciar gravação.");
+      }
+    } catch (e) {
+      setVideoRecordingState("error");
+      setVideoRecordingError(
+        isExtensionContextInvalidatedError(e)
+          ? "Recarregue a página (F5): a ligação à extensão expirou."
+          : "Não foi possível iniciar a gravação.",
+      );
+    }
+  }, [
+    viewportRecordingFeatureOn,
+    recordingBusy,
+    videoRecordingState,
+    videoAttachment,
+    pendingImages.length,
+  ]);
+
+  useEffect(() => {
+    if (videoRecordingState !== "recording") return;
+    const id = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [videoRecordingState]);
+
+  useEffect(() => {
+    if (videoRecordingState !== "recording" || !recordingSessionId) return;
+    const ms = Math.max(30, Math.min(90, videoMaxDurationSec)) * 1000;
+    const t = window.setTimeout(() => {
+      void stopViewportRecordingRef.current();
+    }, ms);
+    return () => clearTimeout(t);
+  }, [videoRecordingState, recordingSessionId, videoMaxDurationSec]);
 
   const loadRepoTargets = useCallback(async () => {
     const gen = ++integrationsLoadGenRef.current;
@@ -590,6 +746,8 @@ export function FeedbackApp() {
         jiraTokenConfigured?: boolean;
         fullNetworkDiagnostic?: boolean;
         captureMode?: CaptureModeV1;
+        enableViewportRecording?: boolean;
+        viewportRecordingMaxSec?: number;
         loadFailed?: boolean;
         jiraBoards?: JiraBoardOption[];
         jiraDefaultBoardId?: string;
@@ -602,6 +760,7 @@ export function FeedbackApp() {
         setJiraTokenConfigured(false);
         setFullNetworkDiagnosticEnabled(false);
         setCaptureMode("debug-interno");
+        setViewportRecordingFeatureOn(false);
         setJiraBoardsForModal([]);
         setSelectedJiraBoardId("");
         setJiraBoardsListError(null);
@@ -613,6 +772,7 @@ export function FeedbackApp() {
       const jiraOk = Boolean(r?.jiraTokenConfigured);
       setFullNetworkDiagnosticEnabled(Boolean(r?.fullNetworkDiagnostic));
       setCaptureMode(normalizeCaptureMode(r?.captureMode));
+      setViewportRecordingFeatureOn(Boolean(r?.enableViewportRecording));
       setGithubTokenConfigured(ghOk);
       setJiraTokenConfigured(jiraOk);
       setForm((f) => {
@@ -662,6 +822,7 @@ export function FeedbackApp() {
       setJiraBoardsForModal([]);
       setSelectedJiraBoardId("");
       setJiraBoardsListError(null);
+      setViewportRecordingFeatureOn(false);
       setRepoListIssue(isExtensionContextInvalidatedError(e) ? "context" : "other");
     } finally {
       if (gen !== integrationsLoadGenRef.current) return;
@@ -798,6 +959,18 @@ export function FeedbackApp() {
   }, []);
 
   const resetFlow = () => {
+    void chrome.runtime
+      .sendMessage({
+        type: "QAF_VIDEO_RECORDING_ABORT",
+        sessionId: recordingSessionId ?? undefined,
+      })
+      .catch(() => {});
+    setVideoRecordingState("idle");
+    setRecordingSessionId(null);
+    setVideoAttachment(null);
+    setVideoMeta(null);
+    setVideoRecordingError(null);
+    setRecordingSeconds(0);
     persistPendingImagesToExtensionTab([]);
     setPendingImages((prev) => {
       for (const x of prev) URL.revokeObjectURL(x.url);
@@ -811,6 +984,18 @@ export function FeedbackApp() {
 
   /** Fecha o fluxo, limpa rascunho/imagens e grava estado vazio na sessão da aba (sessionStorage + SW). */
   const closeModal = useCallback(() => {
+    void chrome.runtime
+      .sendMessage({
+        type: "QAF_VIDEO_RECORDING_ABORT",
+        sessionId: recordingSessionId ?? undefined,
+      })
+      .catch(() => {});
+    setVideoRecordingState("idle");
+    setRecordingSessionId(null);
+    setVideoAttachment(null);
+    setVideoMeta(null);
+    setVideoRecordingError(null);
+    setRecordingSeconds(0);
     void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
     void chrome.runtime.sendMessage({ type: "QAF_TIMELINE_SESSION_END" }).catch(() => {});
     persistPendingImagesToExtensionTab([]);
@@ -842,7 +1027,7 @@ export function FeedbackApp() {
     });
     writeTabSnapshotToSession(snap);
     persistTabSnapshotToExtensionTab(snap);
-  }, [githubTokenConfigured, jiraTokenConfigured]);
+  }, [githubTokenConfigured, jiraTokenConfigured, recordingSessionId]);
 
   const collapseToFab = useCallback(() => {
     setSheetCollapsed(true);
@@ -861,7 +1046,7 @@ export function FeedbackApp() {
     setError(null);
     try {
       let jiraImageAttachments: JiraImageAttachmentPayload[] | undefined;
-      if (form.sendToJira && pendingImages.length > 0) {
+      if (form.sendToJira && (pendingImages.length > 0 || videoAttachment)) {
         jiraImageAttachments = [];
         for (const { file } of pendingImages) {
           if (file.size > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
@@ -874,6 +1059,21 @@ export function FeedbackApp() {
             fileName: safeImageFileNameForJira(file.name),
             mimeType: file.type || "image/png",
             base64,
+          });
+        }
+        if (videoAttachment) {
+          const raw = videoAttachment.base64.length * 0.75;
+          if (raw > JIRA_FEEDBACK_MAX_IMAGE_BYTES) {
+            setError(
+              `Vídeo demasiado grande (máx. ${JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB). Grave de novo com menos tempo ou movimento.`,
+            );
+            setBusy(false);
+            return;
+          }
+          jiraImageAttachments.push({
+            fileName: safeImageFileNameForJira(videoAttachment.fileName),
+            mimeType: videoAttachment.mimeType || "video/webm",
+            base64: videoAttachment.base64,
           });
         }
       }
@@ -921,9 +1121,9 @@ export function FeedbackApp() {
         }
         setSessionTimelinePreview([]);
         const warnings = [...(res.warnings ?? [])];
-        if (!form.sendToJira && pendingImages.length > 0) {
+        if (!form.sendToJira && (pendingImages.length > 0 || videoAttachment)) {
           warnings.push(
-            "Há imagens anexadas, mas só são enviadas ao Jira. Marque «Enviar para Jira» e envie de novo para as incluir.",
+            "Há imagens ou vídeo anexados, mas só são enviados ao Jira. Marque «Enviar para Jira» e envie de novo para os incluir.",
           );
         }
         persistPendingImagesToExtensionTab([]);
@@ -931,6 +1131,12 @@ export function FeedbackApp() {
           for (const x of prev) URL.revokeObjectURL(x.url);
           return [];
         });
+        setVideoAttachment(null);
+        setVideoMeta(null);
+        setVideoRecordingState("idle");
+        setVideoRecordingError(null);
+        setRecordingSessionId(null);
+        setRecordingSeconds(0);
         setPostSubmit({
           github: res.githubUrl,
           jira: res.jiraUrl,
@@ -1548,7 +1754,7 @@ export function FeedbackApp() {
                             value={form.whatHappened}
                             onChange={onField("whatHappened")}
                             onPaste={(e) => {
-                              if (!jiraTokenConfigured) return;
+                              if (!jiraTokenConfigured || recordingBusy) return;
                               const items = e.clipboardData?.items;
                               if (!items?.length) return;
                               const files: File[] = [];
@@ -1609,7 +1815,8 @@ export function FeedbackApp() {
                       {jiraTokenConfigured ? (
                         <div className="qaf-img-field">
                           <span className="qaf-label">
-                            Prints do problema (opcional) - {pendingImages.length}/{JIRA_FEEDBACK_MAX_IMAGES}
+                            Anexos — prints e vídeo (opcional) - {jiraAttachmentSlotsUsed}/
+                            {JIRA_FEEDBACK_MAX_IMAGES}
                           </span>
                           <div className="qaf-img-actions">
                             <input
@@ -1619,6 +1826,7 @@ export function FeedbackApp() {
                               multiple
                               style={{ display: "none" }}
                               onChange={(e) => {
+                                if (recordingBusy) return;
                                 const fl = e.target.files;
                                 if (!fl?.length) return;
                                 const oversize = Array.from(fl).find(
@@ -1640,6 +1848,7 @@ export function FeedbackApp() {
                               <button
                                 type="button"
                                 className="qaf-btn-ghost qaf-btn-ghost--dashed"
+                                disabled={recordingBusy || pendingImages.length >= maxImageSlotsForPending}
                                 onClick={() => fileInputRef.current?.click()}
                               >
                                 Selecionar imagem
@@ -1649,7 +1858,8 @@ export function FeedbackApp() {
                                 className="qaf-btn-ghost"
                                 disabled={
                                   regionScreenshotBusy ||
-                                  pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES
+                                  recordingBusy ||
+                                  pendingImages.length >= maxImageSlotsForPending
                                 }
                                 onClick={() => void onRegionScreenshot()}
                               >
@@ -1658,12 +1868,84 @@ export function FeedbackApp() {
                             </div>
                             <p className="qaf-img-hint">
                               {!form.sendToJira
-                                ? "As imagens só são enviadas ao marcar «Enviar para Jira». "
+                                ? "As imagens e o vídeo só são enviados ao marcar «Enviar para Jira». "
                                 : null}
-                              Até {JIRA_FEEDBACK_MAX_IMAGES} imagens, {JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB
-                              cada. «Capturar área» esconde o botão de feedback, permite arrastar um retângulo na página
-                              visível e anexa o recorte. Colar captura (Ctrl+V) na descrição também funciona.
+                              Até {JIRA_FEEDBACK_MAX_IMAGES} anexos (imagem ou vídeo WebM),{" "}
+                              {JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB cada. «Capturar área» esconde o botão de
+                              feedback, permite arrastar um retângulo na página visível e anexa o recorte. Colar captura
+                              (Ctrl+V) na descrição também funciona.
                             </p>
+                            {viewportRecordingFeatureOn ? (
+                              <div className="qaf-video-block">
+                                <span className="qaf-label">Gravação do separador (WebM)</span>
+                                <p className="qaf-img-hint qaf-video-meta">
+                                  Grava apenas esta aba (não o ecrã inteiro). Só inicia quando clicar no botão. Auto-stop
+                                  ao limite definido nas opções (30–90s). Conta como um anexo no limite de 8.
+                                </p>
+                                <div className="qaf-video-row qaf-img-btn-row">
+                                  {videoRecordingState === "recording" ? (
+                                    <>
+                                      <span className="qaf-rec-badge" aria-live="polite">
+                                        <span className="qaf-rec-dot" />
+                                        REC {recordingSeconds}s / {videoMaxDurationSec}s
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="qaf-btn-ghost"
+                                        onClick={() => void stopViewportRecording()}
+                                      >
+                                        Parar e anexar
+                                      </button>
+                                    </>
+                                  ) : videoRecordingState === "stopping" ? (
+                                    <span className="qaf-video-meta">A finalizar vídeo…</span>
+                                  ) : videoRecordingState === "ready" && videoAttachment && videoMeta ? (
+                                    <>
+                                      <span className="qaf-chip" role="status">
+                                        Vídeo pronto ({Math.max(1, Math.round(videoMeta.durationMs / 1000))}s,{" "}
+                                        {(videoMeta.sizeBytes / (1024 * 1024)).toFixed(1)} MB)
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="qaf-btn-ghost"
+                                        onClick={() => {
+                                          setVideoAttachment(null);
+                                          setVideoMeta(null);
+                                          setVideoRecordingState("idle");
+                                          setVideoRecordingError(null);
+                                        }}
+                                      >
+                                        Remover
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="qaf-btn-ghost"
+                                        onClick={() => void startViewportRecording()}
+                                      >
+                                        Gravar novamente
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="qaf-btn-ghost qaf-btn-ghost--dashed"
+                                      disabled={
+                                        recordingBusy ||
+                                        pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES
+                                      }
+                                      onClick={() => void startViewportRecording()}
+                                    >
+                                      <RecordingCameraIcon /> Iniciar gravação
+                                    </button>
+                                  )}
+                                </div>
+                                {videoRecordingState === "error" && videoRecordingError ? (
+                                  <p className="qaf-img-hint" role="alert" style={{ color: "#b91c1c" }}>
+                                    {videoRecordingError}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </div>
                           {pendingImages.length > 0 ? (
                             <div className="qaf-img-strip">

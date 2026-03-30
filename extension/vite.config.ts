@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
             input: {
               background: resolve(__dirname, "src/background/service-worker.ts"),
               options: resolve(__dirname, "options.html"),
+              offscreen: resolve(__dirname, "offscreen.html"),
             },
             output: {
               entryFileNames: (chunk) =>

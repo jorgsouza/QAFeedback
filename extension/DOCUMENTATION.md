@@ -91,7 +91,7 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 2. **FAB** → painel (sheet à direita); **seta** no cabeçalho recolhe o painel mantendo o rascunho; **FAB** reabre.
 3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
 4. **Faixa de estado** (topo do formulário): à **esquerda**, chip com **slug + pathname** (ex.: `ra-notifications /minha-conta/notificacoes`) — ver `page-route-context.ts`; paths sem regra explícita geram slug `ra-…` a partir dos segmentos. Atualiza em **SPA**. Tooltip repete slug+path e acrescenta **query** se existir. Com **contexto técnico**, o Markdown inclui **Rota técnica** + rótulo PT + path. À **direita**, bolinhas / ícone ℹ️ / banner de rede.
-5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **prints** (botão ou Ctrl+V na descrição, com limites).
+5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **anexos** — imagens (botão, captura por região ou Ctrl+V na descrição) e, se ativado nas opções, **gravação WebM** curta do separador (até 8 anexos no total, 8 MB cada).
 6. **Título** / **O que aconteceu**; **microfone** para voz no Chrome (veja a seção seguinte).
 7. **Preview** → **Enviar** (o payload pode incluir o **ID do quadro** escolhido no passo 5). Com **Incluir contexto técnico**, o Markdown reflete também **Resumo** / leitura rápida, linha do tempo, requisições relevantes, estado visual, elemento relacionado, erro de runtime e sinais de performance **quando houver dados** (ver [page-bridge](#page-bridge-e-erros-da-extensão)).
 
@@ -120,6 +120,7 @@ Revisão rápida alinhada ao PRD-011 (UX e capacidades reais):
 - **`storage`**, **`scripting`**, **`activeTab`** — configurações, registro/injeção do content script quando necessário.
 - **`tabs`** — leitura de metadados da aba (ex.: janela para `captureVisibleTab`), listeners como `tabs.onRemoved` para limpar sessão de timeline.
 - **`debugger`** — presente no manifest; o SW só anexa o depurador quando **Modo diagnóstico completo** está ativo (HAR via CDP).
+- **`tabCapture`** e **`offscreen`** — usados só quando **Gravação viewport (WebM)** está ativa nas opções: o SW obtém `streamId` com `chrome.tabCapture.getMediaStreamId` e um documento offscreen corre `MediaRecorder` (viewport da aba, não ecrã inteiro). A gravação **só** começa por botão explícito no formulário.
 - **`host_permissions` fixas:** `api.github.com`, **`*.atlassian.net`**, localhost / 127.0.0.1, e outras entradas que o projeto mantém em **`manifest.dist.json`** (ex.: host de referência para QA — remova ou altere em forks).
 - **`optional_host_permissions`** `http(s)://*/*` — pedido ao **Salvar** conforme os domínios listados nas opções.
 
@@ -191,6 +192,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 | Runtime da extensão | `src/shared/extension-runtime.ts` |
 | HAR / captura CDP | `src/shared/network-har.ts`, `network-har-jira-help.ts`, `src/background/network-debugger-capture.ts` |
 | Captura por região | `src/shared/region-screenshot-crop.ts`, `src/content/region-picker-overlay.ts`, `region-screenshot-flow.ts` |
+| Gravação viewport WebM (PRD-012) | `src/offscreen/offscreen.ts`, `src/background/video-recording-orchestrator.ts` |
 
 ---
 
@@ -200,7 +202,7 @@ Token ou escopos Issues (fine-grained) incorretos.
 
 | Tipo | Uso |
 |------|-----|
-| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`**: lista **todos** os quadros Software visíveis ao token, depois filtro **`builtInJiraBoardAllowlistIds()`** se o build tiver allowlist (igual à validação em **`CREATE_ISSUE`**). |
+| `LIST_REPO_TARGETS` | UI do feedback: repos, flags token GitHub/Jira, **`fullNetworkDiagnostic`**, **`enableViewportRecording`**, **`viewportRecordingMaxSec`**, e com Jira ligado **`jiraBoards`** / **`jiraDefaultBoardId`**: lista **todos** os quadros Software visíveis ao token, depois filtro **`builtInJiraBoardAllowlistIds()`** se o build tiver allowlist (igual à validação em **`CREATE_ISSUE`**). |
 | `OPEN_OPTIONS` | Abre a página de opções. |
 | `CREATE_ISSUE` | Cria issue GitHub e/ou Jira conforme o payload (com `sender.tab` para consumir HAR no Jira). Opcional **`jiraSoftwareBoardId`** no payload: escolha explícita do modal — **sem fallback silencioso** para o quadro das opções se o ID não estiver na lista permitida (erro claro). Em sucesso com Jira, pode devolver **`jiraSoftwareBoardIdUsed`**. |
 | `START_NETWORK_DIAGNOSTIC` | Com opção ativa: anexa CDP à aba do remetente e inicia `Network.enable`. |
@@ -215,6 +217,9 @@ Token ou escopos Issues (fine-grained) incorretos.
 | `QAF_TIMELINE_SESSION_END` | Limpa sessão da aba após envio ou fecho explícito do fluxo. |
 | `QAF_LOAD_TAB_UI` / `QAF_PERSIST_TAB_UI` | Lê/grava estado efémero da UI de feedback por aba em **`chrome.storage.session`** (ex.: rascunho posição do painel). |
 | `QAF_LOAD_PENDING_IMAGES` / `QAF_PERSIST_PENDING_IMAGES` | Lê/grava fila de capturas/imagens pendentes por **`tabId`** em sessão (sobrevive a reinícios do SW). |
+| `QAF_VIDEO_RECORDING_START` | Inicia gravação WebM do separador (`tabCapture` + offscreen). Resposta: **`QAF_VIDEO_RECORDING_STARTED`** ou **`QAF_VIDEO_RECORDING_ERROR`**. |
+| `QAF_VIDEO_RECORDING_STOP` | Finaliza e devolve anexo base64 (**`QAF_VIDEO_RECORDING_STOPPED`**) ou erro. |
+| `QAF_VIDEO_RECORDING_ABORT` | Cancela sem anexar (fechar modal / novo fluxo). |
 
 ---
 

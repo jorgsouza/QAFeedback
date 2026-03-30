@@ -316,6 +316,12 @@ export type ExtensionSettings = {
    * PRD-011 — debug interno (padrão) mantém mais texto na issue; produção sensível reduz brutos.
    */
   captureMode?: CaptureModeV1;
+  /**
+   * PRD-012 — gravação WebM do viewport (tab capture) para anexar no Jira. Padrão: desligado (rollout gradual).
+   */
+  enableViewportRecording?: boolean;
+  /** PRD-012 — auto-stop da gravação (30–90s). Padrão 60s. */
+  viewportRecordingMaxSec?: number;
 };
 
 /** Imagem serializada para o service worker anexar após criar a issue no Jira. */

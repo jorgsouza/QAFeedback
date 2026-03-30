@@ -41,6 +41,12 @@ import {
   timelineSessionGetForSubmit,
   timelineSessionStart,
 } from "./timeline-tab-session";
+import {
+  abortViewportRecording,
+  routeOffscreenVideoSignal,
+  startViewportRecording,
+  stopViewportRecording,
+} from "./video-recording-orchestrator";
 
 const SCRIPT_ID = "qa-feedback-content";
 
@@ -205,6 +211,9 @@ type QafTimelineGetForSubmitMessage = { type: "QAF_TIMELINE_GET_FOR_SUBMIT" };
 type QafTimelineSessionEndMessage = { type: "QAF_TIMELINE_SESSION_END" };
 type QafLoadPendingImagesMessage = { type: "QAF_LOAD_PENDING_IMAGES" };
 type QafPersistPendingImagesMessage = { type: "QAF_PERSIST_PENDING_IMAGES"; payload: unknown };
+type QafVideoRecordingStartMessage = { type: "QAF_VIDEO_RECORDING_START"; tabId?: number };
+type QafVideoRecordingStopMessage = { type: "QAF_VIDEO_RECORDING_STOP"; sessionId: string };
+type QafVideoRecordingAbortMessage = { type: "QAF_VIDEO_RECORDING_ABORT"; sessionId?: string };
 
 type Messages =
   | CreateIssueMessage
@@ -223,10 +232,69 @@ type Messages =
   | QafTimelineGetForSubmitMessage
   | QafTimelineSessionEndMessage
   | QafLoadPendingImagesMessage
-  | QafPersistPendingImagesMessage;
+  | QafPersistPendingImagesMessage
+  | QafVideoRecordingStartMessage
+  | QafVideoRecordingStopMessage
+  | QafVideoRecordingAbortMessage;
 
 chrome.runtime.onMessage.addListener(
   (message: Messages, sender, sendResponse: (r: unknown) => void) => {
+    routeOffscreenVideoSignal(message as unknown as Record<string, unknown>);
+
+    if (message.type === "QAF_VIDEO_RECORDING_START") {
+      void (async () => {
+        const m = message as QafVideoRecordingStartMessage;
+        const tabId = typeof m.tabId === "number" ? m.tabId : sender.tab?.id;
+        const r = await startViewportRecording(tabId);
+        if (r.ok) {
+          sendResponse({
+            type: "QAF_VIDEO_RECORDING_STARTED" as const,
+            sessionId: r.sessionId,
+            startedAt: r.startedAt,
+            maxDurationSec: r.maxDurationSec,
+          });
+        } else {
+          sendResponse({
+            type: "QAF_VIDEO_RECORDING_ERROR" as const,
+            code: r.code,
+            message: r.message,
+          });
+        }
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_VIDEO_RECORDING_STOP") {
+      void (async () => {
+        const m = message as QafVideoRecordingStopMessage;
+        const r = await stopViewportRecording(m.sessionId);
+        if (r.ok) {
+          sendResponse({
+            type: "QAF_VIDEO_RECORDING_STOPPED" as const,
+            attachment: r.attachment,
+            durationMs: r.durationMs,
+            sizeBytes: r.sizeBytes,
+          });
+        } else {
+          sendResponse({
+            type: "QAF_VIDEO_RECORDING_ERROR" as const,
+            code: r.code,
+            message: r.message,
+          });
+        }
+      })();
+      return true;
+    }
+
+    if (message.type === "QAF_VIDEO_RECORDING_ABORT") {
+      void (async () => {
+        const m = message as QafVideoRecordingAbortMessage;
+        await abortViewportRecording(m.sessionId);
+        sendResponse({ ok: true as const });
+      })();
+      return true;
+    }
+
     if (message.type === "QAF_LOAD_TAB_UI") {
       void (async () => {
         const tabId = sender.tab?.id;
@@ -333,6 +401,8 @@ chrome.runtime.onMessage.addListener(
             jiraTokenConfigured,
             fullNetworkDiagnostic: Boolean(s.fullNetworkDiagnostic),
             captureMode: s.captureMode ?? "debug-interno",
+            enableViewportRecording: Boolean(s.enableViewportRecording),
+            viewportRecordingMaxSec: s.viewportRecordingMaxSec ?? 60,
           };
           if (jiraTokenConfigured) {
             const jb = await listFilteredJiraBoardsForFeedback(s);
@@ -353,6 +423,8 @@ chrome.runtime.onMessage.addListener(
             jiraTokenConfigured: false,
             fullNetworkDiagnostic: false,
             captureMode: "debug-interno",
+            enableViewportRecording: false,
+            viewportRecordingMaxSec: 60,
             loadFailed: true,
           });
         }

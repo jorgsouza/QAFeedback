@@ -1517,4 +1517,52 @@ export const shadowCss = `
 .qaf-success a:not(.qaf-btn):hover {
   text-decoration: underline;
 }
+
+.qaf-video-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--qaf-m-border);
+}
+
+.qaf-video-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.qaf-rec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #b91c1c;
+}
+
+.qaf-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: qaf-rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes qaf-rec-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.qaf-video-meta {
+  font-size: 12px;
+  color: var(--qaf-m-muted);
+}
 `;

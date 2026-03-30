@@ -23,6 +23,8 @@ export const emptySettings = (): ExtensionSettings => ({
     jiraBoardFilterSelectValue: "",
     fullNetworkDiagnostic: false,
     captureMode: "debug-interno",
+    enableViewportRecording: false,
+    viewportRecordingMaxSec: 60,
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -58,7 +60,15 @@ export async function loadSettings(): Promise<ExtensionSettings> {
       typeof raw.jiraBoardFilterSelectValue === "string" ? raw.jiraBoardFilterSelectValue : "",
     fullNetworkDiagnostic: raw.fullNetworkDiagnostic === true,
     captureMode: normalizeCaptureMode(raw.captureMode),
+    enableViewportRecording: raw.enableViewportRecording === true,
+    viewportRecordingMaxSec: clampViewportRecordingMaxSec(raw.viewportRecordingMaxSec),
   };
+}
+
+function clampViewportRecordingMaxSec(n: unknown): number {
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return 60;
+  return Math.max(30, Math.min(90, Math.round(x)));
 }
 
 export async function saveSettings(settings: ExtensionSettings): Promise<void> {

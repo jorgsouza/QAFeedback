@@ -8,6 +8,7 @@ import {
   Plus,
   Save,
   Shield,
+  Video,
   X,
 } from "lucide-react";
 import {
@@ -921,6 +922,55 @@ export function OptionsApp() {
                     Grava o tráfego HTTP da aba do feedback para anexar <code className="rounded bg-[var(--color-slate-100)] px-1">.har</code> no Jira. O aviso de depuração do Chrome pode aparecer em todas as janelas enquanto ativo — só essa aba entra no arquivo. Cookie e Authorization saem como{" "}
                     <code className="rounded bg-[var(--color-slate-100)] px-1">[REDACTED]</code>.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={`${cardClass} mt-4`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <label className="relative inline-flex cursor-pointer items-center pt-1">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={Boolean(settings.enableViewportRecording)}
+                    onChange={(e) =>
+                      setSettings({ ...settings, enableViewportRecording: e.target.checked })
+                    }
+                  />
+                  <span className="h-7 w-12 shrink-0 rounded-full bg-[var(--color-slate-300)] transition-colors after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[var(--primary-600)] peer-checked:after:translate-x-5 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--primary-500)]/40" />
+                </label>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Video className="h-5 w-5 text-[var(--primary-700)]" aria-hidden />
+                    <span className="font-[var(--font-sans-2)] text-sm font-bold uppercase tracking-wide text-[var(--foreground)]">
+                      Gravação viewport (WebM)
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--color-slate-600)]">
+                    Permite gravar só o conteúdo do separador em vídeo curto (WebM) para anexar no Jira, por ação explícita no
+                    formulário. Não grava o ecrã inteiro do sistema. Requer permissão <code className="rounded bg-[var(--color-slate-100)] px-1">tabCapture</code> no manifesto. Desligado por omissão para rollout gradual.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <label htmlFor="qaf-vrec-max" className="text-xs font-semibold text-[var(--color-slate-600)]">
+                      Auto-stop (segundos)
+                    </label>
+                    <input
+                      id="qaf-vrec-max"
+                      type="number"
+                      min={30}
+                      max={90}
+                      step={1}
+                      disabled={!settings.enableViewportRecording}
+                      value={settings.viewportRecordingMaxSec ?? 60}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        const v = Number.isFinite(n) ? Math.max(30, Math.min(90, Math.round(n))) : 60;
+                        setSettings({ ...settings, viewportRecordingMaxSec: v });
+                      }}
+                      className={`${inputClass} w-24`}
+                    />
+                    <span className="text-xs text-[var(--color-slate-500)]">Entre 30 e 90 (padrão 60).</span>
+                  </div>
                 </div>
               </div>
             </div>
