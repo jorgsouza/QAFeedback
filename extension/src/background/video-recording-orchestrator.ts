@@ -1,5 +1,12 @@
 import { base64ToUint8Array } from "../shared/base64-to-bytes";
+import { coerceToUint8Array } from "../shared/coerce-binary";
 import { loadSettings } from "../shared/storage";
+import {
+  videoDbgInfo,
+  videoDbgWarn,
+  videoHexHead,
+  videoSessionShort,
+} from "../shared/video-debug-log";
 import { bytesMatchWebmEbmlSignature } from "../shared/webm-file-signature";
 
 const OFFSCREEN_HTML = "offscreen.html";
@@ -72,20 +79,24 @@ export async function loadPendingJiraVideoForTab(tabId: number): Promise<{
   if (top.v === 3) {
     const o = top as StoredPendingJiraVideoV3;
     if (!o.fileName) return null;
-    if (o.bytes instanceof Uint8Array && o.bytes.byteLength > 0) {
-      const copy = new Uint8Array(o.bytes.byteLength);
-      copy.set(o.bytes);
+    const fromBytes = coerceToUint8Array(o.bytes as unknown);
+    if (fromBytes && fromBytes.byteLength > 0) {
+      const copy = new Uint8Array(fromBytes.byteLength);
+      copy.set(fromBytes);
       return {
         fileName: o.fileName,
         mimeType: o.mimeType || "video/webm",
         binary: copy,
       };
     }
-    if (o.data instanceof ArrayBuffer && o.data.byteLength > 0) {
+    const fromData = coerceToUint8Array(o.data as unknown);
+    if (fromData && fromData.byteLength > 0) {
+      const copy = new Uint8Array(fromData.byteLength);
+      copy.set(fromData);
       return {
         fileName: o.fileName,
         mimeType: o.mimeType || "video/webm",
-        binary: new Uint8Array(o.data),
+        binary: copy,
       };
     }
     return null;
@@ -160,17 +171,17 @@ type SignalWaiter = {
 
 const signalWaiters = new Map<string, SignalWaiter>();
 
-/** Offscreen não tem `chrome.storage`; o SW recebe base64 em partes e grava em session. */
-type VideoBase64Accumulator = {
+/** Offscreen não tem `chrome.storage`; o SW recebe bytes em partes e grava em session (sem base64). */
+type VideoBytesAccumulator = {
   tabId: number;
   total: number;
-  parts: string[];
+  parts: Uint8Array[];
 };
 
-const videoBase64Accumulators = new Map<string, VideoBase64Accumulator>();
+const videoBytesAccumulators = new Map<string, VideoBytesAccumulator>();
 
-function clearVideoBase64Accumulator(sessionId: string): void {
-  videoBase64Accumulators.delete(sessionId);
+function clearVideoBytesAccumulator(sessionId: string): void {
+  videoBytesAccumulators.delete(sessionId);
 }
 
 function rejectStoppedWaiterIfPresent(sessionId: string, errMsg: string): void {
@@ -181,71 +192,194 @@ function rejectStoppedWaiterIfPresent(sessionId: string, errMsg: string): void {
   w.reject(new Error(errMsg));
 }
 
-/** Chamado pelo SW ao receber cada parte do base64 vinda do offscreen. */
-export function routeOffscreenVideoBase64Chunk(message: Record<string, unknown>): boolean {
-  if (message?.type !== "QAF_OFFSCREEN_VIDEO_BASE64_CHUNK") return false;
+/** Chamado pelo SW ao receber cada parte binária vinda do offscreen. */
+export function routeOffscreenVideoBytesChunk(message: Record<string, unknown>): boolean {
+  if (message?.type !== "QAF_OFFSCREEN_VIDEO_BYTES_CHUNK") return false;
   const sessionId = String(message.sessionId ?? "");
   if (!sessionId) return true;
   const tabId = Number(message.tabId);
   const index = Number(message.index);
   const total = Number(message.total);
-  const chunk = typeof message.chunk === "string" ? message.chunk : "";
-  if (!Number.isFinite(tabId) || !Number.isFinite(index) || !Number.isFinite(total) || total < 1 || index < 0 || index >= total) {
-    clearVideoBase64Accumulator(sessionId);
+  const b64Field = typeof message.base64 === "string" ? message.base64 : "";
+  const badIdxReason = ((): string | null => {
+    if (!Number.isFinite(tabId)) return "invalid_tabId";
+    if (!Number.isFinite(index)) return "invalid_index";
+    if (!Number.isFinite(total)) return "invalid_total";
+    if (total < 1) return "total_lt_1";
+    if (index < 0 || index >= total) return "index_out_of_range";
+    return null;
+  })();
+  if (badIdxReason !== null) {
+    videoDbgWarn("sw ← chunk rejeitado (ver motivo)", {
+      reason: badIdxReason,
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      index,
+      total,
+    });
+    clearVideoBytesAccumulator(sessionId);
     rejectStoppedWaiterIfPresent(sessionId, "Parte de vídeo inválida.");
     return true;
   }
-  let acc = videoBase64Accumulators.get(sessionId);
+  let rawChunk: Uint8Array | null = null;
+  if (b64Field.length > 0) {
+    try {
+      rawChunk = base64ToUint8Array(b64Field);
+    } catch {
+      rawChunk = null;
+    }
+  }
+  if (rawChunk == null) {
+    rawChunk = coerceToUint8Array(message.arrayBuffer ?? message.bytes);
+  }
+  const badReason = rawChunk == null ? (b64Field.length > 0 ? "base64_decode_failed" : "payload_not_binary") : null;
+  if (badReason !== null) {
+    const rawPayload = message.arrayBuffer ?? message.bytes;
+    videoDbgWarn("sw ← chunk rejeitado (ver motivo)", {
+      reason: badReason,
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      index,
+      total,
+      base64Chars: b64Field.length,
+      payloadTags: {
+        hasBase64: b64Field.length > 0,
+        hasArrayBuffer: message.arrayBuffer != null,
+        hasBytes: message.bytes != null,
+        rawTag:
+          rawPayload == null ? "nullish" : Object.prototype.toString.call(rawPayload),
+      },
+    });
+    clearVideoBytesAccumulator(sessionId);
+    rejectStoppedWaiterIfPresent(sessionId, "Parte de vídeo inválida.");
+    return true;
+  }
+  const chunkCopy = new Uint8Array(rawChunk.byteLength);
+  chunkCopy.set(rawChunk);
+  let acc = videoBytesAccumulators.get(sessionId);
   if (!acc) {
-    acc = { tabId, total, parts: new Array<string>(total) };
-    videoBase64Accumulators.set(sessionId, acc);
+    acc = { tabId, total, parts: new Array<Uint8Array>(total) };
+    videoBytesAccumulators.set(sessionId, acc);
   }
   if (acc.total !== total || acc.tabId !== tabId) {
-    clearVideoBase64Accumulator(sessionId);
+    videoDbgWarn("sw ← chunk sessão inconsistente", {
+      sessionId: videoSessionShort(sessionId),
+      expectedTab: acc.tabId,
+      gotTab: tabId,
+      expectedTotal: acc.total,
+      gotTotal: total,
+    });
+    clearVideoBytesAccumulator(sessionId);
     rejectStoppedWaiterIfPresent(sessionId, "Sessão de transferência do vídeo inconsistente.");
     return true;
   }
-  acc.parts[index] = chunk;
+  acc.parts[index] = chunkCopy;
+  videoDbgInfo("sw ← chunk ok", {
+    sessionId: videoSessionShort(sessionId),
+    tabId,
+    chunk: `${index + 1}/${total}`,
+    bytes: chunkCopy.byteLength,
+    transport: b64Field.length > 0 ? "base64" : "binary",
+    ...(index === 0 ? { headHex: videoHexHead(chunkCopy, 8) } : {}),
+  });
   return true;
 }
 
+function isVideoBytesAccumulatorComplete(parts: Uint8Array[], total: number): boolean {
+  if (parts.length !== total) return false;
+  for (let i = 0; i < total; i++) {
+    if (!(parts[i] instanceof Uint8Array)) return false;
+  }
+  return true;
+}
+
+function concatVideoBytesParts(parts: Uint8Array[], total: number): Uint8Array {
+  if (parts.length !== total) return new Uint8Array(0);
+  let len = 0;
+  for (let i = 0; i < total; i++) len += parts[i]!.byteLength;
+  const out = new Uint8Array(len);
+  let offset = 0;
+  for (let i = 0; i < total; i++) {
+    const p = parts[i]!;
+    out.set(p, offset);
+    offset += p.byteLength;
+  }
+  return out;
+}
+
 /** Último passo: junta partes, grava `chrome.storage.session`, resolve o waiter «stopped». */
-export async function routeOffscreenVideoBase64Commit(message: Record<string, unknown>): Promise<void> {
+export async function routeOffscreenVideoBytesCommit(message: Record<string, unknown>): Promise<void> {
   const sessionId = String(message.sessionId ?? "");
   if (!sessionId) {
     throw new Error("sessionId em falta.");
   }
   const tabId = Number(message.tabId);
-  const acc = videoBase64Accumulators.get(sessionId);
+  videoDbgInfo("sw ← commit pedido", {
+    sessionId: videoSessionShort(sessionId),
+    tabId,
+    byteLengthMsg: message.byteLength,
+  });
+  const acc = videoBytesAccumulators.get(sessionId);
   if (!acc || acc.tabId !== tabId) {
+    videoDbgWarn("sw commit falhou: acumulador em falta ou tabId", {
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      hadAcc: Boolean(acc),
+      accTab: acc?.tabId,
+    });
     rejectStoppedWaiterIfPresent(sessionId, "Vídeo: dados em falta (reinicie a gravação).");
     throw new Error("Chunks em falta.");
   }
-  if (!acc.parts.every((p) => typeof p === "string")) {
-    clearVideoBase64Accumulator(sessionId);
+  if (!isVideoBytesAccumulatorComplete(acc.parts, acc.total)) {
+    const missing: number[] = [];
+    for (let i = 0; i < acc.total; i++) {
+      if (!(acc.parts[i] instanceof Uint8Array)) missing.push(i);
+    }
+    videoDbgWarn("sw commit falhou: partes em falta", {
+      sessionId: videoSessionShort(sessionId),
+      total: acc.total,
+      missingIndices: missing,
+    });
+    clearVideoBytesAccumulator(sessionId);
     rejectStoppedWaiterIfPresent(sessionId, "Transferência do vídeo incompleta.");
     throw new Error("Partes em falta.");
   }
-  const base64 = acc.parts.join("");
-  clearVideoBase64Accumulator(sessionId);
+  const expectedByteLength = Number(message.byteLength ?? NaN);
+  const decoded = concatVideoBytesParts(acc.parts, acc.total);
+  clearVideoBytesAccumulator(sessionId);
+  if (
+    Number.isFinite(expectedByteLength) &&
+    expectedByteLength >= 0 &&
+    decoded.byteLength !== expectedByteLength
+  ) {
+    videoDbgWarn("sw commit falhou: tamanho bytes", {
+      sessionId: videoSessionShort(sessionId),
+      expected: expectedByteLength,
+      got: decoded.byteLength,
+    });
+    rejectStoppedWaiterIfPresent(
+      sessionId,
+      "Vídeo: dados truncados na transferência. Grave de novo.",
+    );
+    throw new Error("VIDEO_BYTE_LENGTH_MISMATCH");
+  }
   const fileName =
     String(message.fileName ?? "").trim() || `qa-recording-${Date.now()}.webm`;
   const mimeType = String(message.mimeType ?? "video/webm").trim() || "video/webm";
   const durationMs = Number(message.durationMs ?? 0);
   const sizeBytes = Number(message.sizeBytes ?? 0);
   const pendingKey = pendingJiraVideoSessionKey(tabId);
-  let decoded: Uint8Array;
-  try {
-    decoded = base64ToUint8Array(base64);
-  } catch {
-    rejectStoppedWaiterIfPresent(sessionId, "Vídeo: falha ao processar dados da gravação.");
-    throw new Error("VIDEO_DECODE_FAILED");
-  }
   if (decoded.byteLength === 0) {
+    videoDbgWarn("sw commit falhou: decodificado vazio", { sessionId: videoSessionShort(sessionId) });
     rejectStoppedWaiterIfPresent(sessionId, "Vídeo vazio.");
     throw new Error("VIDEO_EMPTY");
   }
   if (!bytesMatchWebmEbmlSignature(decoded)) {
+    videoDbgWarn("sw commit falhou: assinatura EBML", {
+      sessionId: videoSessionShort(sessionId),
+      byteLength: decoded.byteLength,
+      headHex: videoHexHead(decoded, 16),
+    });
     rejectStoppedWaiterIfPresent(
       sessionId,
       "Vídeo corrompido ou inválido após transferência (não é WebM/Matroska). Grave de novo.",
@@ -262,6 +396,16 @@ export async function routeOffscreenVideoBase64Commit(message: Record<string, un
     bytes: owned,
   };
   await chrome.storage.session.set({ [pendingKey]: payload });
+  videoDbgInfo("sw ← commit OK (gravado em session.storage)", {
+    sessionId: videoSessionShort(sessionId),
+    tabId,
+    pendingKey,
+    fileName,
+    byteLength: owned.byteLength,
+    headHex: videoHexHead(owned, 8),
+    durationMs,
+    blobSizeReported: sizeBytes,
+  });
   const w = signalWaiters.get(sessionId);
   if (w && w.expected === "stopped") {
     clearTimeout(w.timeoutId);
@@ -282,9 +426,16 @@ export function routeOffscreenVideoSignal(message: Record<string, unknown>): voi
   if (message?.type !== "QAF_OFFSCREEN_VIDEO_SIGNAL") return;
   const sessionId = String(message.sessionId ?? "");
   if (!sessionId) return;
+  const phase = String(message.phase ?? "");
+  if (phase === "error") {
+    videoDbgWarn("offscreen → signal erro", {
+      sessionId: videoSessionShort(sessionId),
+      code: String(message.code ?? ""),
+      detail: String(message.message ?? ""),
+    });
+  }
   const w = signalWaiters.get(sessionId);
   if (!w) return;
-  const phase = String(message.phase ?? "");
   if (phase === "error") {
     clearTimeout(w.timeoutId);
     signalWaiters.delete(sessionId);
@@ -366,6 +517,9 @@ let currentSessionId: string | null = null;
 /** Separador cuja captura está ativa no offscreen (uma gravação global por extensão). */
 let recordingTabId: number | null = null;
 
+/** Evita duas chamadas em paralelo a «iniciar»: ambas viam `currentSessionId === null` e geravam dois `sessionId` no offscreen (ficheiro corrompido). */
+let viewportRecordingStartChain: Promise<void> = Promise.resolve();
+
 export function getActiveVideoSessionId(): string | null {
   return currentSessionId;
 }
@@ -407,6 +561,20 @@ export async function abortViewportRecordingForTab(tabId: number | undefined): P
 }
 
 export async function startViewportRecording(tabId: number | undefined): Promise<VideoStartResult> {
+  const prev = viewportRecordingStartChain;
+  let release!: () => void;
+  viewportRecordingStartChain = new Promise<void>((r) => {
+    release = r;
+  });
+  await prev;
+  try {
+    return await startViewportRecordingSerialized(tabId);
+  } finally {
+    release();
+  }
+}
+
+async function startViewportRecordingSerialized(tabId: number | undefined): Promise<VideoStartResult> {
   const settings = await loadSettings();
   if (!settings.enableViewportRecording) {
     return {
@@ -424,7 +592,7 @@ export async function startViewportRecording(tabId: number | undefined): Promise
       const maxDurationSec =
         snap?.maxDurationSec ?? clampViewportMaxSec((await loadSettings()).viewportRecordingMaxSec ?? 60);
       const startedAtMs = snap?.startedAtMs ?? Date.now();
-      console.info("[QA Feedback] video recording reattach same tab", { sessionId: currentSessionId, tabId });
+      videoDbgInfo("recording reattach (mesmo tab)", { sessionId, tabId });
       return {
         ok: true,
         sessionId: currentSessionId,
@@ -455,6 +623,7 @@ export async function startViewportRecording(tabId: number | undefined): Promise
     };
   }
   await clearPendingJiraVideoForTab(tabId);
+  videoBytesAccumulators.clear();
   try {
     await ensureOffscreenDocument();
   } catch (e) {
@@ -480,14 +649,12 @@ export async function startViewportRecording(tabId: number | undefined): Promise
   });
   const sessionId = crypto.randomUUID();
   const maxDurationSec = clampViewportMaxSec(settings.viewportRecordingMaxSec ?? 60);
-  const maxWindowSec = 90;
   const startedPromise = registerSignalWait(sessionId, "started", 25_000);
   try {
     await chrome.runtime.sendMessage({
       type: "QAF_OFFSCREEN_VIDEO_START",
       streamId,
       sessionId,
-      maxWindowSec,
       videoBitsPerSecond: 800_000,
     });
   } catch (e) {
@@ -517,7 +684,7 @@ export async function startViewportRecording(tabId: number | undefined): Promise
     startedAtMs,
     maxDurationSec,
   });
-  console.info("[QA Feedback] video recording started", { sessionId, tabId, maxDurationSec });
+  videoDbgInfo("recording started (SW)", { sessionId, tabId, maxDurationSec });
   return {
     ok: true,
     sessionId,
@@ -547,7 +714,7 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
     });
   } catch (e) {
     signalWaiters.delete(sessionId);
-    clearVideoBase64Accumulator(sessionId);
+    clearVideoBytesAccumulator(sessionId);
     const tabClear = recordingTabId;
     currentSessionId = null;
     recordingTabId = null;
@@ -569,11 +736,35 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
     const hasVideoBytes =
       (loaded?.binary?.byteLength ?? 0) > 0 || (loaded?.base64 != null && loaded.base64.length > 0);
     if (!loaded?.fileName || !hasVideoBytes) {
-      return { ok: false, code: "NO_ATTACHMENT", message: "Resposta de gravação incompleta." };
+      const pk = pendingJiraVideoSessionKey(tabForVideo);
+      const snap = await chrome.storage.session.get(pk);
+      const top = snap[pk] as Record<string, unknown> | undefined;
+      const bytesTag =
+        top && "bytes" in top && top.bytes != null
+          ? Object.prototype.toString.call(top.bytes)
+          : "∅";
+      const dataTag =
+        top && "data" in top && top.data != null ? Object.prototype.toString.call(top.data) : "∅";
+      videoDbgWarn("sw stop: vídeo não legível após commit (session.storage)", {
+        tabId: tabForVideo,
+        pendingKey: pk,
+        hasEntry: Boolean(top),
+        version: top?.v,
+        fileNameInStore: typeof top?.fileName === "string" ? top.fileName : top?.fileName,
+        byteLengthInStore: top?.byteLength,
+        bytesTag,
+        dataTag,
+        hint: "Montagem OK mas leitura falhou — típico clone Uint8Array→Object; coerce-binary deve corrigir.",
+      });
+      const userHint =
+        top && top.v === 3 && typeof top.fileName === "string"
+          ? `O vídeo (${String(top.byteLength ?? "?")} B) está guardado mas este Chrome não devolveu os bytes ao ler (bytes=${bytesTag}). Atualize o Chrome ou tente de novo.`
+          : "Não foi possível ler o vídeo em armazenamento temporário após a gravação. Tente de novo ou recarregue a extensão.";
+      return { ok: false, code: "NO_ATTACHMENT", message: userHint };
     }
     const durationMs = Number(msg.durationMs ?? 0);
     const sizeBytes = Number(msg.sizeBytes ?? 0);
-    console.info("[QA Feedback] video recording stopped", { sessionId, durationMs, sizeBytes });
+    videoDbgInfo("recording stopped (SW)", { sessionId, durationMs, sizeBytes });
     return {
       ok: true,
       attachment: {
@@ -586,7 +777,7 @@ export async function stopViewportRecording(sessionId: string): Promise<VideoSto
       pendingInSession: true,
     };
   } catch (e) {
-    clearVideoBase64Accumulator(sessionId);
+    clearVideoBytesAccumulator(sessionId);
     const tabClear = recordingTabId;
     currentSessionId = null;
     recordingTabId = null;
@@ -605,7 +796,7 @@ export async function abortViewportRecording(sessionId?: string): Promise<void> 
   const tabClear = recordingTabId;
   currentSessionId = null;
   recordingTabId = null;
-  if (sid) clearVideoBase64Accumulator(sid);
+  if (sid) clearVideoBytesAccumulator(sid);
   await clearVideoRecordingSessionStorage(tabClear);
   await clearPendingJiraVideoForTab(tabClear);
   const w = sid ? signalWaiters.get(sid) : undefined;
@@ -621,5 +812,5 @@ export async function abortViewportRecording(sessionId?: string): Promise<void> 
       /* ignore */
     }
   }
-  console.info("[QA Feedback] video recording aborted", { sessionId: sid ?? null });
+  videoDbgInfo("recording aborted (SW)", { sessionId: sid ?? null });
 }

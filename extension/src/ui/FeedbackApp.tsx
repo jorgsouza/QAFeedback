@@ -377,6 +377,8 @@ export function FeedbackApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const whatTextareaRef = useRef<HTMLTextAreaElement>(null);
+  /** Bloqueia duplo clique antes de `recordingBusy` passar a true. */
+  const viewportStartInFlightRef = useRef(false);
 
   const jiraAttachmentSlotsUsed = useMemo(
     () => pendingImages.length + (videoRecordingState === "ready" && videoAttachment ? 1 : 0),
@@ -682,8 +684,11 @@ export function FeedbackApp() {
 
   const startViewportRecording = useCallback(async () => {
     if (!viewportRecordingFeatureOn || recordingBusy) return;
+    if (viewportStartInFlightRef.current) return;
+    viewportStartInFlightRef.current = true;
     if (pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES) {
       setError("Remova pelo menos uma imagem para anexar vídeo (máx. 8 anexos).");
+      viewportStartInFlightRef.current = false;
       return;
     }
     if (videoRecordingState === "ready" && videoAttachment) {
@@ -730,6 +735,8 @@ export function FeedbackApp() {
           ? "Recarregue a página (F5): a ligação à extensão expirou."
           : "Não foi possível iniciar a gravação.",
       );
+    } finally {
+      viewportStartInFlightRef.current = false;
     }
   }, [
     viewportRecordingFeatureOn,

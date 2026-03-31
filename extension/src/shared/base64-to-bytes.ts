@@ -1,6 +1,9 @@
 /**
- * Decodificação base64 → bytes sem `atob` (anexos grandes: WebM, HAR).
+ * Base64 ↔ bytes (anexos grandes: WebM, HAR, chunks em `runtime.sendMessage`).
  */
+
+/** Evita estourar o limite de argumentos de `apply` / spread. */
+const B64_LATIN1_CHUNK = 16384;
 
 export function normalizeAttachmentBase64(raw: string): string {
   let s = (raw ?? "").trim();
@@ -57,4 +60,18 @@ export function base64ToUint8Array(b64: string): Uint8Array {
   }
 
   return out;
+}
+
+/**
+ * Codifica bytes arbitrários em base64 (latin1 via `btoa`).
+ * Usado no offscreen quando `ArrayBuffer` em `sendMessage` chega ao SW como `[object Object]`.
+ */
+export function uint8ArrayToBase64Latin1(u8: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < u8.byteLength; i += B64_LATIN1_CHUNK) {
+    const end = Math.min(i + B64_LATIN1_CHUNK, u8.byteLength);
+    const sub = u8.subarray(i, end);
+    binary += String.fromCharCode.apply(null, sub as unknown as number[]);
+  }
+  return btoa(binary);
 }

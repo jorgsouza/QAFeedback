@@ -1,33 +1,26 @@
+import { uint8ArrayToBase64Latin1 } from "../shared/base64-to-bytes";
+import {
+  videoDbgInfo,
+  videoDbgWarn,
+  videoHexHead,
+  videoSessionShort,
+} from "../shared/video-debug-log";
 import { pickWebmMimeTypeForMediaRecorder } from "../shared/video-recording-mime";
 
 const JIRA_MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
-/** Offscreen não tem `chrome.storage`; o SW junta as partes e grava em session. */
-const VIDEO_BASE64_CHUNK_CHARS = 2_000_000;
+/** Tamanho máx. por mensagem `runtime.sendMessage` (clone estruturado de `ArrayBuffer`). */
+const VIDEO_BYTES_CHUNK_SIZE = 512 * 1024;
 
 type StartMsg = {
   type: "QAF_OFFSCREEN_VIDEO_START";
   streamId: string;
   sessionId: string;
-  maxWindowSec?: number;
   videoBitsPerSecond?: number;
 };
 
 type StopMsg = { type: "QAF_OFFSCREEN_VIDEO_STOP"; sessionId: string; tabId: number };
 type AbortMsg = { type: "QAF_OFFSCREEN_VIDEO_ABORT"; sessionId?: string };
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => {
-      const s = r.result as string;
-      const i = s.indexOf(",");
-      resolve(i >= 0 ? s.slice(i + 1) : s);
-    };
-    r.onerror = () => reject(r.error ?? new Error("read"));
-    r.readAsDataURL(blob);
-  });
-}
 
 function sendSignal(payload: Record<string, unknown>): void {
   void chrome.runtime.sendMessage(payload).catch(() => {});
@@ -37,7 +30,8 @@ let activeSessionId: string | null = null;
 let mediaRecorder: MediaRecorder | null = null;
 let mediaStream: MediaStream | null = null;
 let chosenMime = "";
-let circularChunks: Blob[] = [];
+/** Partes WebM de `ondataavailable` (ordem preservada; não descartar o início — lá está o EBML). */
+let recordedChunks: Blob[] = [];
 let recordStartMs = 0;
 
 function cleanupTracks(): void {
@@ -52,21 +46,20 @@ function cleanupTracks(): void {
   }
   mediaStream = null;
   mediaRecorder = null;
-  circularChunks = [];
+  recordedChunks = [];
   chosenMime = "";
   activeSessionId = null;
 }
 
 async function handleStart(msg: StartMsg): Promise<void> {
-  const { streamId, sessionId, maxWindowSec, videoBitsPerSecond } = msg;
+  const { streamId, sessionId, videoBitsPerSecond } = msg;
   if (activeSessionId) {
     await handleAbort({ type: "QAF_OFFSCREEN_VIDEO_ABORT", sessionId: activeSessionId });
   }
   activeSessionId = sessionId;
-  circularChunks = [];
+  recordedChunks = [];
   recordStartMs = Date.now();
   try {
-    const win = Math.max(30, Math.min(120, maxWindowSec ?? 90));
     const tabConstraints = {
       audio: false,
       video: {
@@ -101,10 +94,7 @@ async function handleStart(msg: StartMsg): Promise<void> {
       videoBitsPerSecond: bps,
     });
     mediaRecorder.ondataavailable = (ev: BlobEvent) => {
-      if (ev.data.size > 0) {
-        circularChunks.push(ev.data);
-        while (circularChunks.length > win) circularChunks.shift();
-      }
+      if (ev.data.size > 0) recordedChunks.push(ev.data);
     };
     mediaRecorder.start(1000);
     if (activeSessionId !== sessionId) {
@@ -116,8 +106,17 @@ async function handleStart(msg: StartMsg): Promise<void> {
       phase: "started",
       sessionId,
     });
+    videoDbgInfo("offscreen → gravador iniciado", {
+      sessionId: videoSessionShort(sessionId),
+      mimeType: chosenMime,
+      videoBitsPerSecond: bps,
+    });
   } catch (e) {
     cleanupTracks();
+    videoDbgWarn("offscreen → start falhou", {
+      sessionId: videoSessionShort(sessionId),
+      error: e instanceof Error ? e.message : String(e),
+    });
     sendSignal({
       type: "QAF_OFFSCREEN_VIDEO_SIGNAL",
       phase: "error",
@@ -194,8 +193,9 @@ async function handleStop(msg: StopMsg): Promise<void> {
   mediaRecorder = null;
   mediaStream = null;
   activeSessionId = null;
-  const blob = new Blob(circularChunks, { type: mime || "video/webm" });
-  circularChunks = [];
+  const blobPartCount = recordedChunks.length;
+  const blob = new Blob(recordedChunks, { type: mime || "video/webm" });
+  recordedChunks = [];
   chosenMime = "";
   const durationMs = Math.max(0, Date.now() - started);
   const sizeBytes = blob.size;
@@ -220,41 +220,81 @@ async function handleStop(msg: StopMsg): Promise<void> {
     return;
   }
   try {
-    const base64 = await blobToBase64(blob);
+    videoDbgInfo("offscreen → blob final", {
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      blobParts: blobPartCount,
+      blobSize: blob.size,
+      recorderMime: mime || "video/webm",
+    });
+    const full = new Uint8Array(await blob.arrayBuffer());
     const fileName = `qa-recording-${Date.now()}.webm`;
     const mimeType = "video/webm";
-    const total = Math.max(1, Math.ceil(base64.length / VIDEO_BASE64_CHUNK_CHARS));
+    const byteLength = full.byteLength;
+    const total = Math.max(1, Math.ceil(byteLength / VIDEO_BYTES_CHUNK_SIZE));
+    videoDbgInfo("offscreen → a enviar para SW", {
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      byteLength,
+      chunkCount: total,
+      chunkSizeMax: VIDEO_BYTES_CHUNK_SIZE,
+      headHex: videoHexHead(full, 8),
+    });
     for (let i = 0; i < total; i++) {
-      const chunk = base64.slice(i * VIDEO_BASE64_CHUNK_CHARS, (i + 1) * VIDEO_BASE64_CHUNK_CHARS);
+      const start = i * VIDEO_BYTES_CHUNK_SIZE;
+      const end = Math.min(start + VIDEO_BYTES_CHUNK_SIZE, byteLength);
+      const slice = full.subarray(start, end);
+      /** Base64 por fatia: em vários ambientes `ArrayBuffer` em `sendMessage` chega ao SW como `{}`. */
+      const base64 = uint8ArrayToBase64Latin1(slice);
       const ack = (await chrome.runtime.sendMessage({
-        type: "QAF_OFFSCREEN_VIDEO_BASE64_CHUNK",
+        type: "QAF_OFFSCREEN_VIDEO_BYTES_CHUNK",
         sessionId,
         tabId,
         index: i,
         total,
-        chunk,
+        base64,
       })) as { ok?: boolean } | undefined;
+      videoDbgInfo("offscreen → chunk enviado (sendMessage)", {
+        sessionId: videoSessionShort(sessionId),
+        chunk: `${i + 1}/${total}`,
+        rawBytes: slice.byteLength,
+        base64Chars: base64.length,
+      });
       if (ack && typeof ack === "object" && ack.ok === false) {
         throw new Error("Falha ao enviar bloco do vídeo.");
       }
     }
     const done = (await chrome.runtime.sendMessage({
-      type: "QAF_OFFSCREEN_VIDEO_BASE64_COMMIT",
+      type: "QAF_OFFSCREEN_VIDEO_BYTES_COMMIT",
       sessionId,
       tabId,
       durationMs,
       sizeBytes,
       fileName,
       mimeType,
+      byteLength,
     })) as { ok?: boolean; message?: string } | undefined;
     if (!done || typeof done !== "object" || done.ok !== true) {
+      videoDbgWarn("offscreen → commit SW respondeu erro", {
+        sessionId: videoSessionShort(sessionId),
+        done,
+      });
       throw new Error(
         typeof done?.message === "string" && done.message.trim()
           ? done.message
           : "Falha ao gravar vídeo no armazenamento da extensão.",
       );
     }
+    videoDbgInfo("offscreen → transferência + commit OK", {
+      sessionId: videoSessionShort(sessionId),
+      tabId,
+      byteLength,
+    });
   } catch (e) {
+    videoDbgWarn("offscreen → exceção após stop", {
+      sessionId: videoSessionShort(sessionId),
+      error: e instanceof Error ? e.message : String(e),
+    });
     sendSignal({
       type: "QAF_OFFSCREEN_VIDEO_SIGNAL",
       phase: "error",
@@ -269,6 +309,7 @@ async function handleAbort(msg: AbortMsg): Promise<void> {
   const sid = msg.sessionId ?? activeSessionId;
   if (!sid) return;
   if (activeSessionId && sid !== activeSessionId) return;
+  videoDbgInfo("offscreen → abort pedido", { sessionId: videoSessionShort(sid) });
   const rec = mediaRecorder;
   if (rec && rec.state !== "inactive") {
     try {

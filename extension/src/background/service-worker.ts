@@ -47,8 +47,8 @@ import {
   clearPendingJiraVideoForTab,
   getViewportRecordingStateForTab,
   loadPendingJiraVideoForTab,
-  routeOffscreenVideoBase64Chunk,
-  routeOffscreenVideoBase64Commit,
+  routeOffscreenVideoBytesChunk,
+  routeOffscreenVideoBytesCommit,
   routeOffscreenVideoSignal,
   startViewportRecording,
   stopViewportRecording,
@@ -286,15 +286,15 @@ chrome.runtime.onMessage.addListener(
     routeOffscreenVideoSignal(message as unknown as Record<string, unknown>);
 
     const extVideoMsgType = (message as { type?: string }).type;
-    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BASE64_CHUNK") {
-      routeOffscreenVideoBase64Chunk(message as unknown as Record<string, unknown>);
+    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BYTES_CHUNK") {
+      routeOffscreenVideoBytesChunk(message as unknown as Record<string, unknown>);
       sendResponse({ ok: true as const });
       return true;
     }
-    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BASE64_COMMIT") {
+    if (extVideoMsgType === "QAF_OFFSCREEN_VIDEO_BYTES_COMMIT") {
       void (async () => {
         try {
-          await routeOffscreenVideoBase64Commit(message as unknown as Record<string, unknown>);
+          await routeOffscreenVideoBytesCommit(message as unknown as Record<string, unknown>);
           sendResponse({ ok: true as const });
         } catch (e) {
           sendResponse({
