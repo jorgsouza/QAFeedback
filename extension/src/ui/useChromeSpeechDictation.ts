@@ -5,6 +5,7 @@ import {
   isChromeSpeechRecognitionSupported,
   mergeTranscriptFromResultEvent,
   pickSpeechRecognitionLang,
+  speechRecognitionErrorIsFatal,
   speechRecognitionErrorMessage,
   type SpeechRecognitionField,
   type SpeechRecognitionLike,
@@ -39,11 +40,17 @@ export function useChromeSpeechDictation(
   const accumulatedRef = useRef("");
   const startSnapshotRef = useRef("");
   const listeningFieldRef = useRef<SpeechRecognitionField | null>(null);
+  /** `setTimeout` para `start()` após `onend` (Chrome exige tick seguinte). */
+  const restartAfterEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getFormRef = useRef(getForm);
   getFormRef.current = getForm;
 
   const stopInternal = useCallback(() => {
+    if (restartAfterEndTimerRef.current != null) {
+      clearTimeout(restartAfterEndTimerRef.current);
+      restartAfterEndTimerRef.current = null;
+    }
     const r = recognitionRef.current;
     recognitionRef.current = null;
     listeningFieldRef.current = null;
@@ -119,12 +126,38 @@ export function useChromeSpeechDictation(
       rec.onerror = (ev) => {
         const msg = speechRecognitionErrorMessage(ev.error);
         if (msg) setSpeechError(msg);
+        if (speechRecognitionErrorIsFatal(ev.error)) {
+          stopInternal();
+        }
       };
 
+      /**
+       * Chrome encerra a sessão após silêncio curto mesmo com `continuous: true` e dispara `onend`.
+       * Sem novo `start()`, o microfone parece “morrer” enquanto o UI ainda mostra a escutar
+       * (ou o utilizador deixa de receber texto). Reiniciamos só se o utilizador não tiver parado.
+       */
       rec.onend = () => {
-        recognitionRef.current = null;
-        listeningFieldRef.current = null;
-        setListeningField(null);
+        const shouldResumeSameField =
+          listeningFieldRef.current === field && recognitionRef.current === rec;
+        if (!shouldResumeSameField) {
+          if (recognitionRef.current === rec) {
+            recognitionRef.current = null;
+          }
+          listeningFieldRef.current = null;
+          setListeningField(null);
+          return;
+        }
+        restartAfterEndTimerRef.current = setTimeout(() => {
+          restartAfterEndTimerRef.current = null;
+          if (listeningFieldRef.current !== field || recognitionRef.current !== rec) return;
+          try {
+            rec.start();
+          } catch {
+            recognitionRef.current = null;
+            listeningFieldRef.current = null;
+            setListeningField(null);
+          }
+        }, 0);
       };
 
       recognitionRef.current = rec;
