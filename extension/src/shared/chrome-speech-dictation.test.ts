@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   mergeTranscriptFromResultEvent,
   pickSpeechRecognitionLang,
-  speechRecognitionErrorIsFatal,
   speechRecognitionErrorMessage,
 } from "./chrome-speech-dictation";
 
@@ -74,18 +73,5 @@ describe("speechRecognitionErrorMessage", () => {
 
   it("returns null for no-speech", () => {
     expect(speechRecognitionErrorMessage("no-speech")).toBeNull();
-  });
-});
-
-describe("speechRecognitionErrorIsFatal", () => {
-  it("treats permission and service errors as fatal", () => {
-    expect(speechRecognitionErrorIsFatal("not-allowed")).toBe(true);
-    expect(speechRecognitionErrorIsFatal("service-not-allowed")).toBe(true);
-    expect(speechRecognitionErrorIsFatal("network")).toBe(true);
-  });
-
-  it("does not treat no-speech or aborted as fatal", () => {
-    expect(speechRecognitionErrorIsFatal("no-speech")).toBe(false);
-    expect(speechRecognitionErrorIsFatal("aborted")).toBe(false);
   });
 });
