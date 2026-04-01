@@ -401,6 +401,7 @@ export function FeedbackApp() {
     speechSupported,
     secureContext,
     toggleField,
+    stop: stopDictation,
     speechError,
     clearSpeechError,
   } = useChromeSpeechDictation(setForm, getFormSnapshot, { enabled: open && !sheetCollapsed });
@@ -1010,6 +1011,8 @@ export function FeedbackApp() {
   }, []);
 
   const resetFlow = () => {
+    stopDictation();
+    clearSpeechError();
     void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
     setVideoRecordingState("idle");
     setRecordingSessionId(null);
@@ -1030,6 +1033,8 @@ export function FeedbackApp() {
 
   /** Fecha o fluxo, limpa rascunho/imagens e grava estado vazio na sessão da aba (sessionStorage + SW). */
   const closeModal = useCallback(() => {
+    stopDictation();
+    clearSpeechError();
     void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
     setVideoRecordingState("idle");
     setRecordingSessionId(null);
@@ -1068,7 +1073,7 @@ export function FeedbackApp() {
     });
     writeTabSnapshotToSession(snap);
     persistTabSnapshotToExtensionTab(snap);
-  }, [githubTokenConfigured, jiraTokenConfigured]);
+  }, [clearSpeechError, githubTokenConfigured, jiraTokenConfigured, stopDictation]);
 
   /** Recolhe o painel sem parar a gravação (seta / backdrop). */
   const collapseToFab = useCallback(() => {
@@ -1080,7 +1085,11 @@ export function FeedbackApp() {
    * (O botão «Cancelar» não deve deixar sessão órfã no SW.)
    */
   const cancelFormAndCollapse = useCallback(() => {
+    stopDictation();
+    clearSpeechError();
     void chrome.runtime.sendMessage({ type: "QAF_VIDEO_RECORDING_ABORT_FOR_TAB" }).catch(() => {});
+    void chrome.runtime.sendMessage({ type: "STOP_NETWORK_DIAGNOSTIC" }).catch(() => {});
+    void chrome.runtime.sendMessage({ type: "QAF_TIMELINE_SESSION_END" }).catch(() => {});
     setVideoRecordingState("idle");
     setRecordingSessionId(null);
     setVideoAttachment(null);
@@ -1096,11 +1105,15 @@ export function FeedbackApp() {
       ...f,
       title: "",
       whatHappened: "",
-      ...(f.sendToJira ? { jiraMotivoAbertura: "" } : {}),
+      jiraMotivoAbertura: "",
     }));
     setError(null);
+    setNetworkDiagError(null);
+    setSessionTimelinePreview([]);
+    setPostSubmit(null);
+    setTab("form");
     setSheetCollapsed(true);
-  }, []);
+  }, [clearSpeechError, stopDictation]);
 
   const copyText = async (text: string) => {
     try {

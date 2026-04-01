@@ -89,6 +89,7 @@ Configurações e tokens em **`chrome.storage.local`** (`qaFeedbackSettings`). U
 
 1. Site com host permitido e permissão concedida (ou **clique no ícone** da extensão se estiver “ao clicar”).
 2. **FAB** → painel (sheet à direita); **seta** no cabeçalho recolhe o painel mantendo o rascunho; **FAB** reabre.
+   - **Cancelar** limpa o rascunho atual (título/descrição/motivo Jira), encerra sessões transitórias (timeline/diagnóstico), volta para a aba **Formulário** e recolhe o painel.
 3. **Destino**: GitHub, Jira ou ambos (só aparecem destinos com token nas opções).
 4. **Faixa de estado** (topo do formulário): à **esquerda**, chip com **slug + pathname** (ex.: `ra-notifications /minha-conta/notificacoes`) — ver `page-route-context.ts`; paths sem regra explícita geram slug `ra-…` a partir dos segmentos. Atualiza em **SPA**. Tooltip repete slug+path e acrescenta **query** se existir. Com **contexto técnico**, o Markdown inclui **Rota técnica** + rótulo PT + path. À **direita**, bolinhas / ícone ℹ️ / banner de rede.
 5. **Jira**: **Board do Jira para vincular** (obrigatório quando Jira está ativo) — lista igual à das opções, respeitando a allowlist de build se existir; preencher **Motivo da abertura**; **anexos** — imagens (botão, captura por região ou Ctrl+V na descrição) e, se ativado nas opções, **gravação WebM** curta do separador (até 8 anexos no total, 8 MB cada).
@@ -112,6 +113,7 @@ Revisão rápida alinhada ao PRD-011 (UX e capacidades reais):
 - **Web Speech API** (`webkitSpeechRecognition`): idioma **`pt-BR` por padrão** (mesmo com Chrome em inglês); respeita entradas `pt-*` em `navigator.languages` se existirem.
 - Exige **HTTPS** (`isSecureContext`). O áudio é processado pelo **serviço do Chrome/Google**, não pela extensão.
 - Nas dicas dos campos, há referência ao **ditado nativo** (ex.: Win+H) como alternativa.
+- Ao usar **Cancelar**, **Fechar** ou **Criar novo**, a extensão encerra explicitamente a sessão de reconhecimento em andamento e limpa mensagens de erro de voz para evitar estado “preso” do microfone na reabertura.
 
 ---
 
@@ -143,6 +145,16 @@ Token revogado, e-mail errado ou conta sem acesso **Jira Software** / API Agile.
 ### Voz sempre em inglês (comportamento corrigido no código)
 
 O reconhecedor usa `lang` **pt-BR** por padrão; recarregue a extensão depois de atualizar.
+
+### Microfone ficou ativo ou “preso” após fechar/cancelar
+
+Nas versões atuais, esse fluxo foi corrigido: **Cancelar**, **Fechar** e **Criar novo** encerram explicitamente a sessão de voz e limpam o estado de erro da ditação.
+
+Se ainda ocorrer:
+
+1. Recarregue a extensão em `chrome://extensions`.
+2. Dê **F5** na aba do site para reinjetar o content script.
+3. Verifique permissão de microfone do domínio (cadeado na barra de endereço) e se a página está em **HTTPS**.
 
 ### Página “Errors” da extensão com `page-bridge.js`
 
