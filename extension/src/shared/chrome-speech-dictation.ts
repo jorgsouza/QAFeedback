@@ -95,17 +95,3 @@ export function speechRecognitionErrorMessage(code: string): string | null {
       return `Reconhecimento de voz: ${code}`;
   }
 }
-
-/** Erros após os quais não devemos voltar a chamar `start()` no mesmo turno. */
-export function speechRecognitionErrorIsFatal(code: string): boolean {
-  switch (code) {
-    case "not-allowed":
-    case "service-not-allowed":
-    case "network":
-    case "bad-grammar":
-    case "language-not-supported":
-      return true;
-    default:
-      return false;
-  }
-}
