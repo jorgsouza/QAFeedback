@@ -1,6 +1,6 @@
 import { base64ToUint8Array } from "../shared/base64-to-bytes";
 import { coerceToUint8Array } from "../shared/coerce-binary";
-import { loadSettings } from "../shared/storage";
+import { DEFAULT_VIEWPORT_RECORDING_MAX_SEC, loadSettings } from "../shared/storage";
 import {
   videoDbgInfo,
   videoDbgWarn,
@@ -232,8 +232,8 @@ export function routeOffscreenVideoBytesChunk(message: Record<string, unknown>):
   if (rawChunk == null) {
     rawChunk = coerceToUint8Array(message.arrayBuffer ?? message.bytes);
   }
-  const badReason = rawChunk == null ? (b64Field.length > 0 ? "base64_decode_failed" : "payload_not_binary") : null;
-  if (badReason !== null) {
+  if (rawChunk == null) {
+    const badReason = b64Field.length > 0 ? "base64_decode_failed" : "payload_not_binary";
     const rawPayload = message.arrayBuffer ?? message.bytes;
     videoDbgWarn("sw ← chunk rejeitado (ver motivo)", {
       reason: badReason,
@@ -542,7 +542,7 @@ export async function getViewportRecordingStateForTab(tabId: number | undefined)
     return { active: false };
   }
   const startedAtMs = snap?.startedAtMs ?? Date.now();
-  const maxDurationSec = snap?.maxDurationSec ?? 60;
+  const maxDurationSec = snap?.maxDurationSec ?? DEFAULT_VIEWPORT_RECORDING_MAX_SEC;
   return {
     active: true,
     sessionId: currentSessionId,
@@ -580,7 +580,7 @@ async function startViewportRecordingSerialized(tabId: number | undefined): Prom
     return {
       ok: false,
       code: "FEATURE_DISABLED",
-      message: "Ative «Gravação viewport (WebM)» nas opções da extensão.",
+      message: "Gravação viewport indisponível (estado interno). Recarregue a extensão.",
     };
   }
   if (tabId == null || !Number.isFinite(tabId)) {
@@ -590,9 +590,13 @@ async function startViewportRecordingSerialized(tabId: number | undefined): Prom
     if (recordingTabId === tabId) {
       const snap = await readVideoRecordingSession(tabId);
       const maxDurationSec =
-        snap?.maxDurationSec ?? clampViewportMaxSec((await loadSettings()).viewportRecordingMaxSec ?? 60);
+        snap?.maxDurationSec ??
+        clampViewportMaxSec((await loadSettings()).viewportRecordingMaxSec ?? DEFAULT_VIEWPORT_RECORDING_MAX_SEC);
       const startedAtMs = snap?.startedAtMs ?? Date.now();
-      videoDbgInfo("recording reattach (mesmo tab)", { sessionId, tabId });
+      videoDbgInfo("recording reattach (mesmo tab)", {
+        sessionId: currentSessionId,
+        tabId,
+      });
       return {
         ok: true,
         sessionId: currentSessionId,
@@ -648,7 +652,9 @@ async function startViewportRecordingSerialized(tabId: number | undefined): Prom
     });
   });
   const sessionId = crypto.randomUUID();
-  const maxDurationSec = clampViewportMaxSec(settings.viewportRecordingMaxSec ?? 60);
+  const maxDurationSec = clampViewportMaxSec(
+    settings.viewportRecordingMaxSec ?? DEFAULT_VIEWPORT_RECORDING_MAX_SEC,
+  );
   const startedPromise = registerSignalWait(sessionId, "started", 25_000);
   try {
     await chrome.runtime.sendMessage({

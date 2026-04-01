@@ -20,6 +20,8 @@ import {
   type StoredPendingImageV1,
 } from "../shared/pending-images-session";
 import { pickSpeechRecognitionLang } from "../shared/chrome-speech-dictation";
+import { CAPTURE_VISIBLE_TAB_USER_HINT_PT } from "../shared/capture-visible-tab-hints";
+import { DEFAULT_VIEWPORT_RECORDING_MAX_SEC } from "../shared/storage";
 import { detectDictationPlatform, getDictationMicTooltip } from "../shared/native-dictation-hint";
 import { buildIssueBody } from "../shared/issue-builder";
 import {
@@ -302,7 +304,7 @@ function initialFormFromSnapshot(): IssueFormState {
     ...base,
     title: s.title ?? base.title,
     whatHappened: s.whatHappened ?? base.whatHappened,
-    includeTechnicalContext: s.includeTechnicalContext ?? base.includeTechnicalContext,
+    includeTechnicalContext: true,
     sendToGitHub: s.sendToGitHub ?? base.sendToGitHub,
     sendToJira: s.sendToJira ?? base.sendToJira,
     jiraMotivoAbertura: s.jiraMotivoAbertura ?? base.jiraMotivoAbertura,
@@ -368,7 +370,7 @@ export function FeedbackApp() {
   >("idle");
   const [recordingSessionId, setRecordingSessionId] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [videoMaxDurationSec, setVideoMaxDurationSec] = useState(60);
+  const [videoMaxDurationSec, setVideoMaxDurationSec] = useState(DEFAULT_VIEWPORT_RECORDING_MAX_SEC);
   const [videoAttachment, setVideoAttachment] = useState<JiraImageAttachmentPayload | null>(null);
   const [videoMeta, setVideoMeta] = useState<{ durationMs: number; sizeBytes: number } | null>(null);
   const [videoRecordingError, setVideoRecordingError] = useState<string | null>(null);
@@ -458,7 +460,7 @@ export function FeedbackApp() {
               ...f,
               title: fromExt.title ?? f.title,
               whatHappened: fromExt.whatHappened ?? f.whatHappened,
-              includeTechnicalContext: fromExt.includeTechnicalContext ?? f.includeTechnicalContext,
+              includeTechnicalContext: true,
               sendToGitHub: fromExt.sendToGitHub ?? f.sendToGitHub,
               sendToJira: fromExt.sendToJira ?? f.sendToJira,
               jiraMotivoAbertura: fromExt.jiraMotivoAbertura ?? f.jiraMotivoAbertura,
@@ -530,7 +532,7 @@ export function FeedbackApp() {
   useEffect(() => subscribeToLocationChanges(() => setRouteRevision((n) => n + 1)), []);
 
   useEffect(() => {
-    if (!open || !form.includeTechnicalContext) {
+    if (!open) {
       setSessionTimelinePreview([]);
       return;
     }
@@ -546,7 +548,7 @@ export function FeedbackApp() {
     return () => {
       cancelled = true;
     };
-  }, [open, form.includeTechnicalContext, routeRevision, tab, postSubmit]);
+  }, [open, routeRevision, tab, postSubmit]);
 
   useEffect(() => {
     if (open) clearSpeechError();
@@ -774,7 +776,7 @@ export function FeedbackApp() {
       };
       if (cancelled || !st?.active || !st.sessionId) return;
       setRecordingSessionId(st.sessionId);
-      setVideoMaxDurationSec(st.maxDurationSec ?? 60);
+      setVideoMaxDurationSec(st.maxDurationSec ?? DEFAULT_VIEWPORT_RECORDING_MAX_SEC);
       setRecordingSeconds(
         Math.max(0, Math.floor((Date.now() - (st.startedAtMs ?? Date.now())) / 1000)),
       );
@@ -953,15 +955,13 @@ export function FeedbackApp() {
     const bridge = readBridgeSnapshot();
     const target =
       lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
-    const capturedContext = form.includeTechnicalContext
-      ? buildCapturedIssueContext({
-          lastTarget: target,
-          bridge,
-          captureMode,
-          sessionInteractionTimeline:
-            sessionTimelinePreview.length > 0 ? sessionTimelinePreview : undefined,
-        })
-      : undefined;
+    const capturedContext = buildCapturedIssueContext({
+      lastTarget: target,
+      bridge,
+      captureMode,
+      sessionInteractionTimeline:
+        sessionTimelinePreview.length > 0 ? sessionTimelinePreview : undefined,
+    });
     return { ...form, capturedContext };
   }, [form, lastTarget, routeRevision, captureMode, sessionTimelinePreview]);
 
@@ -1156,15 +1156,13 @@ export function FeedbackApp() {
       const bridge = readBridgeSnapshot();
       const target =
         lastTarget && !elementIsInsideExtensionUi(lastTarget) ? lastTarget : null;
-      const sessionTl = form.includeTechnicalContext ? await fetchSessionTimelineForSubmit() : [];
-      const capturedContextForSend = form.includeTechnicalContext
-        ? buildCapturedIssueContext({
-            lastTarget: target,
-            bridge,
-            captureMode,
-            sessionInteractionTimeline: sessionTl.length > 0 ? sessionTl : undefined,
-          })
-        : undefined;
+      const sessionTl = await fetchSessionTimelineForSubmit();
+      const capturedContextForSend = buildCapturedIssueContext({
+        lastTarget: target,
+        bridge,
+        captureMode,
+        sessionInteractionTimeline: sessionTl.length > 0 ? sessionTl : undefined,
+      });
       const submitPayload: CreateIssuePayload = { ...form, capturedContext: capturedContextForSend };
       const jiraVideoPendingInSession =
         form.sendToJira &&
@@ -1498,7 +1496,7 @@ export function FeedbackApp() {
                         >
                           {captureMode === "producao-sensivel" ? "Ctx restrito" : "Ctx debug"}
                         </span>
-                        {form.includeTechnicalContext && sensitivePreviewCount > 0 ? (
+                        {sensitivePreviewCount > 0 ? (
                           <span
                             className="qaf-status-badge qaf-status-badge--info"
                             role="listitem"
@@ -1962,22 +1960,9 @@ export function FeedbackApp() {
                                 {regionScreenshotBusy ? "A capturar…" : "Capturar tela"}
                               </button>
                             </div>
-                            <p className="qaf-img-hint">
-                              {!form.sendToJira
-                                ? "As imagens e o vídeo só são enviados ao marcar «Enviar para Jira». "
-                                : null}
-                              Até {JIRA_FEEDBACK_MAX_IMAGES} anexos (imagem ou vídeo WebM),{" "}
-                              {JIRA_FEEDBACK_MAX_IMAGE_BYTES / (1024 * 1024)} MB cada. «Capturar área» esconde o botão de
-                              feedback, permite arrastar um retângulo na página visível e anexa o recorte. Colar captura
-                              (Ctrl+V) na descrição também funciona.
-                            </p>
+                            <p className="qaf-img-hint">{CAPTURE_VISIBLE_TAB_USER_HINT_PT}</p>
                             {viewportRecordingFeatureOn ? (
-                              <div className="qaf-video-block">
-                                <span className="qaf-label">Gravação do separador (WebM)</span>
-                                <p className="qaf-img-hint qaf-video-meta">
-                                  Grava apenas esta aba (não o ecrã inteiro). Só inicia quando clicar no botão. Auto-stop
-                                  ao limite definido nas opções (30–90s). Conta como um anexo no limite de 8.
-                                </p>
+                              <div className="qaf-video-below-img" role="region" aria-label="Gravação do separador WebM">
                                 <div className="qaf-video-row qaf-img-btn-row">
                                   {videoRecordingState === "recording" ? (
                                     <>
@@ -2027,7 +2012,7 @@ export function FeedbackApp() {
                                   ) : (
                                     <button
                                       type="button"
-                                      className="qaf-btn-ghost qaf-btn-ghost--dashed"
+                                      className="qaf-btn-ghost qaf-btn-ghost--full"
                                       disabled={
                                         recordingBusy ||
                                         pendingImages.length >= JIRA_FEEDBACK_MAX_IMAGES
@@ -2044,6 +2029,11 @@ export function FeedbackApp() {
                                   </p>
                                 ) : null}
                               </div>
+                            ) : null}
+                            {!form.sendToJira ? (
+                              <p className="qaf-img-hint">
+                                As imagens e o vídeo só são enviados ao marcar «Enviar para Jira».
+                              </p>
                             ) : null}
                           </div>
                           {pendingImages.length > 0 ? (
@@ -2065,23 +2055,6 @@ export function FeedbackApp() {
                           ) : null}
                         </div>
                       ) : null}
-                      <label className="qaf-check">
-                        <input
-                          type="checkbox"
-                          checked={form.includeTechnicalContext}
-                          onChange={onField("includeTechnicalContext")}
-                        />
-                        <span className="qaf-check-text">
-                          <span className="qaf-check-title">Incluir contexto técnico</span>
-                          <span className="qaf-check-hint">
-                            Linha do tempo (inclui fluxo na mesma aba), resumo de pedidos HTTP, console, erro de runtime
-                            e sinais de performance quando existirem, estado visual, elemento alvo, indícios
-                            heurísticos de dados sensíveis (secção própria na issue), ambiente da app quando a página
-                            expõe sinais. O modo nas opções (debug interno vs produção sensível) altera quanto texto
-                            bruto entra na issue.
-                          </span>
-                        </span>
-                      </label>
                       <div className="qaf-footer-eq">
                         <div className="qaf-footer-eq-row">
                           <button type="button" className="qaf-btn qaf-btn--ghost-cancel" onClick={cancelFormAndCollapse}>

@@ -139,7 +139,7 @@ export function buildTabSnapshotV2(params: {
     panelTab: rest.panelTab,
     title: trimDraftField(form.title),
     whatHappened: trimDraftField(form.whatHappened),
-    includeTechnicalContext: form.includeTechnicalContext,
+    includeTechnicalContext: true,
     sendToGitHub: form.sendToGitHub,
     sendToJira: form.sendToJira,
     jiraMotivoAbertura: form.jiraMotivoAbertura || undefined,

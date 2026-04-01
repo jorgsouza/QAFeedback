@@ -780,6 +780,20 @@ export const shadowCss = `
   font-weight: 500;
 }
 
+/* CTA único na fila: mesmo aspecto que «Gravar novamente», em largura total. */
+.qaf-img-btn-row .qaf-btn-ghost--full {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
+.qaf-video-below-img {
+  margin-top: 12px;
+}
+
+.qaf-video-below-img .qaf-img-btn-row .qaf-btn-ghost {
+  border-radius: 16px;
+}
+
 .qaf-btn-ghost:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -1537,12 +1551,6 @@ export const shadowCss = `
 
 .qaf-success a:not(.qaf-btn):hover {
   text-decoration: underline;
-}
-
-.qaf-video-block {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--qaf-m-border);
 }
 
 .qaf-video-row {

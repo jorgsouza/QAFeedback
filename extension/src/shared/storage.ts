@@ -1,9 +1,11 @@
-import { normalizeCaptureMode } from "./capture-mode";
 import type { ExtensionSettings } from "./types";
 
 const KEY = "qaFeedbackSettings";
 
 export const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "www.reclameaqui.com.br"];
+
+/** PRD-012 — auto-stop da gravação viewport (30–90s). */
+export const DEFAULT_VIEWPORT_RECORDING_MAX_SEC = 90;
 
 export const emptySettings = (): ExtensionSettings => ({
   githubToken: "",
@@ -21,10 +23,10 @@ export const emptySettings = (): ExtensionSettings => ({
   jiraBoardAutoFields: [],
   jiraBoardFilterSelectFieldId: "",
     jiraBoardFilterSelectValue: "",
-    fullNetworkDiagnostic: false,
+    fullNetworkDiagnostic: true,
     captureMode: "debug-interno",
-    enableViewportRecording: false,
-    viewportRecordingMaxSec: 60,
+    enableViewportRecording: true,
+    viewportRecordingMaxSec: DEFAULT_VIEWPORT_RECORDING_MAX_SEC,
 });
 
 export async function loadSettings(): Promise<ExtensionSettings> {
@@ -58,19 +60,26 @@ export async function loadSettings(): Promise<ExtensionSettings> {
       typeof raw.jiraBoardFilterSelectFieldId === "string" ? raw.jiraBoardFilterSelectFieldId : "",
     jiraBoardFilterSelectValue:
       typeof raw.jiraBoardFilterSelectValue === "string" ? raw.jiraBoardFilterSelectValue : "",
-    fullNetworkDiagnostic: raw.fullNetworkDiagnostic === true,
-    captureMode: normalizeCaptureMode(raw.captureMode),
-    enableViewportRecording: raw.enableViewportRecording === true,
+    fullNetworkDiagnostic: true,
+    captureMode: "debug-interno",
+    enableViewportRecording: true,
     viewportRecordingMaxSec: clampViewportRecordingMaxSec(raw.viewportRecordingMaxSec),
   };
 }
 
 function clampViewportRecordingMaxSec(n: unknown): number {
   const x = typeof n === "number" ? n : Number(n);
-  if (!Number.isFinite(x)) return 60;
+  if (!Number.isFinite(x)) return DEFAULT_VIEWPORT_RECORDING_MAX_SEC;
   return Math.max(30, Math.min(90, Math.round(x)));
 }
 
 export async function saveSettings(settings: ExtensionSettings): Promise<void> {
-  await chrome.storage.local.set({ [KEY]: settings });
+  const normalized: ExtensionSettings = {
+    ...settings,
+    fullNetworkDiagnostic: true,
+    captureMode: "debug-interno",
+    enableViewportRecording: true,
+    viewportRecordingMaxSec: clampViewportRecordingMaxSec(settings.viewportRecordingMaxSec),
+  };
+  await chrome.storage.local.set({ [KEY]: normalized });
 }

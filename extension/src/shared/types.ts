@@ -310,17 +310,18 @@ export type ExtensionSettings = {
   /**
    * Quando true, o modal de feedback tenta capturar tráfego HTTP (CDP) e anexar HAR ao Jira.
    * Requer permissão `debugger` e pode conflitar com DevTools aberto na mesma aba.
+   * Persistência força sempre true.
    */
   fullNetworkDiagnostic?: boolean;
   /**
-   * PRD-011 — debug interno (padrão) mantém mais texto na issue; produção sensível reduz brutos.
+   * PRD-011 — sempre `debug-interno` nas opções; produção sensível fica só na API de normalização legada.
    */
   captureMode?: CaptureModeV1;
   /**
-   * PRD-012 — gravação WebM do viewport (tab capture) para anexar no Jira. Padrão: desligado (rollout gradual).
+   * PRD-012 — gravação WebM do viewport (tab capture); sempre ligada ao persistir definições.
    */
   enableViewportRecording?: boolean;
-  /** PRD-012 — auto-stop da gravação (30–90s). Padrão 60s. */
+  /** PRD-012 — auto-stop da gravação (30–90s). Padrão 90s. */
   viewportRecordingMaxSec?: number;
 };
 

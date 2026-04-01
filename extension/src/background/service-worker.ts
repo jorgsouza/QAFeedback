@@ -16,13 +16,14 @@ import {
 } from "../shared/jira-client";
 import { networkHarJiraDescriptionMarkdown } from "../shared/network-har-jira-help";
 import { isJiraMotivoAbertura } from "../shared/jira-motivo";
+import { CAPTURE_VISIBLE_TAB_USER_HINT_PT } from "../shared/capture-visible-tab-hints";
 import {
   BUILTIN_MATCH_PATTERNS,
   matchPatternsForAllowedHost,
   urlMatchesAllowedHosts,
 } from "../shared/host-patterns";
 import { isAllowedRepoTarget, repoTargetsForUi, resolveRepoTargets } from "../shared/repo-targets";
-import { loadSettings } from "../shared/storage";
+import { DEFAULT_VIEWPORT_RECORDING_MAX_SEC, loadSettings } from "../shared/storage";
 import { normalizeGitHubRepoRef } from "../shared/github-repo-normalize";
 import {
   coerceJiraBoardIdRequest,
@@ -238,7 +239,7 @@ function friendlyCaptureVisibleTabError(raw: string, tabUrl?: string | null): st
     return viewportCaptureDeniedReason(tabUrl) ?? raw;
   }
   if (m.includes("not been invoked") || m.includes("activetab")) {
-    return "Para capturar o ecrã: clique uma vez no ícone da extensão na barra do Chrome neste separador antes de «Capturar tela», ou nas Opções aceite permissão para este domínio (sites permitidos + pedir acesso amplo se precisar).";
+    return CAPTURE_VISIBLE_TAB_USER_HINT_PT;
   }
   if (m.includes("permission") || m.includes("denied") || m.includes("cannot access")) {
     return "Sem permissão para capturar este separador. Clique no ícone da extensão nesta página ou adicione o domínio em Opções → Sites permitidos.";
@@ -487,7 +488,7 @@ chrome.runtime.onMessage.addListener(
             fullNetworkDiagnostic: Boolean(s.fullNetworkDiagnostic),
             captureMode: s.captureMode ?? "debug-interno",
             enableViewportRecording: Boolean(s.enableViewportRecording),
-            viewportRecordingMaxSec: s.viewportRecordingMaxSec ?? 60,
+            viewportRecordingMaxSec: s.viewportRecordingMaxSec ?? DEFAULT_VIEWPORT_RECORDING_MAX_SEC,
           };
           if (jiraTokenConfigured) {
             const jb = await listFilteredJiraBoardsForFeedback(s);
@@ -506,10 +507,10 @@ chrome.runtime.onMessage.addListener(
             repos: [],
             githubTokenConfigured: false,
             jiraTokenConfigured: false,
-            fullNetworkDiagnostic: false,
+            fullNetworkDiagnostic: true,
             captureMode: "debug-interno",
-            enableViewportRecording: false,
-            viewportRecordingMaxSec: 60,
+            enableViewportRecording: true,
+            viewportRecordingMaxSec: DEFAULT_VIEWPORT_RECORDING_MAX_SEC,
             loadFailed: true,
           });
         }
